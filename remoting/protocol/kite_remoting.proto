@@ -1,0 +1,74 @@
+package protocol;
+
+
+//命令字类型
+//enum CmdType{
+//    CMD_TYPE_HEARTBEAT= 1;
+//    CMD_TX_ACK=2;
+//    CMD_TYPE_BYTES_MESSAGE = 3;
+//}
+
+
+//响应报文
+message ResponsePacket{
+    required int64 id = 1;           //响应序列
+    required ResponseCode status = 2; //错误响应码
+    //响应的code
+    enum ResponseCode {
+        SUCC = 200;
+        ERROR = 500;
+    }
+    
+    required string errorMessage = 3; //错误响应消息
+    required bytes responseBody = 4;  //响应体
+}
+
+
+//心跳请求包
+message HeartBeatPacket{
+    required int64 id  = 1;
+    required SerializeType type  = 2 [default = JSON]; //序列化类型
+    enum SerializeType {
+        JSON =0;
+        MSGPACK=1;
+        PROTOC = 2;
+    }
+  
+}
+
+
+
+//心跳响应包
+message HeartBeatACKPacket{
+   required int64 ackId = 1;  //响应确认包
+}
+
+//事务确认数据包
+message TranscationACKPacket{
+     required int64 ackId = 1;  //响应确认包
+     required string messageId = 2; //消息Id
+}
+
+message Header{
+    required string messageId = 1;
+    required string topic = 2; //topic类型
+    required string messageType = 3; //消息类型
+    required int64 expiredTime =4; //消息过期时间
+    required string groupId = 5; // 消息发送来源
+    required bool commited = 6; //本消息是否提交
+}
+
+//byte类消息
+message BytesMessage{
+    required Header  header= 1;
+    required  bytes body = 2;    
+}
+
+
+//string类型的message
+message StringMessage{
+    required Header header = 1;
+    required string body = 2;
+
+}
+

@@ -1,0 +1,127 @@
+package handler
+
+import (
+	"container/list"
+)
+
+/**
+*
+*本类主要管理当前注册的所有的事件对应的handler
+* ---> forwardhandler--->  forwardhandler	---->
+*											 		backward+forwardAdapterHandler
+* <--- backwardhandler <----backward handler<----
+*
+*
+**/
+
+//-----------------整个Handler的pipeline 组成了一个循环链表
+type DefaultPipeline struct {
+	eventHandler     *list.List               //event对应的Handler的
+	hashEventHandler map[string]*list.Element //hash对应的handler
+}
+
+func (self *DefaultPipeline) FireWork(event IForwardEvent) error {
+	return self.getCtx().handler.HandleEvent(self.getCtx(), event)
+}
+
+func (self *DefaultPipeline) getCtx() *DefaultPipelineContext {
+	return self.eventHandler.Front().Value.(*DefaultPipelineContext)
+}
+
+func (self *DefaultPipeline) getNextContextByHandlerName(name string) *DefaultPipelineContext {
+	ctx, ok := self.hashEventHandler[name]
+	if ok {
+		return ctx.Next().Value.(*DefaultPipelineContext)
+	} else {
+		return nil
+	}
+}
+
+func (self *DefaultPipeline) getPreContextByHandlerName(name string) *DefaultPipelineContext {
+	ctx, ok := self.hashEventHandler[name]
+	if ok {
+		return ctx.Prev().Value.(*DefaultPipelineContext)
+	} else {
+		return nil
+	}
+}
+
+func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
+	ctx := DefaultPipelineContext{handler: handler}
+	currctx := self.eventHandler.PushBack(ctx)
+	self.hashEventHandler[name] = currctx
+}
+
+//pipeline中处理向后的事件
+func (self *DefaultPipeline) handleBackward(ctx *DefaultPipelineContext, event IBackwardEvent) error {
+	backwardHandler := ctx.handler.(IBackwardHandler)
+	return backwardHandler.HandleBackward(ctx, event)
+}
+
+//pipeline中处理向前的事件
+func (self *DefaultPipeline) handleForward(ctx *DefaultPipelineContext, event IForwardEvent) error {
+	forwardHandler := ctx.handler.(IForwardHandler)
+	return forwardHandler.HandleForward(ctx, event)
+
+}
+
+//------------------------当前Pipeline的上下文
+type DefaultPipelineContext struct {
+	handler  IHandler         //当前上下文的handler
+	pipeline *DefaultPipeline //默认的pipeline
+}
+
+//向后投递
+func (self *DefaultPipelineContext) SendForward(event IForwardEvent) {
+	actualCtx := self.getForwardContext(self, event)
+	if nil == actualCtx {
+		//已经没有处理的handler 找默认的handler处理即可
+
+	} else {
+
+		err := actualCtx.pipeline.handleForward(actualCtx, event)
+		//如果处理失败了则需要直接走exception的handler
+		if nil != err {
+			//TODO LOG
+		}
+	}
+}
+
+//获取forward的上下文
+func (self *DefaultPipelineContext) getForwardContext(ctx *DefaultPipelineContext, event IForwardEvent) *DefaultPipelineContext {
+	nextCtx := ctx.pipeline.getNextContextByHandlerName(ctx.handler.GetName())
+	for nil != nextCtx {
+		if nextCtx.handler.AcceptEvent(event) {
+			return nextCtx
+		} else {
+			nextCtx = ctx.pipeline.getNextContextByHandlerName(ctx.handler.GetName())
+		}
+	}
+	return nil
+}
+
+func (self *DefaultPipelineContext) SendBackward(event IBackwardEvent) {
+	actualCtx := self.getBackwardContext(self, event)
+	if nil == actualCtx {
+		//已经没有处理的handler 找默认的handler处理即可
+
+	} else {
+		err := actualCtx.pipeline.handleBackward(actualCtx, event)
+		if nil != err {
+			//TODO LOG
+		}
+	}
+}
+
+//获取backward对应的上线文
+func (self *DefaultPipelineContext) getBackwardContext(ctx *DefaultPipelineContext, event IBackwardEvent) *DefaultPipelineContext {
+	preCtx := ctx.pipeline.getPreContextByHandlerName(ctx.handler.GetName())
+	for nil != preCtx {
+		if preCtx.handler.AcceptEvent(event) {
+			return preCtx
+		} else {
+			preCtx = ctx.pipeline.getPreContextByHandlerName(ctx.handler.GetName())
+		}
+	}
+	return nil
+}
