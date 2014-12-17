@@ -41,6 +41,7 @@ type DeliverEvent struct {
 	Topic         string   //消息的topic
 	MessageType   string   //消息的messageType
 	DeliverGroups []string //需要投递的群组
+	ExpiredTime   int64    //消息过期时间
 }
 
 //统计投递结果的事件，决定不决定重发
