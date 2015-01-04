@@ -10,3 +10,5 @@ const (
 	CMD_TYPE_BYTES_MESSAGE  = uint8(0x10)
 	CMD_TYPE_STRING_MESSAGE = uint8(0x11)
 )
+
+var CMD_CRLF = [2]byte{'\r', '\n'}

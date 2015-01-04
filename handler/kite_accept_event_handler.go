@@ -3,6 +3,7 @@ package handler
 import (
 	"go-kite/remoting/protocol"
 	"go-kite/store"
+	"log"
 )
 
 //--------------------如下为具体的处理Handler
@@ -26,13 +27,18 @@ func (self *AcceptHandler) AcceptEvent(event IEvent) bool {
 	if !ok {
 		return false
 	} else {
-		_, ok := event.(AcceptEvent)
+		_, ok := self.typeAssert(event)
 		return ok
 	}
 }
 
+func (self *AcceptHandler) typeAssert(event IEvent) (*AcceptEvent, bool) {
+	val, ok := event.(*AcceptEvent)
+	return val, ok
+}
+
 func (self *AcceptHandler) innerHandle(ctx *DefaultPipelineContext, event IForwardEvent) (*store.MessageEntity, error) {
-	acceptEvent, ok := event.(AcceptEvent)
+	acceptEvent, ok := self.typeAssert(event)
 	if !ok {
 		return nil, ERROR_INVALID_EVENT_TYPE
 	}
@@ -49,13 +55,15 @@ func (self *AcceptHandler) innerHandle(ctx *DefaultPipelineContext, event IForwa
 
 func (self *AcceptHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
 	result, err := self.innerHandle(ctx, event)
+	log.Printf("AcceptHandler|HandleEvent|%t|%t|%s\n", event, result, err)
 	if nil == err {
 		//创建一个持久化的事件
 		persistentEvent := &PersistentEvent{}
 		persistentEvent.entity = result
-
+		log.Printf("AcceptHandler|SendForward|%s\n", persistentEvent)
 		//向后发送
 		ctx.SendForward(persistentEvent)
+
 	}
 	return err
 }

@@ -6,7 +6,7 @@ import (
 
 //用于持久化的messageEntity
 type MessageEntity struct {
-	header       *protocol.Header
+	Header       *protocol.Header
 	messageId    string
 	topic        string //topic
 	messageType  string //messageType
@@ -27,7 +27,7 @@ type MessageEntity struct {
 func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 	entity := &MessageEntity{}
 	entity.messageId = msg.GetHeader().GetMessageId()
-	entity.header = msg.GetHeader()
+	entity.Header = msg.GetHeader()
 	entity.topic = msg.GetHeader().GetTopic()
 	entity.publishGroup = msg.GetHeader().GetGroupId()
 	entity.messageType = msg.GetHeader().GetMessageType()
@@ -45,7 +45,7 @@ func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 //创建bytesmessage的实体
 func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 	entity := &MessageEntity{}
-	entity.header = msg.GetHeader()
+	entity.Header = msg.GetHeader()
 	entity.messageId = msg.GetHeader().GetMessageId()
 	entity.topic = msg.GetHeader().GetTopic()
 	entity.publishGroup = msg.GetHeader().GetGroupId()

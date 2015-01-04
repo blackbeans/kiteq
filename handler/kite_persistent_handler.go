@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"go-kite/store"
+	"log"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")
@@ -30,13 +31,18 @@ func (self *PersistentHandler) AcceptEvent(event IEvent) bool {
 	if !ok {
 		return false
 	} else {
-		_, ok := event.(PersistentEvent)
+		_, ok := self.typeAssert(event)
 		return ok
 	}
 }
 
+func (self *PersistentHandler) typeAssert(event IEvent) (*PersistentEvent, bool) {
+	val, ok := event.(*PersistentEvent)
+	return val, ok
+}
+
 func (self *PersistentHandler) innerHandle(ctx *DefaultPipelineContext, event IForwardEvent) (bool, *DeliverEvent) {
-	pevent, ok := event.(PersistentEvent)
+	pevent, ok := self.typeAssert(event)
 	if !ok {
 		return false, nil
 	}
@@ -56,9 +62,12 @@ func (self *PersistentHandler) innerHandle(ctx *DefaultPipelineContext, event IF
 
 func (self *PersistentHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
 	succ, devent := self.innerHandle(ctx, event)
+	log.Printf("PersistentHandler|HandleEvent|%t|%t|%s\n", event, succ, devent)
 	if succ {
+		log.Printf("PersistentHandler|SendForward|%s\n", devent)
 		//成功向后发送
 		ctx.SendForward(devent)
+
 	} else {
 		return ERROR_PERSISTENT
 	}

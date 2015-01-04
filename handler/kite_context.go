@@ -2,6 +2,7 @@ package handler
 
 import (
 	"container/list"
+	"log"
 )
 
 /**
@@ -20,6 +21,13 @@ type DefaultPipeline struct {
 	hashEventHandler map[string]*list.Element //hash对应的handler
 }
 
+//创建pipeline
+func NewDefaultPipeline() *DefaultPipeline {
+	return &DefaultPipeline{
+		eventHandler:     list.New(),
+		hashEventHandler: make(map[string]*list.Element)}
+}
+
 func (self *DefaultPipeline) FireWork(event IForwardEvent) error {
 	return self.getCtx().handler.HandleEvent(self.getCtx(), event)
 }
@@ -31,7 +39,12 @@ func (self *DefaultPipeline) getCtx() *DefaultPipelineContext {
 func (self *DefaultPipeline) getNextContextByHandlerName(name string) *DefaultPipelineContext {
 	ctx, ok := self.hashEventHandler[name]
 	if ok {
-		return ctx.Next().Value.(*DefaultPipelineContext)
+		next := ctx.Next()
+		if nil != next {
+			return next.Value.(*DefaultPipelineContext)
+		} else {
+			return nil
+		}
 	} else {
 		return nil
 	}
@@ -40,14 +53,20 @@ func (self *DefaultPipeline) getNextContextByHandlerName(name string) *DefaultPi
 func (self *DefaultPipeline) getPreContextByHandlerName(name string) *DefaultPipelineContext {
 	ctx, ok := self.hashEventHandler[name]
 	if ok {
-		return ctx.Prev().Value.(*DefaultPipelineContext)
+		pre := ctx.Prev()
+		if nil != pre {
+			return pre.Value.(*DefaultPipelineContext)
+		} else {
+			return nil
+		}
 	} else {
 		return nil
 	}
 }
 
 func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
-	ctx := DefaultPipelineContext{handler: handler}
+	ctx := &DefaultPipelineContext{handler: handler}
+	ctx.pipeline = self
 	currctx := self.eventHandler.PushBack(ctx)
 	self.hashEventHandler[name] = currctx
 }
@@ -65,6 +84,17 @@ func (self *DefaultPipeline) handleForward(ctx *DefaultPipelineContext, event IF
 
 }
 
+//pipeline的尽头处理
+func (self *DefaultPipeline) eventSunk(event IEvent) {
+	log.Printf("DefaultPipeline|eventSunk|event:%t\n", event)
+}
+
+//pipeline处理中间出现错误
+func (self *DefaultPipeline) errorCaught(event IEvent, err error) error {
+	log.Printf("DefaultPipeline|errorCaught|event:%t|err:%s\n", event, err)
+	return err
+}
+
 //------------------------当前Pipeline的上下文
 type DefaultPipelineContext struct {
 	handler  IHandler         //当前上下文的handler
@@ -76,13 +106,13 @@ func (self *DefaultPipelineContext) SendForward(event IForwardEvent) {
 	actualCtx := self.getForwardContext(self, event)
 	if nil == actualCtx {
 		//已经没有处理的handler 找默认的handler处理即可
+		self.pipeline.eventSunk(event)
 
 	} else {
-
 		err := actualCtx.pipeline.handleForward(actualCtx, event)
 		//如果处理失败了则需要直接走exception的handler
 		if nil != err {
-			//TODO LOG
+			self.pipeline.errorCaught(event, err)
 		}
 	}
 }
@@ -104,11 +134,12 @@ func (self *DefaultPipelineContext) SendBackward(event IBackwardEvent) {
 	actualCtx := self.getBackwardContext(self, event)
 	if nil == actualCtx {
 		//已经没有处理的handler 找默认的handler处理即可
+		self.pipeline.eventSunk(event)
 
 	} else {
 		err := actualCtx.pipeline.handleBackward(actualCtx, event)
 		if nil != err {
-			//TODO LOG
+			self.pipeline.errorCaught(event, err)
 		}
 	}
 }
