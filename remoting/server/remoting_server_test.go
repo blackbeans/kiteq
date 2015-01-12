@@ -1,11 +1,11 @@
-package remoting
+package server
 
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"go-kite/client"
 	"go-kite/handler"
-	"go-kite/remoting/protocol"
+	"go-kite/protocol"
 	"go-kite/store"
 	"testing"
 	"time"
@@ -53,8 +53,10 @@ func TestRemotingServer(t *testing.T) {
 
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
+	pipeline.RegisteHandler("packet_event", handler.NewPacketHandler("packet_event"))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
+	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
 	fmt.Println(pipeline)
 	ch := make(chan bool, 1)
 	remotingServer := NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
@@ -70,9 +72,18 @@ func TestRemotingServer(t *testing.T) {
 			ch <- true
 		}
 	}()
+
 	//开始向服务端发送数据
-	client := client.NewKitClient("localhost:13800")
+	client := client.NewKitClient("localhost:13800", "/user-service", "123456")
+	client.HandShake()
+
 	err := client.SendMessage(buildStringMessage())
+	if nil != err {
+		t.Fail()
+		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
+	}
+
+	err = client.SendMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)

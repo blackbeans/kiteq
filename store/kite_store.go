@@ -1,7 +1,7 @@
 package store
 
 import (
-	"go-kite/remoting/protocol"
+	"go-kite/protocol"
 )
 
 //用于持久化的messageEntity

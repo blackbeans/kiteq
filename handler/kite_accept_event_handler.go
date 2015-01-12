@@ -1,46 +1,43 @@
 package handler
 
 import (
-	"go-kite/remoting/protocol"
+	"errors"
+	"go-kite/protocol"
 	"go-kite/store"
 	"log"
 )
 
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
-	IForwardHandler
-	name string
+	BaseForwardHandler
+	IEventProcessor
 }
 
 func NewAcceptHandler(name string) *AcceptHandler {
-	return &AcceptHandler{
-		name: name}
+	ahandler := &AcceptHandler{}
+	ahandler.name = name
+	ahandler.processor = ahandler
+	return ahandler
 }
 
-func (self *AcceptHandler) GetName() string {
-	return self.name
+func (self *AcceptHandler) TypeAssert(event IEvent) bool {
+	_, ok := self.cast(event)
+	return ok
 }
 
-func (self *AcceptHandler) AcceptEvent(event IEvent) bool {
-	//是否可以处理当前按的event，再去判断具体的可处理事件类型
-	_, ok := event.(IForwardEvent)
+func (self *AcceptHandler) cast(event IEvent) (val *AcceptEvent, ok bool) {
+	val, ok = event.(*AcceptEvent)
+	return
+}
+
+var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
+
+func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+	log.Printf("AcceptHandler|Process|%t\n", event)
+
+	acceptEvent, ok := self.cast(event)
 	if !ok {
-		return false
-	} else {
-		_, ok := self.typeAssert(event)
-		return ok
-	}
-}
-
-func (self *AcceptHandler) typeAssert(event IEvent) (*AcceptEvent, bool) {
-	val, ok := event.(*AcceptEvent)
-	return val, ok
-}
-
-func (self *AcceptHandler) innerHandle(ctx *DefaultPipelineContext, event IForwardEvent) (*store.MessageEntity, error) {
-	acceptEvent, ok := self.typeAssert(event)
-	if !ok {
-		return nil, ERROR_INVALID_EVENT_TYPE
+		return ERROR_INVALID_EVENT_TYPE
 	}
 	//这里处理一下acceptEvent,做一下校验
 	var msg *store.MessageEntity
@@ -49,31 +46,15 @@ func (self *AcceptHandler) innerHandle(ctx *DefaultPipelineContext, event IForwa
 		msg = store.NewBytesMessageEntity(acceptEvent.msg.(*protocol.BytesMessage))
 	case protocol.CMD_TYPE_STRING_MESSAGE:
 		msg = store.NewStringMessageEntity(acceptEvent.msg.(*protocol.StringMessage))
+	default:
+		//这只是一个bug不支持的数据类型能给你
 	}
-	return msg, nil
-}
 
-func (self *AcceptHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
-	result, err := self.innerHandle(ctx, event)
-	log.Printf("AcceptHandler|HandleEvent|%t|%t|%s\n", event, result, err)
-	if nil == err {
-		//创建一个持久化的事件
-		persistentEvent := &PersistentEvent{}
-		persistentEvent.entity = result
-		log.Printf("AcceptHandler|SendForward|%s\n", persistentEvent)
-		//向后发送
-		ctx.SendForward(persistentEvent)
-
-	}
-	return err
-}
-
-func (self *AcceptHandler) HandleForward(ctx *DefaultPipelineContext, event IForwardEvent) error {
-	//处理逻辑成功则向后传递
-	if !self.AcceptEvent(event) {
-		ctx.SendForward(event)
+	if nil != msg {
+		pevent := NewPersistentEvent(msg, acceptEvent.session)
+		ctx.SendForward(pevent)
 		return nil
-	} else {
-		return self.HandleEvent(ctx, event)
 	}
+
+	return INVALID_MSG_TYPE_ERROR
 }

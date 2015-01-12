@@ -6,16 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"go-kite/remoting/protocol"
+	"go-kite/protocol"
 	"log"
 	"net"
 )
 
 type KiteClient struct {
-	conn *net.TCPConn
+	conn      *net.TCPConn
+	id        int32
+	groupId   string
+	secretKey string
 }
 
-func NewKitClient(hostport string) *KiteClient {
+func NewKitClient(hostport, groupId, secretKey string) *KiteClient {
 
 	localAddr, err_l := net.ResolveTCPAddr("tcp4", "localhost:24800")
 	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", hostport)
@@ -29,8 +32,26 @@ func NewKitClient(hostport string) *KiteClient {
 
 	client := &KiteClient{}
 	client.conn = conn
+	client.id = 0
+	client.groupId = groupId
+	client.secretKey = secretKey
 
 	return client
+}
+
+//先进行初次握手上传连接元数据
+func (self *KiteClient) HandShake() error {
+	connMeta := &protocol.ConnectioMetaPacket{}
+	connMeta.GroupId = proto.String(self.groupId)
+	connMeta.SecretKey = proto.String(self.secretKey)
+	metaPacket, err := proto.Marshal(connMeta)
+	if nil != err {
+		return err
+	}
+
+	_, err = self.write(protocol.CMD_CONN_META, metaPacket)
+	return err
+
 }
 
 func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
@@ -38,13 +59,25 @@ func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
 	if nil != err {
 		return err
 	}
-	//总长度	  1字节 + 4字节 + var + \r + \n
-	length := 1 + 4 + len(packet) + 1 + 1
+
+	_, err = self.write(protocol.CMD_TYPE_STRING_MESSAGE, packet)
+	return err
+}
+
+//最底层的网络写入
+func (self *KiteClient) write(cmdType uint8, packet []byte) (int, error) {
+
+	//总长度	  4 字节+ 1字节 + 4字节 + var + \r + \n
+	length := 4 + 1 + 4 + len(packet) + 1 + 1
 
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
+
+	self.id++
 	//写入数据包的类型
-	binary.Write(buff, binary.BigEndian, protocol.CMD_TYPE_STRING_MESSAGE)
+	binary.Write(buff, binary.BigEndian, self.id)
+	//写入数据包的类型
+	binary.Write(buff, binary.BigEndian, cmdType)
 	//写入长度
 	binary.Write(buff, binary.BigEndian, uint32(len(packet)))
 	//写入真是数据
@@ -54,14 +87,16 @@ func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
 
 	wl, err := self.conn.Write(buff.Bytes())
 	if nil != err {
-		return err
+		log.Printf("KITECLIENT|SEND MESSAGE|FAIL|%s|wl:%d/%d/%d\n", err, wl, length, buff.Len())
+		return wl, err
 	} else if wl != length {
-		errline := fmt.Sprintf("KITECLIENT|SEND MESSAGE|FAIL|wl:%d/%d/%d", wl, length, buff.Len())
-		return errors.New(errline)
+		errline := fmt.Sprintf("KITECLIENT|SEND MESSAGE|FAIL|%s|wl:%d/%d/%d\n", errors.New("length error"), wl, length, buff.Len())
+		return wl, errors.New(errline)
 	} else {
-		log.Printf("KITECLIENT|SEND MESSAGE|SUCC|type:%d|len:%d/%d|data:%t", protocol.CMD_TYPE_STRING_MESSAGE, buff.Len(), length, buff.Bytes())
+		log.Printf("KITECLIENT|SEND MESSAGE|SUCC|type:%d|len:%d/%d|data:%t\n", protocol.CMD_TYPE_STRING_MESSAGE, buff.Len(), length, buff.Bytes())
 	}
-	return nil
+
+	return wl, err
 }
 
 func (self *KiteClient) Close() {

@@ -2,21 +2,6 @@
 // source: kite_remoting.proto
 // DO NOT EDIT!
 
-/*
-Package protocol is a generated protocol buffer package.
-
-It is generated from these files:
-	kite_remoting.proto
-
-It has these top-level messages:
-	ResponsePacket
-	HeartBeatPacket
-	HeartBeatACKPacket
-	TranscationACKPacket
-	Header
-	BytesMessage
-	StringMessage
-*/
 package protocol
 
 import proto "code.google.com/p/goprotobuf/proto"
@@ -25,40 +10,6 @@ import math "math"
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
 var _ = math.Inf
-
-// 响应的code
-type ResponsePacket_ResponseCode int32
-
-const (
-	ResponsePacket_SUCC  ResponsePacket_ResponseCode = 200
-	ResponsePacket_ERROR ResponsePacket_ResponseCode = 500
-)
-
-var ResponsePacket_ResponseCode_name = map[int32]string{
-	200: "SUCC",
-	500: "ERROR",
-}
-var ResponsePacket_ResponseCode_value = map[string]int32{
-	"SUCC":  200,
-	"ERROR": 500,
-}
-
-func (x ResponsePacket_ResponseCode) Enum() *ResponsePacket_ResponseCode {
-	p := new(ResponsePacket_ResponseCode)
-	*p = x
-	return p
-}
-func (x ResponsePacket_ResponseCode) String() string {
-	return proto.EnumName(ResponsePacket_ResponseCode_name, int32(x))
-}
-func (x *ResponsePacket_ResponseCode) UnmarshalJSON(data []byte) error {
-	value, err := proto.UnmarshalJSONEnum(ResponsePacket_ResponseCode_value, data, "ResponsePacket_ResponseCode")
-	if err != nil {
-		return err
-	}
-	*x = ResponsePacket_ResponseCode(value)
-	return nil
-}
 
 type HeartBeatPacket_SerializeType int32
 
@@ -96,47 +47,6 @@ func (x *HeartBeatPacket_SerializeType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// 响应报文
-type ResponsePacket struct {
-	Id               *int64                       `protobuf:"varint,1,req,name=id" json:"id,omitempty"`
-	Status           *ResponsePacket_ResponseCode `protobuf:"varint,2,req,name=status,enum=protocol.ResponsePacket_ResponseCode" json:"status,omitempty"`
-	ErrorMessage     *string                      `protobuf:"bytes,3,req,name=errorMessage" json:"errorMessage,omitempty"`
-	ResponseBody     []byte                       `protobuf:"bytes,4,req,name=responseBody" json:"responseBody,omitempty"`
-	XXX_unrecognized []byte                       `json:"-"`
-}
-
-func (m *ResponsePacket) Reset()         { *m = ResponsePacket{} }
-func (m *ResponsePacket) String() string { return proto.CompactTextString(m) }
-func (*ResponsePacket) ProtoMessage()    {}
-
-func (m *ResponsePacket) GetId() int64 {
-	if m != nil && m.Id != nil {
-		return *m.Id
-	}
-	return 0
-}
-
-func (m *ResponsePacket) GetStatus() ResponsePacket_ResponseCode {
-	if m != nil && m.Status != nil {
-		return *m.Status
-	}
-	return ResponsePacket_SUCC
-}
-
-func (m *ResponsePacket) GetErrorMessage() string {
-	if m != nil && m.ErrorMessage != nil {
-		return *m.ErrorMessage
-	}
-	return ""
-}
-
-func (m *ResponsePacket) GetResponseBody() []byte {
-	if m != nil {
-		return m.ResponseBody
-	}
-	return nil
-}
-
 // 心跳请求包
 type HeartBeatPacket struct {
 	Id               *int64                         `protobuf:"varint,1,req,name=id" json:"id,omitempty"`
@@ -162,6 +72,31 @@ func (m *HeartBeatPacket) GetType() HeartBeatPacket_SerializeType {
 		return *m.Type
 	}
 	return Default_HeartBeatPacket_Type
+}
+
+// 连接的Meta数据包
+type ConnectioMetaPacket struct {
+	GroupId          *string `protobuf:"bytes,1,req,name=groupId" json:"groupId,omitempty"`
+	SecretKey        *string `protobuf:"bytes,2,opt,name=secretKey" json:"secretKey,omitempty"`
+	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *ConnectioMetaPacket) Reset()         { *m = ConnectioMetaPacket{} }
+func (m *ConnectioMetaPacket) String() string { return proto.CompactTextString(m) }
+func (*ConnectioMetaPacket) ProtoMessage()    {}
+
+func (m *ConnectioMetaPacket) GetGroupId() string {
+	if m != nil && m.GroupId != nil {
+		return *m.GroupId
+	}
+	return ""
+}
+
+func (m *ConnectioMetaPacket) GetSecretKey() string {
+	if m != nil && m.SecretKey != nil {
+		return *m.SecretKey
+	}
+	return ""
 }
 
 // 心跳响应包
@@ -313,6 +248,5 @@ func (m *StringMessage) GetBody() string {
 }
 
 func init() {
-	proto.RegisterEnum("protocol.ResponsePacket_ResponseCode", ResponsePacket_ResponseCode_name, ResponsePacket_ResponseCode_value)
 	proto.RegisterEnum("protocol.HeartBeatPacket_SerializeType", HeartBeatPacket_SerializeType_name, HeartBeatPacket_SerializeType_value)
 }

@@ -1,29 +1,5 @@
 package protocol;
 
-
-//命令字类型
-//enum CmdType{
-//    CMD_TYPE_HEARTBEAT= 1;
-//    CMD_TX_ACK=2;
-//    CMD_TYPE_BYTES_MESSAGE = 3;
-//}
-
-
-//响应报文
-message ResponsePacket{
-    required int64 id = 1;           //响应序列
-    required ResponseCode status = 2; //错误响应码
-    //响应的code
-    enum ResponseCode {
-        SUCC = 200;
-        ERROR = 500;
-    }
-    
-    required string errorMessage = 3; //错误响应消息
-    required bytes responseBody = 4;  //响应体
-}
-
-
 //心跳请求包
 message HeartBeatPacket{
     required int64 id  = 1;
@@ -36,6 +12,12 @@ message HeartBeatPacket{
   
 }
 
+
+//连接的Meta数据包
+message ConnectioMetaPacket{
+    required string groupId = 1; //当前客户端连接所属分组名称
+    optional string secretKey  = 2; //当前连接的授权key
+}
 
 
 //心跳响应包

@@ -10,41 +10,37 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 
 //----------------持久化的handler
 type PersistentHandler struct {
-	IForwardHandler
-	name      string
+	BaseForwardHandler
+	IEventProcessor
 	kitestore store.IKiteStore
 }
 
 //------创建persitehandler
 func NewPersistentHandler(name string, kitestore store.IKiteStore) *PersistentHandler {
-	return &PersistentHandler{name: name,
-		kitestore: kitestore}
+	phandler := &PersistentHandler{}
+	phandler.name = name
+	phandler.kitestore = kitestore
+	phandler.processor = phandler
+	return phandler
 }
 
-func (self *PersistentHandler) GetName() string {
-	return self.name
+func (self *PersistentHandler) TypeAssert(event IEvent) bool {
+	_, ok := self.cast(event)
+	return ok
 }
 
-func (self *PersistentHandler) AcceptEvent(event IEvent) bool {
-	//是否可以处理当前按的event，再去判断具体的可处理事件类型
-	_, ok := event.(IForwardEvent)
+func (self *PersistentHandler) cast(event IEvent) (val *PersistentEvent, ok bool) {
+	val, ok = event.(*PersistentEvent)
+	return
+}
+
+func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+
+	log.Printf("PersistentHandler|Process|%t\n", event)
+
+	pevent, ok := self.cast(event)
 	if !ok {
-		return false
-	} else {
-		_, ok := self.typeAssert(event)
-		return ok
-	}
-}
-
-func (self *PersistentHandler) typeAssert(event IEvent) (*PersistentEvent, bool) {
-	val, ok := event.(*PersistentEvent)
-	return val, ok
-}
-
-func (self *PersistentHandler) innerHandle(ctx *DefaultPipelineContext, event IForwardEvent) (bool, *DeliverEvent) {
-	pevent, ok := self.typeAssert(event)
-	if !ok {
-		return false, nil
+		return ERROR_INVALID_EVENT_TYPE
 	}
 
 	//写入到持久化存储里面
@@ -55,31 +51,10 @@ func (self *PersistentHandler) innerHandle(ctx *DefaultPipelineContext, event IF
 		deliver.Topic = pevent.entity.Header.GetTopic()
 		deliver.MessageType = pevent.entity.Header.GetMessageType()
 		deliver.ExpiredTime = pevent.entity.Header.GetExpiredTime()
-		return true, deliver
-	}
-	return false, nil
-}
-
-func (self *PersistentHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
-	succ, devent := self.innerHandle(ctx, event)
-	log.Printf("PersistentHandler|HandleEvent|%t|%t|%s\n", event, succ, devent)
-	if succ {
-		log.Printf("PersistentHandler|SendForward|%s\n", devent)
-		//成功向后发送
-		ctx.SendForward(devent)
-
+		ctx.SendForward(event)
 	} else {
-		return ERROR_PERSISTENT
+		//发送一个保存失败的时间
+
 	}
 	return nil
-}
-
-func (self *PersistentHandler) HandleForward(ctx *DefaultPipelineContext, event IForwardEvent) error {
-	//处理逻辑成功则向后传递
-	if !self.AcceptEvent(event) {
-		ctx.SendForward(event)
-		return nil
-	} else {
-		return self.HandleEvent(ctx, event)
-	}
 }
