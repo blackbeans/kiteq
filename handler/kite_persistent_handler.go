@@ -2,8 +2,9 @@ package handler
 
 import (
 	"errors"
+	"go-kite/protocol"
 	"go-kite/store"
-	"log"
+	// "log"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")
@@ -36,25 +37,41 @@ func (self *PersistentHandler) cast(event IEvent) (val *PersistentEvent, ok bool
 
 func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	log.Printf("PersistentHandler|Process|%t\n", event)
+	// log.Printf("PersistentHandler|Process|%t\n", event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
+	//响应包
+	responsePacket := &protocol.ResponsePacket{
+		Opaque:     pevent.opaque,
+		RemoteAddr: pevent.session.RemotingAddr()}
+
+	//向当前连接写入一个存储成功的response
+	remoteEvent := newRemotingEvent(responsePacket, pevent.session)
+
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
 	if succ {
-		deliver := &DeliverEvent{}
-		deliver.MessageId = pevent.entity.Header.GetMessageId()
-		deliver.Topic = pevent.entity.Header.GetTopic()
-		deliver.MessageType = pevent.entity.Header.GetMessageType()
-		deliver.ExpiredTime = pevent.entity.Header.GetExpiredTime()
-		ctx.SendForward(event)
-	} else {
-		//发送一个保存失败的时间
+		//启动异步协程处理分发逻辑
+		go func() {
+			deliver := &DeliverEvent{}
+			deliver.MessageId = pevent.entity.Header.GetMessageId()
+			deliver.Topic = pevent.entity.Header.GetTopic()
+			deliver.MessageType = pevent.entity.Header.GetMessageType()
+			deliver.ExpiredTime = pevent.entity.Header.GetExpiredTime()
+			ctx.SendForward(event)
 
+		}()
+		responsePacket.Status = protocol.RESP_STATUS_SUCC
+	} else {
+		responsePacket.Status = protocol.RESP_STATUS_FAIL
 	}
+
+	//向后走网络传输
+	ctx.SendForward(remoteEvent)
 	return nil
+
 }

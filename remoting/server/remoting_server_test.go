@@ -46,10 +46,14 @@ func buildStringMessage() *protocol.StringMessage {
 
 	return entity
 }
-func TestRemotingServer(t *testing.T) {
 
-	//初始化存储
-	kitestore := &defaultStore{}
+//初始化存储
+var kitestore = &defaultStore{}
+var ch = make(chan bool, 1)
+var kclient *client.KiteClient
+var remotingServer *RemotingServer
+
+func init() {
 
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
@@ -58,44 +62,87 @@ func TestRemotingServer(t *testing.T) {
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
 	fmt.Println(pipeline)
-	ch := make(chan bool, 1)
-	remotingServer := NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
+
+	remotingServer = NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
 	go func() {
 
 		err := remotingServer.ListenAndServer()
 		//
 		if nil != err {
 			ch <- false
-			t.Failed()
-			t.Fatal("start remoting server fail!")
+
 		} else {
 			ch <- true
 		}
 	}()
 
 	//开始向服务端发送数据
-	client := client.NewKitClient("localhost:13800", "/user-service", "123456")
-	client.HandShake()
+	kclient = client.NewKitClient("localhost:13800", "/user-service", "123456")
+	kclient.Start()
 
-	err := client.SendMessage(buildStringMessage())
+}
+
+func BenchmarkRemotingServer(t *testing.B) {
+	for i := 0; i < t.N; i++ {
+		err := kclient.SendMessage(buildStringMessage())
+		if nil != err {
+			t.Fail()
+			t.Logf("SEND MESSAGE |FAIL|%s\n", err)
+		}
+	}
+}
+
+func TestRemotingServer(t *testing.T) {
+
+	// //初始化存储
+	// kitestore := &defaultStore{}
+
+	// //初始化pipeline
+	// pipeline := handler.NewDefaultPipeline()
+	// pipeline.RegisteHandler("packet_event", handler.NewPacketHandler("packet_event"))
+	// pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
+	// pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
+	// pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
+	// fmt.Println(pipeline)
+	// ch := make(chan bool, 1)
+	// remotingServer := NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
+	// go func() {
+
+	// 	err := remotingServer.ListenAndServer()
+	// 	//
+	// 	if nil != err {
+	// 		ch <- false
+	// 		t.Failed()
+	// 		t.Fatal("start remoting server fail!")
+	// 	} else {
+	// 		ch <- true
+	// 	}
+	// }()
+
+	//开始向服务端发送数据
+	// client := client.NewKitClient("localhost:13800", "/user-service", "123456")
+	// client.Start()
+
+	err := kclient.SendMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = client.SendMessage(buildStringMessage())
+	err = kclient.SendMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = client.SendMessage(buildStringMessage())
+	err = kclient.SendMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	client.Close()
 	time.Sleep(10 * time.Second)
-	remotingServer.Shutdonw()
+	// remotingServer.Shutdonw()
+	// kclient.Close()
+	// remotingServer.Shutdonw()
 }

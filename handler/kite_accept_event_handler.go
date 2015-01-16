@@ -4,7 +4,7 @@ import (
 	"errors"
 	"go-kite/protocol"
 	"go-kite/store"
-	"log"
+	// "log"
 )
 
 //--------------------如下为具体的处理Handler
@@ -33,7 +33,7 @@ func (self *AcceptHandler) cast(event IEvent) (val *AcceptEvent, ok bool) {
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
 func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	log.Printf("AcceptHandler|Process|%t\n", event)
+	// log.Printf("AcceptHandler|Process|%t\n", event)
 
 	acceptEvent, ok := self.cast(event)
 	if !ok {
@@ -51,7 +51,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	if nil != msg {
-		pevent := NewPersistentEvent(msg, acceptEvent.session)
+		pevent := NewPersistentEvent(msg, acceptEvent.session, acceptEvent.opaque)
 		ctx.SendForward(pevent)
 		return nil
 	}

@@ -15,21 +15,26 @@ import (
 type Session struct {
 	GroupId         string
 	conn            *net.TCPConn //tcp的session
-	heartbeat       int64        //心跳包的时间
-	RequestChannel  chan []byte  //request的channel
-	ResponseChannel chan []byte  //response的channel
+	remoteAddr      *net.TCPAddr
+	heartbeat       int64       //心跳包的时间
+	RequestChannel  chan []byte //request的channel
+	ResponseChannel chan []byte //response的channel
 	isClose         bool
 }
 
-func NewSession(conn *net.TCPConn) *Session {
+func NewSession(conn *net.TCPConn, remoteAddr *net.TCPAddr) *Session {
 	session := &Session{
 		conn:            conn,
 		heartbeat:       0,
 		RequestChannel:  make(chan []byte, 100),
 		ResponseChannel: make(chan []byte, 100),
-		isClose:         false}
+		isClose:         false, remoteAddr: remoteAddr}
 
 	return session
+}
+
+func (self *Session) RemotingAddr() *net.TCPAddr {
+	return self.remoteAddr
 }
 
 var ERR_PACKET = errors.New("INALID PACKET!")
@@ -47,8 +52,9 @@ func (self *Session) ReadPacket() {
 		//读取包
 		if err == io.EOF {
 			continue
-		} else {
+		} else if nil != err {
 			log.Printf("Session|ReadPacket|\\r|FAIL|%s\n", err)
+			continue
 		}
 
 		_, err = buff.Write(slice)
@@ -82,9 +88,7 @@ func (self *Session) ReadPacket() {
 
 //请求包接收到
 func (self *Session) onPacketRecieve(packet []byte) {
-
-	packet = bytes.TrimRight(packet, protocol.CMD_STR_CRLF)
-	log.Printf("Session|onPacketRecieve|LOG|%t\n", packet)
+	// log.Printf("Session|onPacketRecieve|LOG|%t\n", packet)
 	self.RequestChannel <- packet
 }
 
@@ -97,8 +101,18 @@ func (self *Session) GetHeartBeat() int64 {
 	return self.heartbeat
 }
 
+var ERR_WRITE_PACKET = errors.New("WRITE PACKET FAIL ! (len != wlen)")
+
 //写入响应
-func (self *Session) WriteReponse(resp *protocol.ResponsePacket) error {
+func (self *Session) WriteReponse(resp protocol.ITLVPacket) error {
+	packet := resp.Marshal()
+	// log.Printf("Session|WriteReponse|%t\n", packet)
+	length, err := self.conn.Write(packet)
+	if nil != err {
+		return err
+	} else if length != len(packet) {
+		return ERR_WRITE_PACKET
+	}
 	return nil
 }
 

@@ -86,7 +86,7 @@ func (self *DefaultPipeline) handleForward(ctx *DefaultPipelineContext, event IF
 
 //pipeline的尽头处理
 func (self *DefaultPipeline) eventSunk(event IEvent) {
-	log.Printf("DefaultPipeline|eventSunk|event:%t\n", event)
+	// log.Printf("DefaultPipeline|eventSunk|event:%t\n", event)
 }
 
 //pipeline处理中间出现错误

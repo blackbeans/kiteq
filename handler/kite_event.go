@@ -34,13 +34,15 @@ type AccessEvent struct {
 	GroupId   string
 	SecretKey string
 	session   *session.Session
+	opaque    int32
 }
 
-func NewAccessEvent(groupId, secretKey string, session *session.Session) *AccessEvent {
+func NewAccessEvent(groupId, secretKey string, session *session.Session, opaque int32) *AccessEvent {
 	return &AccessEvent{
 		GroupId:   groupId,
 		SecretKey: secretKey,
-		session:   session}
+		session:   session,
+		opaque:    opaque}
 
 }
 
@@ -50,10 +52,14 @@ type AcceptEvent struct {
 	msgType uint8
 	msg     interface{} //attach的数据message
 	session *session.Session
+	opaque  int32
 }
 
-func NewAcceptEvent(msgType uint8, msg interface{}, session *session.Session) *AcceptEvent {
-	return &AcceptEvent{msgType: msgType, msg: msg, session: session}
+func NewAcceptEvent(msgType uint8, msg interface{}, session *session.Session, opaque int32) *AcceptEvent {
+	return &AcceptEvent{msgType: msgType,
+		msg:     msg,
+		session: session,
+		opaque:  opaque}
 }
 
 //消息持久化操作
@@ -61,10 +67,11 @@ type PersistentEvent struct {
 	IForwardEvent
 	entity  *store.MessageEntity
 	session *session.Session
+	opaque  int32
 }
 
-func NewPersistentEvent(entity *store.MessageEntity, session *session.Session) *PersistentEvent {
-	return &PersistentEvent{entity: entity, session: session}
+func NewPersistentEvent(entity *store.MessageEntity, session *session.Session, opaque int32) *PersistentEvent {
+	return &PersistentEvent{entity: entity, session: session, opaque: opaque}
 
 }
 
@@ -82,6 +89,11 @@ type DeliverEvent struct {
 type RemotingEvent struct {
 	sessions []*session.Session  //本次发送的session信息
 	packet   protocol.ITLVPacket //tlv的packet数据
+}
+
+func newRemotingEvent(packet protocol.ITLVPacket, session ...*session.Session) *RemotingEvent {
+	revent := &RemotingEvent{sessions: session, packet: packet}
+	return revent
 }
 
 //统计投递结果的事件，决定不决定重发

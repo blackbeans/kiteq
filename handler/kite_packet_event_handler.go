@@ -36,7 +36,7 @@ var INVALID_PACKET_ERROR = errors.New("INVALID PACKET ERROR")
 
 func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	log.Printf("PacketHandler|Process|%t\n", event)
+	// log.Printf("PacketHandler|Process|%t\n", event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
@@ -68,7 +68,7 @@ func (self *PacketHandler) decode(packet []byte) *protocol.RequestPacket {
 	err := reqPacket.Unmarshal(packet)
 	if nil != err {
 		//ignore
-		log.Printf("Session|onPacketRecieve|INALID PACKET|%t\n", packet)
+		log.Printf("PacketHandler|decode|INALID PACKET|%t\n", packet)
 		return nil
 	} else {
 		return reqPacket
@@ -85,7 +85,7 @@ func (self *PacketHandler) wrapEvent(pevent *PacketEvent, packet *protocol.Reque
 		connMeta := &protocol.ConnectioMetaPacket{}
 		err = proto.Unmarshal(packet.Data, connMeta)
 		if nil == err {
-			event = NewAccessEvent(connMeta.GetGroupId(), connMeta.GetSecretKey(), pevent.session)
+			event = NewAccessEvent(connMeta.GetGroupId(), connMeta.GetSecretKey(), pevent.session, packet.Opaque)
 		}
 	//心跳
 	case protocol.CMD_TYPE_HEARTBEAT:
@@ -100,14 +100,14 @@ func (self *PacketHandler) wrapEvent(pevent *PacketEvent, packet *protocol.Reque
 		msg := &protocol.BytesMessage{}
 		err = proto.Unmarshal(packet.Data, msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_TYPE_BYTES_MESSAGE, msg, pevent.session)
+			event = NewAcceptEvent(protocol.CMD_TYPE_BYTES_MESSAGE, msg, pevent.session, packet.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_TYPE_STRING_MESSAGE:
 		msg := &protocol.StringMessage{}
 		err = proto.Unmarshal(packet.Data, msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_TYPE_STRING_MESSAGE, msg, pevent.session)
+			event = NewAcceptEvent(protocol.CMD_TYPE_STRING_MESSAGE, msg, pevent.session, packet.Opaque)
 		}
 	}
 

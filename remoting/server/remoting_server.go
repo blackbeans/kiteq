@@ -10,6 +10,7 @@ import (
 
 type RemotingServer struct {
 	hostport   string
+	addr       *net.TCPAddr
 	keepalive  time.Duration
 	stopChan   chan bool
 	isShutdown bool
@@ -40,7 +41,10 @@ func (self *RemotingServer) ListenAndServer() error {
 		return err
 	}
 
+	self.addr = addr
+
 	stopListener := &StoppedListener{listener, self.stopChan, self.keepalive}
+
 	//开始服务获取连接
 	return self.serve(stopListener)
 
@@ -60,7 +64,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 			conn.SetNoDelay(true)
 
 			//session处理,应该有个session管理器
-			session := session.NewSession(conn)
+			session := session.NewSession(conn, self.addr)
 			self.handleSession(session)
 		}
 	}

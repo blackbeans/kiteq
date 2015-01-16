@@ -31,12 +31,12 @@ func (self *RemotingHandler) cast(event IEvent) (val *RemotingEvent, ok bool) {
 
 func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	log.Printf("RemotingHandler|Process|%t\n", event)
-
 	revent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
+
+	// log.Printf("RemotingHandler|Process|%t\n", revent)
 
 	//发送数据
 	err := self.invokeGroup(revent)
@@ -46,6 +46,26 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	return err
 }
 
-func (self *RemotingHandler) invokeGroup(event *RemotingEvent) error {
+func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 	return nil
+}
+
+func (self *RemotingHandler) invokeGroup(event *RemotingEvent) error {
+
+	for _, session := range event.sessions {
+		go func() {
+			err := session.WriteReponse(event.packet)
+			if nil != err {
+				log.Printf("RemotingHandler|invokeGroup|%s|%t\n", err, event)
+			}
+		}()
+	}
+
+	return nil
+}
+
+//都低结果
+type deliverResult struct {
+	groupId string
+	err     error
 }
