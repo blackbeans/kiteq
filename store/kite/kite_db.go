@@ -56,17 +56,31 @@ func (self *KiteDBSession) Save(entity *MessageEntity) bool {
 		return false
 	}
 	length := len(data)
-	pages := db.Allocate(math.Ceil(length/db.pageSize))
+	pages := db.Allocate(math.Ceil(length/float(db.pageSize-PAGE_HEADER_SIZE)))
+	for i:=0;i<len(pages);i++ {
+		pages[i].data = data[i*(db.pageSize-PAGE_HEADER_SIZE):(i+1)*(db.pageSize-PAGE_HEADER_SIZE)]
+		if i + 1 < len(pages) {
+			pages[i].pageType = PAGE_TYPE_PART
+		} else {
+			pages[i].pageType = PAGE_TYPE_END
+		}
+	}
+	// 没有写入磁盘，只是放入到了写入队列，同时放到PageCache里
+	db.Write(pages)
 }
 
 func (self *KiteDBSession) Commite(messageId string) bool {
-
+	msg := self.Query(messageId)
+	msg.commited = true
+	return self.UpdateEntity(msg)
 }
 
 func (self *KiteDBSession) Rollback(messageId string) bool {
-
+	msg := self.Query(messageId)
+	msg.commited = false
+	return self.UpdateEntity(msg)
 }
 
 func (self *KiteDBSession) UpdateEntity(entity *MessageEntity) bool {
-
+	return slef.Save(entity)
 }
