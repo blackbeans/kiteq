@@ -95,7 +95,7 @@ func (self *KiteDBPageFile) Allocate(count int) []*KiteDBPage {
 
 func (self *KiteDBPageFile) Read(pageIds []int) (pages []*KiteDBPage) {
 	result := []*KiteDBPage{}
-	for i, pageId := range pageIds {
+	for _, pageId := range pageIds {
 		page, contains := self.pageCache[pageId]
 		if !contains {
 			page = &KiteDBPage{
@@ -122,16 +122,16 @@ func (self *KiteDBPageFile) Write(pages []*KiteDBPage) {
 
 type KiteDBWriteBatch []*KiteDBWrite
 
-func (self *KiteDBWriteBatch) Len() int {
-	return len(*self)
+func (self KiteDBWriteBatch) Len() int {
+	return len(self)
 }
 
-func (self *KiteDBWriteBatch) Less(i, j int) bool {
-	return (*self[i]).page.pageId < *self[i].page.pageId
+func (self KiteDBWriteBatch) Less(i, j int) bool {
+	return self[i].page.pageId < self[i].page.pageId
 }
 
-func (self *KiteDBWriteBatch) Swap(i, j int) {
-	(*self[i]), (*self[j]) = (*self[j]), (*self[i])
+func (self KiteDBWriteBatch) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
 }
 
 func (self *KiteDBPageFile) pollWrite() {
@@ -173,7 +173,7 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 				no := page.page.getWriteFileNo()
 				if self.writeFile[no] == nil {
 					file, _ := os.OpenFile(
-						self.dir+"/"+no+PAGEFILE_SUFFIX,
+						self.path+"/"+string(no)+PAGEFILE_SUFFIX,
 						os.O_RDWR,
 						0666)
 					self.writeFile[no] = file
