@@ -23,7 +23,7 @@ func NewKiteRingQueue(size int) *KiteRingQueue {
 		size:  size,
 		front: 0,
 		rear:  0,
-		data:  [size + 1]Type{},
+		data:  []Type{},
 	}
 }
 
