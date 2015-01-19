@@ -64,7 +64,7 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 	log.Println("page alloc ", pageN)
 	pages := db.Allocate(int(pageN))
 	for i := 0; i < len(pages); i++ {
-		pages[i].data = make([]byte, db.pageSize)
+		pages[i].data = make([]byte, db.pageSize-PAGE_HEADER_SIZE)
 		if length < (i+1)*(db.pageSize-PAGE_HEADER_SIZE) {
 			copy(pages[i].data, data[i*(db.pageSize-PAGE_HEADER_SIZE):length])
 		} else {

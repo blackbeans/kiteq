@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash/crc32"
-	"math"
+	"log"
 )
 
 const PAGE_TYPE_PART = 0
@@ -24,7 +24,7 @@ func NewKiteDBPage() *KiteDBPage {
 }
 
 func (self *KiteDBPage) getWriteFileNo() int {
-	return int(math.Floor(float64(self.pageId) / float64(PAGE_FILE_PAGE_COUNT)))
+	return self.pageId / PAGE_FILE_PAGE_COUNT
 }
 
 func (self *KiteDBPage) getOffset() int64 {
@@ -45,6 +45,7 @@ func (self *KiteDBPage) getNext() int {
 
 func (self *KiteDBPage) ToBinary() []byte {
 	length := PAGE_HEADER_SIZE + len(self.data)
+	log.Println("binary length", length)
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 

@@ -191,6 +191,7 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 			log.Println("write sorted", l)
 			for _, page := range l {
 				no := page.page.getWriteFileNo()
+				log.Println("write file no", no)
 				var file *os.File
 				if self.writeFile[no] == nil {
 					file, _ = os.OpenFile(
@@ -202,11 +203,15 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 					file = self.writeFile[no]
 				}
 				file.Seek(page.page.getOffset(), 0)
-				n, err := file.Write(page.page.ToBinary())
+				bs := page.page.ToBinary()
+				log.Println("write binary", bs)
+				log.Println("write binary length", len(bs))
+
+				n, err := file.Write(bs)
 				if err != nil {
 					log.Fatal(err)
 				}
-				log.Println("write ", n, " binary", page.page.ToBinary())
+				log.Println("write ", n, " bytes")
 			}
 		}
 	}
