@@ -2,6 +2,7 @@ package db
 
 import (
 	"go-kite/store"
+	"log"
 	"testing"
 	"time"
 )
@@ -15,4 +16,6 @@ func TestSave(t *testing.T) {
 		Body:      []byte("abc"),
 	})
 	time.Sleep(time.Second * 3)
+	entity := session.Query("1")
+	log.Println("query result", entity)
 }

@@ -54,5 +54,10 @@ func (self *KiteDBPage) ToBinary() []byte {
 	binary.Write(buff, binary.BigEndian, self.checksum)
 	binary.Write(buff, binary.BigEndian, uint32(len(self.data)))
 	binary.Write(buff, binary.BigEndian, self.data)
+	padding := PAGE_FILE_PAGE_SIZE - PAGE_HEADER_SIZE - len(self.data)
+	if padding > 0 {
+		bs := make([]byte, padding)
+		binary.Write(buff, binary.BigEndian, bs)
+	}
 	return buff.Bytes()
 }

@@ -1,7 +1,10 @@
 package db
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"sort"
@@ -76,7 +79,11 @@ func NewKiteDBPageFile(base string, dbName string) *KiteDBPageFile {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ins.nextFreePageId = int(fileInfo.Size()-PAGE_FILE_HEADER_SIZE) / ins.pageSize
+	if fileInfo.Size() == 0 {
+		ins.nextFreePageId = 1
+	} else {
+		ins.nextFreePageId = int(fileInfo.Size()-PAGE_FILE_HEADER_SIZE)/ins.pageSize + 1
+	}
 	go ins.pollWrite()
 	return ins
 }
@@ -113,11 +120,13 @@ func (self *KiteDBPageFile) Read(pageIds []int) (pages []*KiteDBPage) {
 	for _, pageId := range pageIds {
 		page, contains := self.pageCache[pageId]
 		if !contains {
+			log.Println("miss page cache")
 			page = &KiteDBPage{
 				pageId: pageId,
 			}
 			self.pageCache[pageId] = page
 		}
+		log.Println("fetch page from cache", page.data)
 		result = append(result, page)
 	}
 	return result
@@ -127,6 +136,7 @@ func (self *KiteDBPageFile) Write(pages []*KiteDBPage) {
 	for _, page := range pages {
 		// 写page缓存
 		self.pageCache[page.pageId] = page
+		log.Println("write page cache", page.pageId, page.data)
 		log.Println("write async")
 		self.writes <- &KiteDBWrite{
 			page:   page,
@@ -134,6 +144,23 @@ func (self *KiteDBPageFile) Write(pages []*KiteDBPage) {
 			length: len(page.data),
 		}
 	}
+}
+
+func (self *KiteDBPageFile) writeHeader(writer *os.File) error {
+	buffer := make([]byte, PAGE_HEADER_SIZE)
+	buff := bytes.NewBuffer(buffer)
+	// @todo 还没想到写什么好
+	binary.Write(buff, binary.BigEndian, "KITE")
+	_, err := writer.Write(buff.Bytes())
+	return err
+}
+
+func (self *KiteDBPageFile) validHeader(reader *io.Reader) bool {
+	buffer := make([]byte, 4)
+	buff := bytes.NewBuffer(buffer)
+	var data string
+	binary.Read(buff, binary.BigEndian, &data)
+	return data == "KITE"
 }
 
 type KiteDBWriteBatch []*KiteDBWrite
@@ -192,15 +219,17 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 			for _, page := range l {
 				no := page.page.getWriteFileNo()
 				log.Println("write file no", no)
-				var file *os.File
-				if self.writeFile[no] == nil {
+				file := self.writeFile[no]
+				if file == nil {
 					file, _ = os.OpenFile(
 						self.path+"/"+string(no)+PAGEFILE_SUFFIX,
 						os.O_RDWR,
 						0666)
 					self.writeFile[no] = file
-				} else {
-					file = self.writeFile[no]
+					fileStat, _ := file.Stat()
+					if fileStat.Size() == 0 {
+						self.writeHeader(file)
+					}
 				}
 				file.Seek(page.page.getOffset(), 0)
 				bs := page.page.ToBinary()

@@ -47,7 +47,26 @@ type KiteDBSession struct {
 }
 
 func (self *KiteDBSession) Query(messageId string) *store.MessageEntity {
-	return nil
+	// @todo 查询messageId的索引，得到pageId和topic
+	entity := &store.MessageEntity{
+		MessageId: "1",
+		Topic:     "test",
+	}
+	db, err := self.db.SelectDB(entity.Topic)
+	if err != nil {
+		return nil
+	}
+	pageIds := []int{1}
+	pages := db.Read(pageIds)
+	bs := make([]byte, db.pageSize*len(pages))
+	copyN := 0
+	for _, page := range pages {
+		copy(bs, page.data)
+		copyN += len(page.data)
+	}
+	log.Println("query result data", bs[:copyN])
+	json.Unmarshal(bs[:copyN], &entity)
+	return entity
 }
 
 func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
@@ -56,6 +75,7 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 		return false
 	}
 	data, err := json.Marshal(entity)
+	log.Println("marshal result", data)
 	if err != nil {
 		return false
 	}
@@ -64,10 +84,11 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 	log.Println("page alloc ", pageN)
 	pages := db.Allocate(int(pageN))
 	for i := 0; i < len(pages); i++ {
-		pages[i].data = make([]byte, db.pageSize-PAGE_HEADER_SIZE)
 		if length < (i+1)*(db.pageSize-PAGE_HEADER_SIZE) {
+			pages[i].data = make([]byte, length)
 			copy(pages[i].data, data[i*(db.pageSize-PAGE_HEADER_SIZE):length])
 		} else {
+			pages[i].data = make([]byte, db.pageSize-PAGE_HEADER_SIZE)
 			copy(pages[i].data, data[i*(db.pageSize-PAGE_HEADER_SIZE):(i+1)*(db.pageSize-PAGE_HEADER_SIZE)])
 		}
 
@@ -77,10 +98,12 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 			pages[i].pageType = PAGE_TYPE_END
 		}
 		pages[i].setChecksum()
+		log.Println("page alloc end ", pages[i])
 	}
 	// 没有写入磁盘，只是放入到了写入队列，同时放到PageCache里
 	log.Println("write ", pages)
 	db.Write(pages)
+	// @todo 建立messageId到pageId,topic的索引
 	return true
 }
 
