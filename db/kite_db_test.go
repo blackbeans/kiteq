@@ -22,9 +22,11 @@ func TestSave(t *testing.T) {
 	}
 	session.Flush("test")
 	end := time.Now().UnixNano()
-	log.Println("save ", N, "record use", (end-begin)/1000/1000, " ms")
+	log.Println("wait for async write")
+	time.Sleep(time.Second * 5)
 	for i := 0; i < N; i++ {
 		entity := session.Query(fmt.Sprintf("%d", i))
 		log.Println("query result", string(entity.Body))
 	}
+	log.Println("save ", N, "record use", (end-begin)/1000/1000, " ms")
 }

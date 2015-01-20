@@ -122,11 +122,23 @@ func (self *KiteDBPageFile) Read(pageIds []int) (pages []*KiteDBPage) {
 	result := []*KiteDBPage{}
 	for _, pageId := range pageIds {
 		page, contains := self.pageCache[pageId]
-		if !contains {
+		if !contains || true {
 			// log.Println("miss page cache")
 			page = &KiteDBPage{
 				pageId: pageId,
 			}
+			no := page.getWriteFileNo()
+			file := self.writeFile[no]
+			// log.Println("write file no", no, file)
+			if file == nil {
+				file, _ = os.OpenFile(
+					fmt.Sprintf("%s/%d%s", self.path, no, PAGEFILE_SUFFIX),
+					os.O_CREATE|os.O_RDWR,
+					0666)
+				self.writeFile[no] = file
+			}
+			file.Seek(page.getOffset(), 0)
+			page.ToPage(file)
 			self.pageCache[pageId] = page
 		}
 		// log.Println("fetch page from cache", page.data)

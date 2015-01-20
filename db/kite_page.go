@@ -3,8 +3,10 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"hash/crc32"
 	// "log"
+	"os"
 )
 
 const PAGE_TYPE_PART = 0
@@ -60,4 +62,20 @@ func (self *KiteDBPage) ToBinary() []byte {
 		binary.Write(buff, binary.BigEndian, bs)
 	}
 	return buff.Bytes()
+}
+
+func (self *KiteDBPage) ToPage(reader *os.File) error {
+	var tmp uint32
+	binary.Read(reader, binary.BigEndian, &tmp)
+	if int(tmp) != self.pageId {
+		return errors.New("dirty page got")
+	}
+	binary.Read(reader, binary.BigEndian, &tmp)
+	self.pageType = int(tmp)
+	binary.Read(reader, binary.BigEndian, &self.checksum)
+	binary.Read(reader, binary.BigEndian, &tmp)
+	bs := make([]byte, tmp)
+	binary.Read(reader, binary.BigEndian, &bs)
+	self.data = bs
+	return nil
 }
