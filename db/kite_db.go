@@ -11,6 +11,7 @@ import (
 // 一个存储引擎
 type KiteDB struct {
 	dbs map[string]*KiteDBPageFile
+	idx *KiteBtreeIndex
 	dir string
 }
 
@@ -19,6 +20,7 @@ func NewKiteDB(dir string) *KiteDB {
 	return &KiteDB{
 		dir: dir,
 		dbs: make(map[string]*KiteDBPageFile),
+		idx: NewIndex(),
 	}
 }
 
@@ -48,15 +50,16 @@ type KiteDBSession struct {
 
 func (self *KiteDBSession) Query(messageId string) *store.MessageEntity {
 	// @todo 查询messageId的索引，得到pageId和topic
+	item, _ := self.db.idx.Search(messageId)
 	entity := &store.MessageEntity{
-		MessageId: "1",
-		Topic:     "test",
+		MessageId: messageId,
+		Topic:     item.topic,
 	}
 	db, err := self.db.SelectDB(entity.Topic)
 	if err != nil {
 		return nil
 	}
-	pageIds := []int{1}
+	pageIds := []int{item.pageId}
 	pages := db.Read(pageIds)
 	bs := make([]byte, db.pageSize*len(pages))
 	copyN := 0
@@ -104,6 +107,10 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 	log.Println("write ", pages)
 	db.Write(pages)
 	// @todo 建立messageId到pageId,topic的索引
+	self.db.idx.Insert(entity.MessageId, &KiteIndexItem{
+		pageId: pages[0].pageId,
+		topic:  entity.Topic,
+	})
 	return true
 }
 
@@ -120,5 +127,6 @@ func (self *KiteDBSession) Rollback(messageId string) bool {
 }
 
 func (self *KiteDBSession) UpdateEntity(entity *store.MessageEntity) bool {
+	// oldEntity := self.Query(entity.MessageId)
 	return self.Save(entity)
 }

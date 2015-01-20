@@ -17,5 +17,5 @@ func TestSave(t *testing.T) {
 	})
 	time.Sleep(time.Second * 3)
 	entity := session.Query("1")
-	log.Println("query result", entity)
+	log.Println("query result", entity.Body)
 }
