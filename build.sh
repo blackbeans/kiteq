@@ -1,10 +1,6 @@
 #!/bin/bash
 
-go clean go-kite/protocol
-go clean go-kite/store
-go clean go-kite/handler
-go clean go-kite/remoting/session
-go clean go-kite/remoting/server
+go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 
 go build go-kite/protocol
 go build go-kite/store
