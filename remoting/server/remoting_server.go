@@ -57,7 +57,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//session处理,应该有个session管理器
-			session := session.NewSession(conn, self.hostport)
+			session := session.NewSession(conn, self.hostport, self.onPacketRecieve)
 			self.handleSession(session)
 		}
 	}
@@ -67,21 +67,13 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 //处理session
 func (self *RemotingServer) handleSession(session *session.Session) {
 	//根据不同的cmdtype 走不同的processor
-	go func() {
-		//读取合法的包
-		go session.ReadPacket()
-		//开启网路的写出packet
-		go session.WritePacket()
-		//解析包
-		for !self.isShutdown {
+	//读取合法的包
+	go session.ReadPacket()
+	//分发包
+	go session.DispatcherPacket()
+	//开启网路的写出packet
+	go session.WritePacket()
 
-			//1.读取数据包
-			packet := <-session.ReadChannel
-
-			//处理一下包
-			go self.onPacketRecieve(session, packet)
-		}
-	}()
 }
 
 //数据包处理

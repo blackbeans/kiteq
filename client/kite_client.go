@@ -23,6 +23,8 @@ type KiteClient struct {
 	respHolder []chan *protocol.ResponsePacket
 }
 
+var MAX_WATER_MARK int = 100000
+
 func NewKitClient(remoteHost, groupId, secretKey string) *KiteClient {
 
 	client := &KiteClient{
@@ -31,11 +33,11 @@ func NewKitClient(remoteHost, groupId, secretKey string) *KiteClient {
 		secretKey:  secretKey,
 		remoteHost: remoteHost,
 		isClose:    false,
-		holder:     make(map[int32]chan *protocol.ResponsePacket, 1000),
-		respHolder: make([]chan *protocol.ResponsePacket, 1000, 1000)}
+		holder:     make(map[int32]chan *protocol.ResponsePacket, MAX_WATER_MARK),
+		respHolder: make([]chan *protocol.ResponsePacket, MAX_WATER_MARK, MAX_WATER_MARK)}
 
-	for i := 0; i < 1000; i++ {
-		client.respHolder[i] = make(chan *protocol.ResponsePacket, 1)
+	for i := 0; i < MAX_WATER_MARK; i++ {
+		client.respHolder[i] = make(chan *protocol.ResponsePacket, 100)
 	}
 
 	client.Start()
@@ -65,7 +67,7 @@ func (self *KiteClient) Start() {
 	if nil != err {
 		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
 	} else {
-		self.session = session.NewSession(conn, self.remoteHost)
+		self.session = session.NewSession(conn, self.remoteHost, self.onPacketRecieve)
 	}
 
 	//开启写操作
@@ -77,7 +79,7 @@ func (self *KiteClient) Start() {
 	go func() {
 		for !self.isClose {
 			packet := <-self.session.ReadChannel
-			self.onPacketRecieve(packet)
+			self.onPacketRecieve(self.session, packet)
 		}
 	}()
 
@@ -90,7 +92,7 @@ func (self *KiteClient) Start() {
 
 }
 
-func (self *KiteClient) onPacketRecieve(packet []byte) {
+func (self *KiteClient) onPacketRecieve(session *session.Session, packet []byte) {
 	//解析packet的数据位requestPacket
 	respPacket := &protocol.ResponsePacket{}
 	err := respPacket.Unmarshal(packet)
@@ -154,6 +156,7 @@ func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {
 			log.Printf("KiteClient|SendMessage|FAIL|%d|%t\n", cmdType, resp)
 			return errors.New("SEND MESSAGE FAIL" + fmt.Sprintf("[%d,%s]", resp.Status, resp.RemoteAddr))
 		} else {
+			// log.Printf("KiteClient|SendMessage|SUCC|%d|%t\n", cmdType, resp)
 			return nil
 		}
 	}
@@ -162,7 +165,7 @@ func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {
 
 //最底层的网络写入
 func (self *KiteClient) write(cmdType uint8, packet []byte) int32 {
-	tid := atomic.AddInt32(&self.id, 1) % 1000
+	tid := atomic.AddInt32(&self.id, 1) % int32(MAX_WATER_MARK)
 	rpacket := &protocol.RequestPacket{
 		CmdType: cmdType,
 		Data:    packet,

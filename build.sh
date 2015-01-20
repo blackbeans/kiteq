@@ -1,5 +1,10 @@
 #!/bin/bash
 
+go clean go-kite/protocol
+go clean go-kite/store
+go clean go-kite/handler
+go clean go-kite/remoting/session
+go clean go-kite/remoting/server
 
 go build go-kite/protocol
 go build go-kite/store

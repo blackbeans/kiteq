@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	// "encoding/binary"
-	"errors"
+	// "errors"
 	"go-kite/protocol"
 	"io"
 	"log"
@@ -13,28 +13,31 @@ import (
 )
 
 type Session struct {
-	GroupId      string
-	conn         *net.TCPConn //tcp的session
-	remoteAddr   string
-	heartbeat    int64       //心跳包的时间
-	ReadChannel  chan []byte //request的channel
-	WriteChannel chan []byte //response的channel
-	isClose      bool
+	GroupId         string
+	conn            *net.TCPConn //tcp的session
+	remoteAddr      string
+	heartbeat       int64       //心跳包的时间
+	ReadChannel     chan []byte //request的channel
+	WriteChannel    chan []byte //response的channel
+	isClose         bool
+	onPacketRecieve func(session *Session, packet []byte)
 }
 
-func NewSession(conn *net.TCPConn, remoteAddr string) *Session {
+func NewSession(conn *net.TCPConn, remoteAddr string,
+	onPacketRecieve func(session *Session, packet []byte)) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
 	conn.SetNoDelay(true)
 
 	session := &Session{
-		conn:         conn,
-		heartbeat:    0,
-		ReadChannel:  make(chan []byte, 100),
-		WriteChannel: make(chan []byte, 100),
-		isClose:      false,
-		remoteAddr:   remoteAddr}
+		conn:            conn,
+		heartbeat:       0,
+		ReadChannel:     make(chan []byte, 100),
+		WriteChannel:    make(chan []byte, 100),
+		isClose:         false,
+		remoteAddr:      remoteAddr,
+		onPacketRecieve: onPacketRecieve}
 
 	return session
 }
@@ -43,8 +46,14 @@ func (self *Session) RemotingAddr() string {
 	return self.remoteAddr
 }
 
-var ERR_PACKET = errors.New("INALID PACKET!")
-var DEMA = []byte{97, 108, 104, 111, 115, 116, 58, 49, 51, 56, 48, 48, 13, 10}
+//设置本次心跳检测的时间
+func (self *Session) SetHeartBeat(duration int64) {
+	self.heartbeat = duration
+}
+
+func (self *Session) GetHeartBeat() int64 {
+	return self.heartbeat
+}
 
 //读取
 func (self *Session) ReadPacket() {
@@ -90,29 +99,45 @@ func (self *Session) ReadPacket() {
 	}
 }
 
-//设置本次心跳检测的时间
-func (self *Session) SetHeartBeat(duration int64) {
-	self.heartbeat = duration
-}
+func (self *Session) DispatcherPacket() {
 
-func (self *Session) GetHeartBeat() int64 {
-	return self.heartbeat
-}
+	//500个读协程
+	for i := 0; i < 100; i++ {
+		go func() {
+			//解析包
+			for !self.isClose {
 
-var ERR_WRITE_PACKET = errors.New("WRITE PACKET FAIL ! (len != wlen)")
+				//1.读取数据包
+				packet := <-self.ReadChannel
+
+				//2.处理一下包
+				go self.onPacketRecieve(self, packet)
+			}
+		}()
+	}
+}
 
 //写入响应
 func (self *Session) WritePacket() {
-	for !self.isClose {
-		packet := <-self.WriteChannel
-		length, err := self.conn.Write(packet)
-		if nil != err || length != len(packet) {
-			log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
-		} else {
-			// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
-		}
-	}
 
+	//分为100个协程处理写
+	for i := 0; i < 100; i++ {
+		go func() {
+			for !self.isClose {
+				packet := <-self.WriteChannel
+
+				//并发去写
+				go func() {
+					length, err := self.conn.Write(packet)
+					if nil != err || length != len(packet) {
+						log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
+					} else {
+						// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
+					}
+				}()
+			}
+		}()
+	}
 }
 
 func (self *Session) Close() error {

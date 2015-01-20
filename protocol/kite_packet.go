@@ -35,9 +35,9 @@ func (self *RequestPacket) Marshal() []byte {
 	return buff.Bytes()
 }
 
-func (self *RequestPacket) Unmarshal(packet []byte) error {
+func (self *RequestPacket) Unmarshal(upacket []byte) error {
 
-	// packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
+	packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
 	reader := bytes.NewReader(packet)
 
 	err := binary.Read(reader, binary.BigEndian, &self.Opaque)
@@ -98,8 +98,8 @@ func (self *ResponsePacket) Marshal() []byte {
 	return buff.Bytes()
 }
 
-func (self *ResponsePacket) Unmarshal(packet []byte) error {
-	// packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
+func (self *ResponsePacket) Unmarshal(upacket []byte) error {
+	packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
 	reader := bytes.NewReader(packet)
 	var dl uint32
 
