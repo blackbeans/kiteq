@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go-kite/store"
-	"log"
+	// "log"
 	"math"
 )
 
@@ -30,7 +30,7 @@ func (self *KiteDB) SelectDB(dbName string) (*KiteDBPageFile, error) {
 		return db, nil
 	}
 	self.dbs[dbName] = NewKiteDBPageFile(self.dir, dbName)
-	log.Println("new db", dbName)
+	// log.Println("new db", dbName)
 	if self.dbs[dbName] != nil {
 		return self.dbs[dbName], nil
 	}
@@ -46,6 +46,11 @@ func (self *KiteDB) GetSession() *KiteDBSession {
 // 一次数据库会话
 type KiteDBSession struct {
 	db *KiteDB
+}
+
+func (self *KiteDBSession) Flush(topic string) {
+	db, _ := self.db.SelectDB(topic)
+	db.Flush()
 }
 
 func (self *KiteDBSession) Query(messageId string) *store.MessageEntity {
@@ -67,7 +72,7 @@ func (self *KiteDBSession) Query(messageId string) *store.MessageEntity {
 		copy(bs, page.data)
 		copyN += len(page.data)
 	}
-	log.Println("query result data", bs[:copyN])
+	// log.Println("query result data", bs[:copyN])
 	json.Unmarshal(bs[:copyN], &entity)
 	return entity
 }
@@ -78,13 +83,13 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 		return false
 	}
 	data, err := json.Marshal(entity)
-	log.Println("marshal result", data)
+	// log.Println("marshal result", data)
 	if err != nil {
 		return false
 	}
 	length := len(data)
 	pageN := math.Ceil(float64(length) / float64(db.pageSize-PAGE_HEADER_SIZE))
-	log.Println("page alloc ", pageN)
+	// log.Println("page alloc ", pageN)
 	pages := db.Allocate(int(pageN))
 	for i := 0; i < len(pages); i++ {
 		if length < (i+1)*(db.pageSize-PAGE_HEADER_SIZE) {
@@ -101,10 +106,10 @@ func (self *KiteDBSession) Save(entity *store.MessageEntity) bool {
 			pages[i].pageType = PAGE_TYPE_END
 		}
 		pages[i].setChecksum()
-		log.Println("page alloc end ", pages[i])
+		// log.Println("page alloc end ", pages[i])
 	}
 	// 没有写入磁盘，只是放入到了写入队列，同时放到PageCache里
-	log.Println("write ", pages)
+	// log.Println("write ", pages)
 	db.Write(pages)
 	// @todo 建立messageId到pageId,topic的索引
 	self.db.idx.Insert(entity.MessageId, &KiteIndexItem{

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"go-kite/store"
 	"log"
 	"testing"
@@ -10,12 +11,20 @@ import (
 func TestSave(t *testing.T) {
 	db := NewKiteDB("/Users/mengjun/dev/src/go-kite/data")
 	session := db.GetSession()
-	session.Save(&store.MessageEntity{
-		MessageId: "1",
-		Topic:     "test",
-		Body:      []byte("abc"),
-	})
-	time.Sleep(time.Second * 3)
-	entity := session.Query("1")
-	log.Println("query result", entity.Body)
+	N := 1000
+	begin := time.Now().UnixNano()
+	for i := 0; i < N; i++ {
+		session.Save(&store.MessageEntity{
+			MessageId: fmt.Sprintf("%d", i),
+			Topic:     "test",
+			Body:      []byte(fmt.Sprintf("abc%d", i)),
+		})
+	}
+	session.Flush("test")
+	end := time.Now().UnixNano()
+	log.Println("save ", N, "record use", (end-begin)/1000/1000, " ms")
+	for i := 0; i < N; i++ {
+		entity := session.Query(fmt.Sprintf("%d", i))
+		log.Println("query result", string(entity.Body))
+	}
 }

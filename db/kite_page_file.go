@@ -29,6 +29,7 @@ type KiteDBPageFile struct {
 	pageCacheSize  int                 //页缓存大小
 	writes         chan *KiteDBWrite   //刷盘队列
 	writeStop      chan int
+	writeFlush     chan int
 	allocLock      sync.Mutex     //主要是对分配Page的时候需要加锁，防止重复分配了一个Page
 	freeList       *KiteRingQueue //空闲页 优先向这里写入
 	nextFreePageId int            //空闲页的分配从这里开始
@@ -61,6 +62,8 @@ func NewKiteDBPageFile(base string, dbName string) *KiteDBPageFile {
 		writes:        make(chan *KiteDBWrite),
 		freeList:      NewKiteRingQueue(NEW_FREE_LIST_SIZE * 2),
 		allocLock:     mutex,
+		writeStop:     make(chan int, 1),
+		writeFlush:    make(chan int, 1),
 	}
 	last := 0
 	// 判断是否是已经有数据
@@ -74,7 +77,7 @@ func NewKiteDBPageFile(base string, dbName string) *KiteDBPageFile {
 	} else {
 		log.Fatal("load data", err)
 	}
-	log.Println("write file create as ", ins.writeFile)
+	// log.Println("write file create as ", ins.writeFile)
 	fileInfo, err := ins.writeFile[last].Stat()
 	if err != nil {
 		log.Fatal(err)
@@ -100,9 +103,9 @@ func (self *KiteDBPageFile) reAllocFreeList(size int) {
 func (self *KiteDBPageFile) Allocate(count int) []*KiteDBPage {
 	self.allocLock.Lock()
 	defer self.allocLock.Unlock()
-	log.Println("create ", count, "pages")
+	// log.Println("create ", count, "pages")
 	pages := make([]*KiteDBPage, count)
-	log.Println("create pages", pages)
+	// log.Println("create pages", pages)
 	for i := 0; i < count; i = i + 1 {
 		if self.freeList.Len() == 0 {
 			// 重新分配新的freeList
@@ -111,7 +114,7 @@ func (self *KiteDBPageFile) Allocate(count int) []*KiteDBPage {
 
 		pages[i], _ = self.freeList.Dequeue()
 	}
-	log.Println("create pages result", pages)
+	// log.Println("create pages result", pages)
 	return pages
 }
 
@@ -120,13 +123,13 @@ func (self *KiteDBPageFile) Read(pageIds []int) (pages []*KiteDBPage) {
 	for _, pageId := range pageIds {
 		page, contains := self.pageCache[pageId]
 		if !contains {
-			log.Println("miss page cache")
+			// log.Println("miss page cache")
 			page = &KiteDBPage{
 				pageId: pageId,
 			}
 			self.pageCache[pageId] = page
 		}
-		log.Println("fetch page from cache", page.data)
+		// log.Println("fetch page from cache", page.data)
 		result = append(result, page)
 	}
 	return result
@@ -136,8 +139,8 @@ func (self *KiteDBPageFile) Write(pages []*KiteDBPage) {
 	for _, page := range pages {
 		// 写page缓存
 		self.pageCache[page.pageId] = page
-		log.Println("write page cache", page.pageId, page.data)
-		log.Println("write async")
+		// log.Println("write page cache", page.pageId, page.data)
+		// log.Println("write async")
 		self.writes <- &KiteDBWrite{
 			page:   page,
 			data:   page.data,
@@ -180,7 +183,7 @@ func (self KiteDBWriteBatch) Swap(i, j int) {
 func (self *KiteDBPageFile) pollWrite() {
 	writeStart := make(chan int, 1)
 	writeQueue := make(chan KiteDBWriteBatch)
-	list := make(KiteDBWriteBatch, 0, 32)
+	list := make(KiteDBWriteBatch, 0, 1024)
 	go self.WriteBatch(writeQueue)
 
 	go func() {
@@ -194,17 +197,28 @@ func (self *KiteDBPageFile) pollWrite() {
 		select {
 		case <-self.writeStop:
 			return
+		case <-self.writeFlush:
 		case <-writeStart:
-			log.Println("write queue active", list)
+			// log.Println("write queue active", list)
 			clone := make(KiteDBWriteBatch, len(list))
 			copy(clone, list[:len(list)])
 			writeQueue <- clone
 			list = make(KiteDBWriteBatch, 0, 32)
 		case pageWrite := <-self.writes:
-			log.Println("append page write ", pageWrite.page.data)
+			// log.Println("append page write ", pageWrite.page.data)
+			if len(list) == 32 {
+				clone := make(KiteDBWriteBatch, len(list))
+				copy(clone, list[:len(list)])
+				writeQueue <- clone
+				list = make(KiteDBWriteBatch, 0, 32)
+			}
 			list = append(list, pageWrite)
 		}
 	}
+}
+
+func (self *KiteDBPageFile) Flush() {
+	self.writeFlush <- 1
 }
 
 func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
@@ -213,17 +227,17 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 		case <-self.writeStop:
 			return
 		case l := <-queue:
-			log.Println("write active", l)
+			// log.Println("write active", l)
 			sort.Sort(l)
-			log.Println("write sorted", l)
+			// log.Println("write sorted", l)
 			for _, page := range l {
 				no := page.page.getWriteFileNo()
-				log.Println("write file no", no)
 				file := self.writeFile[no]
+				// log.Println("write file no", no, file)
 				if file == nil {
 					file, _ = os.OpenFile(
-						self.path+"/"+string(no)+PAGEFILE_SUFFIX,
-						os.O_RDWR,
+						fmt.Sprintf("%s/%d%s", self.path, no, PAGEFILE_SUFFIX),
+						os.O_CREATE|os.O_RDWR,
 						0666)
 					self.writeFile[no] = file
 					fileStat, _ := file.Stat()
@@ -233,8 +247,8 @@ func (self *KiteDBPageFile) WriteBatch(queue chan KiteDBWriteBatch) {
 				}
 				file.Seek(page.page.getOffset(), 0)
 				bs := page.page.ToBinary()
-				log.Println("write binary", bs)
-				log.Println("write binary length", len(bs))
+				// log.Println("write binary", bs)
+				// log.Println("write binary length", len(bs))
 
 				n, err := file.Write(bs)
 				if err != nil {

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash/crc32"
-	"log"
+	// "log"
 )
 
 const PAGE_TYPE_PART = 0
@@ -45,13 +45,13 @@ func (self *KiteDBPage) getNext() int {
 
 func (self *KiteDBPage) ToBinary() []byte {
 	length := PAGE_HEADER_SIZE + len(self.data)
-	log.Println("binary length", length)
+	// log.Println("binary length", length)
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 
-	binary.Write(buff, binary.BigEndian, self.pageId)
-	binary.Write(buff, binary.BigEndian, self.pageType)
-	binary.Write(buff, binary.BigEndian, self.checksum)
+	binary.Write(buff, binary.BigEndian, uint32(self.pageId))
+	binary.Write(buff, binary.BigEndian, uint32(self.pageType))
+	binary.Write(buff, binary.BigEndian, uint32(self.checksum))
 	binary.Write(buff, binary.BigEndian, uint32(len(self.data)))
 	binary.Write(buff, binary.BigEndian, self.data)
 	padding := PAGE_FILE_PAGE_SIZE - PAGE_HEADER_SIZE - len(self.data)

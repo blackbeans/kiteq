@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/datastream/btree"
-	"log"
+	// "log"
 )
 
 type KiteIndexItem struct {
@@ -14,7 +14,7 @@ type KiteIndexItem struct {
 
 func (self *KiteIndexItem) Marshal() []byte {
 	length := 4 + len(self.topic)
-	log.Println("index item len ", length, self.topic)
+	// log.Println("index item len ", length, self.topic)
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 	binary.Write(buff, binary.BigEndian, uint32(self.pageId))
@@ -45,18 +45,18 @@ func NewIndex() *KiteBtreeIndex {
 }
 
 func (self *KiteBtreeIndex) Insert(messageId string, data *KiteIndexItem) error {
-	log.Println("index ", data, data.Marshal())
+	// log.Println("index ", data, data.Marshal())
 	return self.tree.Insert([]byte(messageId), data.Marshal())
 }
 
 func (self *KiteBtreeIndex) Search(messageId string) (*KiteIndexItem, error) {
 	b, err := self.tree.Search([]byte(messageId))
-	log.Println("index result", b)
+	// log.Println("index result", b)
 	if err != nil {
 		return nil, err
 	}
 	ins := &KiteIndexItem{}
 	ins.Unmarshal(b)
-	log.Print("index unmarshal ", ins.topic)
+	// log.Print("index unmarshal ", ins.topic)
 	return ins, nil
 }
