@@ -47,7 +47,8 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	//响应包
 	responsePacket := &protocol.ResponsePacket{
 		Opaque:     pevent.opaque,
-		RemoteAddr: pevent.session.RemotingAddr()}
+		RemoteAddr: pevent.session.RemotingAddr(),
+		CmdType:    protocol.CMD_TYPE_MESSAGE_STORE}
 
 	//向当前连接写入一个存储成功的response
 	remoteEvent := newRemotingEvent(responsePacket, pevent.session)

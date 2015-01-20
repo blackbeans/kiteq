@@ -16,7 +16,7 @@ message HeartBeatPacket{
 //连接的Meta数据包
 message ConnectioMetaPacket{
     required string groupId = 1; //当前客户端连接所属分组名称
-    optional string secretKey  = 2; //当前连接的授权key
+    required string secretKey  = 2; //当前连接的授权key
 }
 
 

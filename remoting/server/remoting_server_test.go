@@ -57,7 +57,8 @@ func init() {
 
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
-	pipeline.RegisteHandler("packet_event", handler.NewPacketHandler("packet_event"))
+	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
+	pipeline.RegisteHandler("access", handler.NewAccessHandler("access"))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
@@ -75,11 +76,9 @@ func init() {
 			ch <- true
 		}
 	}()
-
+	time.Sleep(10 * time.Second)
 	//开始向服务端发送数据
 	kclient = client.NewKitClient("localhost:13800", "/user-service", "123456")
-	kclient.Start()
-
 }
 
 func BenchmarkRemotingServer(t *testing.B) {
@@ -141,8 +140,5 @@ func TestRemotingServer(t *testing.T) {
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	time.Sleep(10 * time.Second)
-	// remotingServer.Shutdonw()
-	// kclient.Close()
-	// remotingServer.Shutdonw()
+	time.Sleep(20 * time.Second)
 }

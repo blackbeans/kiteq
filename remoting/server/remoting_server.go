@@ -10,7 +10,6 @@ import (
 
 type RemotingServer struct {
 	hostport   string
-	addr       *net.TCPAddr
 	keepalive  time.Duration
 	stopChan   chan bool
 	isShutdown bool
@@ -41,8 +40,6 @@ func (self *RemotingServer) ListenAndServer() error {
 		return err
 	}
 
-	self.addr = addr
-
 	stopListener := &StoppedListener{listener, self.stopChan, self.keepalive}
 
 	//开始服务获取连接
@@ -59,12 +56,8 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 		} else {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
-			conn.SetKeepAlive(true)
-			conn.SetKeepAlivePeriod(self.keepalive)
-			conn.SetNoDelay(true)
-
 			//session处理,应该有个session管理器
-			session := session.NewSession(conn, self.addr)
+			session := session.NewSession(conn, self.hostport)
 			self.handleSession(session)
 		}
 	}
@@ -74,15 +67,16 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 //处理session
 func (self *RemotingServer) handleSession(session *session.Session) {
 	//根据不同的cmdtype 走不同的processor
-
 	go func() {
 		//读取合法的包
 		go session.ReadPacket()
+		//开启网路的写出packet
+		go session.WritePacket()
 		//解析包
 		for !self.isShutdown {
 
 			//1.读取数据包
-			packet := <-session.RequestChannel
+			packet := <-session.ReadChannel
 
 			//处理一下包
 			go self.onPacketRecieve(session, packet)
@@ -94,7 +88,10 @@ func (self *RemotingServer) handleSession(session *session.Session) {
 func (self *RemotingServer) onPacketRecieve(session *session.Session, packet []byte) {
 
 	event := handler.NewPacketEvent(session, packet)
-	self.pipeline.FireWork(event)
+	err := self.pipeline.FireWork(event)
+	if nil != err {
+		log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+	}
 }
 
 func (self *RemotingServer) Shutdonw() {

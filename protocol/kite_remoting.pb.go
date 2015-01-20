@@ -77,7 +77,7 @@ func (m *HeartBeatPacket) GetType() HeartBeatPacket_SerializeType {
 // 连接的Meta数据包
 type ConnectioMetaPacket struct {
 	GroupId          *string `protobuf:"bytes,1,req,name=groupId" json:"groupId,omitempty"`
-	SecretKey        *string `protobuf:"bytes,2,opt,name=secretKey" json:"secretKey,omitempty"`
+	SecretKey        *string `protobuf:"bytes,2,req,name=secretKey" json:"secretKey,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 

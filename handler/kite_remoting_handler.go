@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"log"
+	_ "log"
 )
 
 //远程操作的remotinghandler
@@ -51,14 +51,11 @@ func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 }
 
 func (self *RemotingHandler) invokeGroup(event *RemotingEvent) error {
-
+	packet := event.packet.Marshal()
 	for _, session := range event.sessions {
-		go func() {
-			err := session.WriteReponse(event.packet)
-			if nil != err {
-				log.Printf("RemotingHandler|invokeGroup|%s|%t\n", err, event)
-			}
-		}()
+		//写到响应的channel中
+		session.WriteChannel <- packet
+		// log.Printf("RemotingHandler|invokeGroup|%t\n", packet)
 	}
 
 	return nil

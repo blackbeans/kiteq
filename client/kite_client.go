@@ -1,100 +1,93 @@
 package client
 
 import (
-	"bufio"
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"go-kite/protocol"
-	"io"
+	"go-kite/remoting/session"
 	"log"
 	"net"
+	"sync/atomic"
+	"time"
 )
 
 type KiteClient struct {
-	conn      *net.TCPConn
-	id        int32
-	groupId   string
-	secretKey string
-	isClose   bool
+	remoteHost string
+	session    *session.Session
+	id         int32
+	groupId    string
+	secretKey  string
+	isClose    bool
+	holder     map[int32]chan *protocol.ResponsePacket
+	respHolder []chan *protocol.ResponsePacket
 }
 
-func NewKitClient(hostport, groupId, secretKey string) *KiteClient {
-
-	localAddr, err_l := net.ResolveTCPAddr("tcp4", "localhost:24800")
-	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", hostport)
-	if nil != err_l || nil != err_r {
-		log.Fatalf("KITECLIENT|RESOLVE ADDR |FAIL|L:%s|R:%s", err_l, err_r)
-	}
-	conn, err := net.DialTCP("tcp4", localAddr, remoteAddr)
-	if nil != err {
-		log.Fatalf("KITECLIENT|CONNECT|%s|FAIL|%s\n", hostport, err)
-	}
+func NewKitClient(remoteHost, groupId, secretKey string) *KiteClient {
 
 	client := &KiteClient{
-		conn:      conn,
-		id:        0,
-		groupId:   groupId,
-		secretKey: secretKey, isClose: false}
+		id:         0,
+		groupId:    groupId,
+		secretKey:  secretKey,
+		remoteHost: remoteHost,
+		isClose:    false,
+		holder:     make(map[int32]chan *protocol.ResponsePacket, 1000),
+		respHolder: make([]chan *protocol.ResponsePacket, 1000, 1000)}
+
+	for i := 0; i < 1000; i++ {
+		client.respHolder[i] = make(chan *protocol.ResponsePacket, 1)
+	}
 
 	client.Start()
 	return client
 }
 
+func (self *KiteClient) dial() (*net.TCPConn, error) {
+	localAddr, err_l := net.ResolveTCPAddr("tcp4", "localhost:54800")
+	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", self.remoteHost)
+	if nil != err_l || nil != err_r {
+		log.Fatalf("KITECLIENT|RESOLVE ADDR |FAIL|L:%s|R:%s", err_l, err_r)
+		return nil, err_l
+	}
+	conn, err := net.DialTCP("tcp4", localAddr, remoteAddr)
+	if nil != err {
+		log.Fatalf("KITECLIENT|CONNECT|%s|FAIL|%s\n", self.remoteHost, err)
+		return nil, err
+	}
+
+	return conn, nil
+}
+
 func (self *KiteClient) Start() {
-	err := self.handShake()
+
+	//连接
+	conn, err := self.dial()
+	if nil != err {
+		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
+	} else {
+		self.session = session.NewSession(conn, self.remoteHost)
+	}
+
+	//开启写操作
+	go self.session.WritePacket()
+
+	//启动读取
+	go self.session.ReadPacket()
+	//启动读取数据
+	go func() {
+		for !self.isClose {
+			packet := <-self.session.ReadChannel
+			self.onPacketRecieve(packet)
+		}
+	}()
+
+	//握手完成
+	err = self.handShake()
 	if nil != err {
 		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
 		return
 	}
 
-	go func() {
-
-		br := bufio.NewReader(self.conn)
-		//缓存本次包的数据
-		packetBuff := make([]byte, 0, 1024)
-		buff := bytes.NewBuffer(packetBuff)
-
-		for !self.isClose {
-			slice, err := br.ReadSlice(protocol.CMD_CRLF[0])
-			//读取包
-			if err == io.EOF {
-				continue
-			} else if nil != err {
-				log.Printf("KiteClient|ReadPacket|\\r|FAIL|%s\n", err)
-			}
-
-			_, err = buff.Write(slice)
-			//数据量太庞大直接拒绝
-			if buff.Len() >= protocol.MAX_PACKET_BYTES ||
-				bytes.ErrTooLarge == err {
-				log.Printf("KiteClient|ReadPacket|ErrTooLarge|%d\n", buff.Len())
-				buff.Reset()
-				continue
-			}
-
-			//再读取一个字节判断是否为\n
-			delim, err := br.ReadByte()
-			if nil != err {
-				log.Printf("KiteClient|ReadPacket|\\n|FAIL|%s\n", err)
-			} else {
-				//继续读取
-				buff.WriteByte(delim)
-				if delim == protocol.CMD_CRLF[1] {
-					//如果是\n那么就是一个完整的包
-					packet := make([]byte, 0, buff.Len())
-					packet = append(packet, buff.Bytes()...)
-					self.onPacketRecieve(packet)
-					//重置buffer
-					buff.Reset()
-				}
-			}
-
-		}
-
-	}()
 }
 
 func (self *KiteClient) onPacketRecieve(packet []byte) {
@@ -105,23 +98,29 @@ func (self *KiteClient) onPacketRecieve(packet []byte) {
 		//ignore
 		log.Printf("KiteClient|onPacketRecieve|INALID PACKET|%s|%t\n", err, packet)
 	} else {
-		// log.Printf("KiteClient|onPacketRecieve|SUCC|%t\n", respPacket)
+
+		ch, ok := self.holder[respPacket.Opaque]
+		if ok {
+			ch <- respPacket
+		} else {
+			log.Printf("KiteClient|onPacketRecieve|CLEAN|HOLDER|%t\n", respPacket)
+		}
 	}
 
 }
 
 //先进行初次握手上传连接元数据
 func (self *KiteClient) handShake() error {
-	connMeta := &protocol.ConnectioMetaPacket{}
-	connMeta.GroupId = proto.String(self.groupId)
-	connMeta.SecretKey = proto.String(self.secretKey)
+
+	connMeta := &protocol.ConnectioMetaPacket{
+		GroupId:   proto.String(self.groupId),
+		SecretKey: proto.String(self.secretKey)}
 	metaPacket, err := proto.Marshal(connMeta)
 	if nil != err {
 		return err
 	}
 
-	_, err = self.write(protocol.CMD_CONN_META, metaPacket)
-	return err
+	return self.innerSend(protocol.CMD_CONN_META, metaPacket)
 
 }
 
@@ -131,46 +130,50 @@ func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
 		return err
 	}
 
-	_, err = self.write(protocol.CMD_TYPE_STRING_MESSAGE, packet)
-	return err
+	return self.innerSend(protocol.CMD_TYPE_STRING_MESSAGE, packet)
+
+}
+
+func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {
+	// self.write(cmdType, packet)
+	// return nil
+	rid := self.write(cmdType, packet)
+	rholder := self.respHolder[rid]
+	self.holder[rid] = rholder
+
+	var resp *protocol.ResponsePacket
+	select {
+	case <-time.After(500 * time.Millisecond):
+		// 清除holder
+		delete(self.holder, rid)
+	case resp = <-rholder:
+	}
+
+	if nil != resp {
+		if resp.Status != 200 {
+			log.Printf("KiteClient|SendMessage|FAIL|%d|%t\n", cmdType, resp)
+			return errors.New("SEND MESSAGE FAIL" + fmt.Sprintf("[%d,%s]", resp.Status, resp.RemoteAddr))
+		} else {
+			return nil
+		}
+	}
+	return errors.New("SEND MESSAGE TIMEOUT ")
 }
 
 //最底层的网络写入
-func (self *KiteClient) write(cmdType uint8, packet []byte) (int, error) {
+func (self *KiteClient) write(cmdType uint8, packet []byte) int32 {
+	tid := atomic.AddInt32(&self.id, 1) % 1000
+	rpacket := &protocol.RequestPacket{
+		CmdType: cmdType,
+		Data:    packet,
+		Opaque:  tid}
 
-	//总长度	  4 字节+ 1字节 + 4字节 + var + \r + \n
-	length := 4 + 1 + 4 + len(packet) + 1 + 1
-
-	buffer := make([]byte, 0, length)
-	buff := bytes.NewBuffer(buffer)
-
-	self.id++
-	//写入数据包的类型
-	binary.Write(buff, binary.BigEndian, self.id)
-	//写入数据包的类型
-	binary.Write(buff, binary.BigEndian, cmdType)
-	//写入长度
-	binary.Write(buff, binary.BigEndian, uint32(len(packet)))
-	//写入真是数据
-	binary.Write(buff, binary.BigEndian, packet)
-	//写入数据分割
-	binary.Write(buff, binary.BigEndian, protocol.CMD_CRLF)
-
-	wl, err := self.conn.Write(buff.Bytes())
-	if nil != err {
-		log.Printf("KITECLIENT|SEND MESSAGE|FAIL|%s|wl:%d/%d/%d\n", err, wl, length, buff.Len())
-		return wl, err
-	} else if wl != length {
-		errline := fmt.Sprintf("KITECLIENT|SEND MESSAGE|FAIL|%s|wl:%d/%d/%d\n", errors.New("length error"), wl, length, buff.Len())
-		return wl, errors.New(errline)
-	} else {
-		// log.Printf("KITECLIENT|SEND MESSAGE|SUCC|type:%d|len:%d/%d|data:%t\n", protocol.CMD_TYPE_STRING_MESSAGE, buff.Len(), length, buff.Bytes())
-	}
-
-	return wl, err
+	self.session.WriteChannel <- rpacket.Marshal()
+	return tid
 }
 
 func (self *KiteClient) Close() {
 	self.isClose = true
-	self.conn.Close()
+	self.session.Close()
+	log.Printf("KiteClient|Close|REQ_RESP|%t\n", self.holder)
 }

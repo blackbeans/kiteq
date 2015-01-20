@@ -52,7 +52,7 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	event, err := self.wrapEvent(pevent, packet)
 	if nil != err {
-		log.Printf("PacketHandler|Process|wrapEvent|FAIL|%t\n", err)
+		log.Printf("PacketHandler|Process|wrapEvent|FAIL|%s\n", err)
 	} else {
 		//向后投递
 		ctx.SendForward(event)
@@ -68,7 +68,7 @@ func (self *PacketHandler) decode(packet []byte) *protocol.RequestPacket {
 	err := reqPacket.Unmarshal(packet)
 	if nil != err {
 		//ignore
-		log.Printf("PacketHandler|decode|INALID PACKET|%t\n", packet)
+		log.Printf("PacketHandler|decode|INALID PACKET|%s|%t\n", err, packet)
 		return nil
 	} else {
 		return reqPacket
