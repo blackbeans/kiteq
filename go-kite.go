@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"time"
 )
 
@@ -15,6 +16,8 @@ func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	flag.Parse()
+
+	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
