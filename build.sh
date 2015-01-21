@@ -1,6 +1,6 @@
 #!/bin/bash
 
-go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+# go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 
 go build go-kite/protocol
 go build go-kite/store
@@ -18,6 +18,14 @@ go install go-kite/remoting/session
 go install go-kite/remoting/server
 go install go-kite/client
 
+
+##############
+echo "------------ compoments  installing is finished!-------------"
+
+PROJ=`pwd | awk -F'/' '{print $(NF)}'`
+#VERSION=$1
+#go build  -o ./$PROJ-$VERSION $PROJ.go
+go build  -o ./$PROJ $PROJ.go
 
 
 

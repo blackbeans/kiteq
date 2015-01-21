@@ -5,6 +5,7 @@ import (
 	"go-kite/remoting/session"
 	"log"
 	"net"
+	"runtime"
 	"time"
 )
 
@@ -18,6 +19,10 @@ type RemotingServer struct {
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
 	pipeline *handler.DefaultPipeline) *RemotingServer {
+
+	//设置为8个并发
+	runtime.GOMAXPROCS(8)
+
 	server := &RemotingServer{
 		hostport:   hostport,
 		keepalive:  keepalive,
@@ -86,7 +91,7 @@ func (self *RemotingServer) onPacketRecieve(session *session.Session, packet []b
 	}
 }
 
-func (self *RemotingServer) Shutdonw() {
+func (self *RemotingServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
 }

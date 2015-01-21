@@ -25,37 +25,36 @@ type MessageEntity struct {
 
 //创建stringmessage
 func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
-	entity := &MessageEntity{}
-	entity.messageId = msg.GetHeader().GetMessageId()
-	entity.Header = msg.GetHeader()
-	entity.topic = msg.GetHeader().GetTopic()
-	entity.publishGroup = msg.GetHeader().GetGroupId()
-	entity.messageType = msg.GetHeader().GetMessageType()
-	entity.commited = msg.GetHeader().GetCommited()
-	entity.expiredTime = msg.GetHeader().GetExpiredTime()
+	entity := &MessageEntity{
+		Header:    msg.GetHeader(),
+		messageId: msg.GetHeader().GetMessageId(),
 
-	//消息种类
-	entity.msgType = protocol.CMD_TYPE_STRING_MESSAGE
-	entity.body = []byte(msg.GetBody())
-
+		topic:        msg.GetHeader().GetTopic(),
+		publishGroup: msg.GetHeader().GetGroupId(),
+		messageType:  msg.GetHeader().GetMessageType(),
+		commited:     msg.GetHeader().GetCommited(),
+		expiredTime:  msg.GetHeader().GetExpiredTime(),
+		//消息种类
+		msgType: protocol.CMD_TYPE_STRING_MESSAGE,
+		body:    []byte(msg.GetBody())}
 	return entity
 
 }
 
 //创建bytesmessage的实体
 func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
-	entity := &MessageEntity{}
-	entity.Header = msg.GetHeader()
-	entity.messageId = msg.GetHeader().GetMessageId()
-	entity.topic = msg.GetHeader().GetTopic()
-	entity.publishGroup = msg.GetHeader().GetGroupId()
-	entity.messageType = msg.GetHeader().GetMessageType()
-	entity.commited = msg.GetHeader().GetCommited()
-	entity.expiredTime = msg.GetHeader().GetExpiredTime()
+	entity := &MessageEntity{
+		Header:       msg.GetHeader(),
+		messageId:    msg.GetHeader().GetMessageId(),
+		topic:        msg.GetHeader().GetTopic(),
+		publishGroup: msg.GetHeader().GetGroupId(),
+		messageType:  msg.GetHeader().GetMessageType(),
+		commited:     msg.GetHeader().GetCommited(),
+		expiredTime:  msg.GetHeader().GetExpiredTime(),
 
-	//消息种类
-	entity.msgType = protocol.CMD_TYPE_BYTES_MESSAGE
-	entity.body = msg.GetBody()
+		//消息种类
+		msgType: protocol.CMD_TYPE_BYTES_MESSAGE,
+		body:    msg.GetBody()}
 
 	return entity
 }
