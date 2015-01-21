@@ -7,6 +7,7 @@ import (
 	"go-kite/client"
 	"go-kite/protocol"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -59,6 +60,9 @@ func main() {
 		}
 	}()
 
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	for j := 0; j < *conn; j++ {
 		for i := 0; i < *c; i++ {
 			go func() {
@@ -77,5 +81,7 @@ func main() {
 			}()
 		}
 	}
+
+	wg.Wait()
 
 }
