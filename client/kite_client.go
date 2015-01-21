@@ -13,7 +13,8 @@ import (
 )
 
 type KiteClient struct {
-	remoteHost string
+	remote     string
+	local      string
 	session    *session.Session
 	id         int32
 	groupId    string
@@ -25,13 +26,14 @@ type KiteClient struct {
 
 var MAX_WATER_MARK int = 100000
 
-func NewKitClient(remoteHost, groupId, secretKey string) *KiteClient {
+func NewKitClient(local, remote, groupId, secretKey string) *KiteClient {
 
 	client := &KiteClient{
 		id:         0,
 		groupId:    groupId,
 		secretKey:  secretKey,
-		remoteHost: remoteHost,
+		remote:     remote,
+		local:      local,
 		isClose:    false,
 		holder:     make(map[int32]chan *protocol.ResponsePacket, MAX_WATER_MARK),
 		respHolder: make([]chan *protocol.ResponsePacket, MAX_WATER_MARK, MAX_WATER_MARK)}
@@ -45,15 +47,15 @@ func NewKitClient(remoteHost, groupId, secretKey string) *KiteClient {
 }
 
 func (self *KiteClient) dial() (*net.TCPConn, error) {
-	localAddr, err_l := net.ResolveTCPAddr("tcp4", "localhost:54800")
-	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", self.remoteHost)
+	localAddr, err_l := net.ResolveTCPAddr("tcp4", self.local)
+	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", self.remote)
 	if nil != err_l || nil != err_r {
 		log.Fatalf("KITECLIENT|RESOLVE ADDR |FAIL|L:%s|R:%s", err_l, err_r)
 		return nil, err_l
 	}
 	conn, err := net.DialTCP("tcp4", localAddr, remoteAddr)
 	if nil != err {
-		log.Fatalf("KITECLIENT|CONNECT|%s|FAIL|%s\n", self.remoteHost, err)
+		log.Fatalf("KITECLIENT|CONNECT|%s|FAIL|%s\n", self.remote, err)
 		return nil, err
 	}
 
@@ -67,7 +69,7 @@ func (self *KiteClient) Start() {
 	if nil != err {
 		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
 	} else {
-		self.session = session.NewSession(conn, self.remoteHost, self.onPacketRecieve)
+		self.session = session.NewSession(conn, self.remote, self.onPacketRecieve)
 	}
 
 	//开启写操作

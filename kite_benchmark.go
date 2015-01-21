@@ -27,10 +27,15 @@ func buildStringMessage() *protocol.StringMessage {
 }
 
 func main() {
-	//开始向服务端发送数据
-	kclient := client.NewKitClient("localhost:13800", "/user-service", "123456")
-	c := *flag.Int("c", 10, "concurrent")
+
+	c := *flag.Int("c", 10, "-c=10")
+	local := *flag.String("local", "local:13800", "-local=localhost:13800")
+	remote := *flag.String("remote", "localhost:13800", "-remote=localhost:13800")
 	flag.Parse()
+
+	//开始向服务端发送数据
+	kclient := client.NewKitClient(local, remote, "/user-service", "123456")
+
 	wg := &sync.WaitGroup{}
 	count := int32(0)
 	lc := int32(0)
