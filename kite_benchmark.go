@@ -28,13 +28,13 @@ func buildStringMessage() *protocol.StringMessage {
 
 func main() {
 
-	c := *flag.Int("c", 10, "-c=10")
-	local := *flag.String("local", "local:13800", "-local=localhost:13800")
-	remote := *flag.String("remote", "localhost:13800", "-remote=localhost:13800")
+	c := flag.Int("c", 10, "-c=10")
+	local := flag.String("local", "localhost:13800", "-local=localhost:13800")
+	remote := flag.String("remote", "localhost:13800", "-remote=localhost:13800")
 	flag.Parse()
 
 	//开始向服务端发送数据
-	kclient := client.NewKitClient(local, remote, "/user-service", "123456")
+	kclient := client.NewKitClient(*local, *remote, "/user-service", "123456")
 
 	wg := &sync.WaitGroup{}
 	count := int32(0)
@@ -50,14 +50,14 @@ func main() {
 			ftmp := fc
 
 			time.Sleep(1 * time.Second)
-			fmt.Printf("tps:%d/%d", (tmp - lc), (ftmp - flc))
+			fmt.Printf("tps:%d/%d\n", (tmp - lc), (ftmp - flc))
 			lc = tmp
 			flc = ftmp
 		}
 	}()
 
-	wg.Add(c)
-	for i := 0; i < c; i++ {
+	wg.Add(*c)
+	for i := 0; i < *c; i++ {
 		go func() {
 			for {
 				err := kclient.SendMessage(buildStringMessage())

@@ -27,6 +27,8 @@ PROJ=`pwd | awk -F'/' '{print $(NF)}'`
 #go build  -o ./$PROJ-$VERSION $PROJ.go
 go build  -o ./$PROJ $PROJ.go
 
+go build kite_benchmark.go
+
 
 
 

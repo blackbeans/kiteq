@@ -78,7 +78,7 @@ func init() {
 	}()
 	time.Sleep(10 * time.Second)
 	//开始向服务端发送数据
-	kclient = client.NewKitClient("localhost:13800", "localhost:13800", "/user-service", "123456")
+	kclient = client.NewKitClient("localhost:23800", "localhost:13800", "/user-service", "123456")
 }
 
 func BenchmarkRemotingServer(t *testing.B) {
