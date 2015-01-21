@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 
 go build go-kite/protocol
 go build go-kite/store
