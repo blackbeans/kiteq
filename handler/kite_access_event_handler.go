@@ -40,7 +40,7 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	//做权限校验.............
 
-	aevent.session.MarkFlow(aevent.GroupId)
+	aevent.session.GroupId = aevent.GroupId
 	//响应包
 	responsePacket := &protocol.ResponsePacket{
 		Opaque:     aevent.opaque,

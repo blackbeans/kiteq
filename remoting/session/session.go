@@ -20,13 +20,12 @@ type Session struct {
 	WriteChannel    chan []byte //response的channel
 	isClose         bool
 	onPacketRecieve func(session *Session, packet []byte)
-	readFlow        *stat.FlowMonitor
-	dispatcherFlow  *stat.FlowMonitor
-	writeFlow       *stat.FlowMonitor
+	flowControl     *stat.FlowControl //流量统计
 }
 
 func NewSession(conn *net.TCPConn, remoteAddr string,
-	onPacketRecieve func(session *Session, packet []byte)) *Session {
+	onPacketRecieve func(session *Session, packet []byte),
+	flowControl *stat.FlowControl) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
@@ -39,7 +38,8 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 		WriteChannel:    make(chan []byte, 500),
 		isClose:         false,
 		remoteAddr:      remoteAddr,
-		onPacketRecieve: onPacketRecieve}
+		onPacketRecieve: onPacketRecieve,
+		flowControl:     flowControl}
 
 	return session
 }
@@ -55,19 +55,6 @@ func (self *Session) SetHeartBeat(duration int64) {
 
 func (self *Session) GetHeartBeat() int64 {
 	return self.heartbeat
-}
-
-func (self *Session) MarkFlow(groupId string) {
-
-	self.GroupId = groupId
-	self.readFlow = &stat.FlowMonitor{Name: groupId + "-recv"}
-	self.dispatcherFlow = &stat.FlowMonitor{Name: groupId + "-dispatcher"}
-	self.writeFlow = &stat.FlowMonitor{Name: groupId + "-write"}
-
-	//注册监控对象
-	stat.MarkFlow(self.readFlow)
-	stat.MarkFlow(self.dispatcherFlow)
-	stat.MarkFlow(self.writeFlow)
 }
 
 //读取
@@ -118,9 +105,8 @@ func (self *Session) ReadPacket() {
 			//重置buffer
 			buff.Reset()
 
-			if nil != self.readFlow {
-				self.readFlow.Incr(1)
-			}
+			self.flowControl.ReadFlow.Incr(1)
+
 		}
 	}
 }
@@ -138,9 +124,9 @@ func (self *Session) DispatcherPacket() {
 				case packet := <-self.ReadChannel:
 					//2.处理一下包
 					go self.onPacketRecieve(self, packet)
-					if nil != self.dispatcherFlow {
-						self.dispatcherFlow.Incr(1)
-					}
+
+					self.flowControl.DispatcherFlow.Incr(1)
+
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}
@@ -171,9 +157,9 @@ func (self *Session) WritePacket() {
 							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 						}
 					}()
-					if nil != self.writeFlow {
-						self.writeFlow.Incr(1)
-					}
+
+					self.flowControl.WriteFlow.Incr(1)
+
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}
@@ -186,8 +172,5 @@ func (self *Session) WritePacket() {
 func (self *Session) Close() error {
 	self.isClose = true
 	self.conn.Close()
-
-	stat.UnmarkFlow(self.GroupId+"-recv",
-		self.GroupId+"-dispatcher", self.GroupId+"-write")
 	return nil
 }

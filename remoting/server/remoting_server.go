@@ -3,6 +3,7 @@ package server
 import (
 	"go-kite/handler"
 	"go-kite/remoting/session"
+	"go-kite/stat"
 	"log"
 	"net"
 	"runtime"
@@ -10,11 +11,12 @@ import (
 )
 
 type RemotingServer struct {
-	hostport   string
-	keepalive  time.Duration
-	stopChan   chan bool
-	isShutdown bool
-	pipeline   *handler.DefaultPipeline
+	hostport    string
+	keepalive   time.Duration
+	stopChan    chan bool
+	isShutdown  bool
+	pipeline    *handler.DefaultPipeline
+	flowControl *stat.FlowControl
 }
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
@@ -24,11 +26,12 @@ func NewRemotionServer(hostport string, keepalive time.Duration,
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
-		hostport:   hostport,
-		keepalive:  keepalive,
-		stopChan:   make(chan bool, 1),
-		pipeline:   pipeline,
-		isShutdown: false}
+		hostport:    hostport,
+		keepalive:   keepalive,
+		stopChan:    make(chan bool, 1),
+		pipeline:    pipeline,
+		isShutdown:  false,
+		flowControl: stat.NewFlowControl(hostport)}
 	return server
 }
 
@@ -62,7 +65,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//session处理,应该有个session管理器
-			session := session.NewSession(conn, self.hostport, self.onPacketRecieve)
+			session := session.NewSession(conn, self.hostport, self.onPacketRecieve, self.flowControl)
 			self.handleSession(session)
 		}
 	}
@@ -94,4 +97,5 @@ func (self *RemotingServer) onPacketRecieve(session *session.Session, packet []b
 func (self *RemotingServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
+	self.flowControl.Stop()
 }

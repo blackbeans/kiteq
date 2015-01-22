@@ -4,7 +4,6 @@ import (
 	"flag"
 	"go-kite/handler"
 	"go-kite/remoting/server"
-	"go-kite/stat"
 	"go-kite/store"
 	"log"
 	"net"
@@ -38,9 +37,6 @@ func main() {
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", &store.MockKiteStore{}))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
-
-	//启动流量监控
-	stat.SechduleMarkFlow()
 
 	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second, pipeline)
 	stopCh := make(chan error, 1)

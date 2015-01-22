@@ -14,15 +14,16 @@ import (
 )
 
 type KiteClient struct {
-	remote     string
-	local      string
-	session    *session.Session
-	id         int32
-	groupId    string
-	secretKey  string
-	isClose    bool
-	holder     map[int32]chan *protocol.ResponsePacket
-	respHolder []chan *protocol.ResponsePacket
+	remote      string
+	local       string
+	session     *session.Session
+	id          int32
+	groupId     string
+	secretKey   string
+	isClose     bool
+	holder      map[int32]chan *protocol.ResponsePacket
+	respHolder  []chan *protocol.ResponsePacket
+	flowContorl *stat.FlowControl
 }
 
 var MAX_WATER_MARK int = 100000
@@ -30,14 +31,15 @@ var MAX_WATER_MARK int = 100000
 func NewKitClient(local, remote, groupId, secretKey string) *KiteClient {
 
 	client := &KiteClient{
-		id:         0,
-		groupId:    groupId,
-		secretKey:  secretKey,
-		remote:     remote,
-		local:      local,
-		isClose:    false,
-		holder:     make(map[int32]chan *protocol.ResponsePacket, MAX_WATER_MARK),
-		respHolder: make([]chan *protocol.ResponsePacket, MAX_WATER_MARK, MAX_WATER_MARK)}
+		id:          0,
+		groupId:     groupId,
+		secretKey:   secretKey,
+		remote:      remote,
+		local:       local,
+		isClose:     false,
+		holder:      make(map[int32]chan *protocol.ResponsePacket, MAX_WATER_MARK),
+		respHolder:  make([]chan *protocol.ResponsePacket, MAX_WATER_MARK, MAX_WATER_MARK),
+		flowContorl: stat.NewFlowControl(groupId)}
 
 	for i := 0; i < MAX_WATER_MARK; i++ {
 		client.respHolder[i] = make(chan *protocol.ResponsePacket, 100)
@@ -70,12 +72,11 @@ func (self *KiteClient) Start() {
 	if nil != err {
 		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
 	} else {
-		self.session = session.NewSession(conn, self.remote, self.onPacketRecieve)
-		self.session.MarkFlow(self.groupId)
+		self.session = session.NewSession(conn, self.remote, self.onPacketRecieve, self.flowContorl)
 	}
 
-	//启动流控
-	stat.SechduleMarkFlow()
+	//开启流控
+	self.flowContorl.Start()
 
 	//开启写操作
 	go self.session.WritePacket()
