@@ -36,6 +36,10 @@ func NewRemotionServer(hostport string, keepalive time.Duration,
 }
 
 func (self *RemotingServer) ListenAndServer() error {
+
+	//开启流控
+
+	self.flowControl.Start()
 	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
 	if nil != err {
 		log.Fatalf("RemotingServer|ADDR|FAIL|%s\n", self.hostport)
