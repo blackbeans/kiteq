@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"go-kite/protocol"
 	"go-kite/stat"
-	"io"
 	"log"
 	"net"
 	"time"
@@ -68,7 +67,7 @@ func (self *Session) ReadPacket() {
 	for !self.isClose {
 		slice, err := br.ReadSlice(protocol.CMD_CRLF[0])
 		//如果没有达到请求头的最小长度则继续读取
-		if nil != err && err != io.EOF {
+		if nil != err {
 			buff.Reset()
 			self.Close()
 			log.Printf("Session|ReadPacket|\\r|FAIL|CLOSE SESSION|%s\n", err)
@@ -85,15 +84,20 @@ func (self *Session) ReadPacket() {
 
 		//读取下一个字节
 		delim, err := br.ReadByte()
-		if nil != err && err != io.EOF {
+		if nil != err {
 			log.Printf("Session|ReadPacket|\\n|FAIL|CLOSE SESSION|%s\n", err)
 			self.Close()
 			return
-		} else if nil != err {
-			log.Printf("Session|ReadPacket|\\n|FAIL|CLOSE SESSION|%s\n", err)
-			continue
 		}
-		buff.WriteByte(delim)
+
+		//写入，如果数据太大直接有ErrTooLarge则关闭session退出
+		err = buff.WriteByte(delim)
+		if nil != err {
+			log.Printf("Session|ReadPacket|WRITE|TOO LARGE|CLOSE SESSION|%s\n", err)
+			self.Close()
+			return
+		}
+
 		if buff.Len() > protocol.REQ_PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
 			//如果是\n那么就是一个完整的包
