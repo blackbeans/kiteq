@@ -7,6 +7,8 @@ import (
 	"go-kite/client"
 	"go-kite/protocol"
 	"math/rand"
+	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -61,12 +63,13 @@ func main() {
 	}()
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
+	stop := false
 	for j := 0; j < *conn; j++ {
 		for i := 0; i < *c; i++ {
 			go func() {
-				for {
+				wg.Add(1)
+				for !stop {
 					idx := rand.Intn(len(clients))
 					tmpclient := clients[idx]
 					err := tmpclient.SendMessage(buildStringMessage())
@@ -77,11 +80,24 @@ func main() {
 						atomic.AddInt32(&count, 1)
 					}
 				}
+				wg.Done()
 
 			}()
 		}
 	}
 
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Kill)
+
+	select {
+	//kill掉的server
+	case <-ch:
+		stop = true
+	}
+
 	wg.Wait()
+	for _, v := range clients {
+		v.Close()
+	}
 
 }
