@@ -41,14 +41,6 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 		remoteAddr:      remoteAddr,
 		onPacketRecieve: onPacketRecieve}
 
-	session.readFlow = &stat.FlowMonitor{Name: session.GroupId + "-recv"}
-	session.dispatcherFlow = &stat.FlowMonitor{Name: session.GroupId + "-dispatcher"}
-	session.writeFlow = &stat.FlowMonitor{Name: session.GroupId + "-write"}
-
-	stat.MarkFlow(session.readFlow)
-	stat.MarkFlow(session.dispatcherFlow)
-	stat.MarkFlow(session.writeFlow)
-
 	return session
 }
 
@@ -63,6 +55,19 @@ func (self *Session) SetHeartBeat(duration int64) {
 
 func (self *Session) GetHeartBeat() int64 {
 	return self.heartbeat
+}
+
+func (self *Session) MarkFlow(groupId string) {
+
+	self.GroupId = groupId
+	self.readFlow = &stat.FlowMonitor{Name: groupId + "-recv"}
+	self.dispatcherFlow = &stat.FlowMonitor{Name: groupId + "-dispatcher"}
+	self.writeFlow = &stat.FlowMonitor{Name: groupId + "-write"}
+
+	//注册监控对象
+	stat.MarkFlow(self.readFlow)
+	stat.MarkFlow(self.dispatcherFlow)
+	stat.MarkFlow(self.writeFlow)
 }
 
 //读取
@@ -175,5 +180,8 @@ func (self *Session) WritePacket() {
 func (self *Session) Close() error {
 	self.isClose = true
 	self.conn.Close()
+
+	stat.UnmarkFlow(self.GroupId+"-recv",
+		self.GroupId+"-dispatcher", self.GroupId+"-write")
 	return nil
 }
