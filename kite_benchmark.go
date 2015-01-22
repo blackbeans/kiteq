@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -37,12 +38,11 @@ func main() {
 	local := flag.String("local", "localhost:13800", "-local=localhost:13800")
 	remote := flag.String("remote", "localhost:13800", "-remote=localhost:13800")
 	flag.Parse()
-
 	host, port, _ := net.SplitHostPort(*local)
 	clients := make([]*client.KiteClient, 0, *conn)
 	for i := 0; i < *conn; i++ {
 		//开始向服务端发送数据
-		kclient := client.NewKitClient(net.JoinHostPort(host, port+i), *remote, "/user-service", "123456")
+		kclient := client.NewKitClient(net.JoinHostPort(host, strconv.Itoa(port)+i), *remote, "/user-service", "123456")
 		clients = append(clients, kclient)
 	}
 
