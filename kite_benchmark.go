@@ -8,7 +8,6 @@ import (
 	"go-kite/protocol"
 	"math/rand"
 	"net"
-
 	"os"
 	"os/signal"
 	"strconv"

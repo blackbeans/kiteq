@@ -3,9 +3,8 @@ package session
 import (
 	"bufio"
 	"bytes"
-	// "encoding/binary"
-	// "errors"
 	"go-kite/protocol"
+	"go-kite/stat"
 	"io"
 	"log"
 	"net"
@@ -21,6 +20,9 @@ type Session struct {
 	WriteChannel    chan []byte //response的channel
 	isClose         bool
 	onPacketRecieve func(session *Session, packet []byte)
+	readFlow        *stat.FlowMonitor
+	dispatcherFlow  *stat.FlowMonitor
+	writeFlow       *stat.FlowMonitor
 }
 
 func NewSession(conn *net.TCPConn, remoteAddr string,
@@ -38,6 +40,14 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 		isClose:         false,
 		remoteAddr:      remoteAddr,
 		onPacketRecieve: onPacketRecieve}
+
+	session.readFlow = &stat.FlowMonitor{Name: session.GroupId + "-recv"}
+	session.dispatcherFlow = &stat.FlowMonitor{Name: session.GroupId + "-dispatcher"}
+	session.writeFlow = &stat.FlowMonitor{Name: session.GroupId + "-write"}
+
+	stat.MarkFlow(session.readFlow)
+	stat.MarkFlow(session.dispatcherFlow)
+	stat.MarkFlow(session.writeFlow)
 
 	return session
 }
@@ -102,6 +112,7 @@ func (self *Session) ReadPacket() {
 			self.ReadChannel <- packet
 			//重置buffer
 			buff.Reset()
+			self.readFlow.Incr(1)
 		}
 	}
 }
@@ -119,6 +130,8 @@ func (self *Session) DispatcherPacket() {
 				case packet := <-self.ReadChannel:
 					//2.处理一下包
 					go self.onPacketRecieve(self, packet)
+
+					self.dispatcherFlow.Incr(1)
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}
@@ -149,6 +162,7 @@ func (self *Session) WritePacket() {
 							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 						}
 					}()
+					self.writeFlow.Incr(1)
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}

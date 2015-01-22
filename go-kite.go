@@ -4,6 +4,7 @@ import (
 	"flag"
 	"go-kite/handler"
 	"go-kite/remoting/server"
+	"go-kite/stat"
 	"go-kite/store"
 	"log"
 	"net"
@@ -12,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	// rp "runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -21,18 +21,7 @@ func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
-	// var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	flag.Parse()
-
-	// if *cpuprofile != "" {
-	// 	f, err := os.Create(*cpuprofile)
-	// 	if err != nil {
-	// 		log.Fatal(err)
-	// 	}
-
-	// 	rp.StartCPUProfile(f)
-	// 	defer rp.StopCPUProfile()
-	// }
 
 	host, _, _ := net.SplitHostPort(*bindHost)
 	go func() {
@@ -49,6 +38,9 @@ func main() {
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", &store.MockKiteStore{}))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
+
+	//启动流量监控
+	stat.SechduleMarkFlow()
 
 	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second, pipeline)
 	stopCh := make(chan error, 1)
