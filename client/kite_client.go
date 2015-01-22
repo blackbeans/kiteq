@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go-kite/protocol"
 	"go-kite/remoting/session"
+	"go-kite/stat"
 	"log"
 	"net"
 	"sync/atomic"
@@ -70,7 +71,11 @@ func (self *KiteClient) Start() {
 		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
 	} else {
 		self.session = session.NewSession(conn, self.remote, self.onPacketRecieve)
+		self.session.MarkFlow(self.groupId)
 	}
+
+	//启动流控
+	stat.SechduleMarkFlow()
 
 	//开启写操作
 	go self.session.WritePacket()

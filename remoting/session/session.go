@@ -35,8 +35,8 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 	session := &Session{
 		conn:            conn,
 		heartbeat:       0,
-		ReadChannel:     make(chan []byte, 100),
-		WriteChannel:    make(chan []byte, 100),
+		ReadChannel:     make(chan []byte, 500),
+		WriteChannel:    make(chan []byte, 500),
 		isClose:         false,
 		remoteAddr:      remoteAddr,
 		onPacketRecieve: onPacketRecieve}
@@ -117,7 +117,10 @@ func (self *Session) ReadPacket() {
 			self.ReadChannel <- packet
 			//重置buffer
 			buff.Reset()
-			self.readFlow.Incr(1)
+
+			if nil != self.readFlow {
+				self.readFlow.Incr(1)
+			}
 		}
 	}
 }
@@ -125,7 +128,7 @@ func (self *Session) ReadPacket() {
 func (self *Session) DispatcherPacket() {
 
 	//500个读协程
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 200; i++ {
 		go func() {
 
 			//解析包
@@ -135,8 +138,9 @@ func (self *Session) DispatcherPacket() {
 				case packet := <-self.ReadChannel:
 					//2.处理一下包
 					go self.onPacketRecieve(self, packet)
-
-					self.dispatcherFlow.Incr(1)
+					if nil != self.dispatcherFlow {
+						self.dispatcherFlow.Incr(1)
+					}
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}
@@ -167,7 +171,9 @@ func (self *Session) WritePacket() {
 							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 						}
 					}()
-					self.writeFlow.Incr(1)
+					if nil != self.writeFlow {
+						self.writeFlow.Incr(1)
+					}
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):
 				}
