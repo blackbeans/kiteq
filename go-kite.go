@@ -19,6 +19,7 @@ import (
 func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
+	mysql := flag.String("mysql", "", "-mysql=root:root@tcp(localhost:8889)/kite")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 	flag.Parse()
 
@@ -29,13 +30,20 @@ func main() {
 		}
 	}()
 
+	var kitedb store.IKiteStore
+	if *mysql == "" {
+		kitedb = &store.MockKiteStore{}
+	} else {
+		kitedb = store.NewKiteMysql(*mysql)
+	}
+
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access"))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", &store.MockKiteStore{}))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
 
 	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second, pipeline)

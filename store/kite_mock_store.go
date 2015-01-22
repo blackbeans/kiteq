@@ -16,7 +16,7 @@ func (self *MockKiteStore) Query(messageId string) *MessageEntity {
 func (self *MockKiteStore) Save(entity *MessageEntity) bool {
 	return true
 }
-func (self *MockKiteStore) Commite(messageId string) bool {
+func (self *MockKiteStore) Commit(messageId string) bool {
 	return true
 }
 func (self *MockKiteStore) Rollback(messageId string) bool {

@@ -88,7 +88,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	return true
 }
 
-func (self *KiteMysqlStore) Commite(messageId string) bool {
+func (self *KiteMysqlStore) Commit(messageId string) bool {
 	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commited=? where messageId=?")
 	if err != nil {
 		log.Println(err)

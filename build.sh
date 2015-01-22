@@ -12,7 +12,7 @@ go build go-kite/client
 
 
 #########
-go install  go-kite/stat
+go install go-kite/stat
 go install go-kite/protocol
 go install go-kite/store
 go install go-kite/handler

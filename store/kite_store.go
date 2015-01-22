@@ -68,7 +68,7 @@ func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 type IKiteStore interface {
 	Query(messageId string) *MessageEntity
 	Save(entity *MessageEntity) bool
-	Commite(messageId string) bool
+	Commit(messageId string) bool
 	Rollback(messageId string) bool
 	UpdateEntity(entity *MessageEntity) bool
 }
