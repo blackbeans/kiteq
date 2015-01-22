@@ -8,10 +8,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/pprof"
+	rp "runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -20,7 +21,7 @@ func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
-	var cpuprofile = flag.String("cpuprofile", ".", "write cpu profile to file")
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	flag.Parse()
 
 	if *cpuprofile != "" {
@@ -28,8 +29,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+
+		rp.StartCPUProfile(f)
+		defer rp.StopCPUProfile()
 	}
 
 	host, _, _ := net.SplitHostPort(*bindHost)
