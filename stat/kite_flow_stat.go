@@ -25,15 +25,13 @@ func NewFlowControl(name string) *FlowControl {
 }
 
 func (self *FlowControl) Start() {
+
 	go func() {
 		for !self.stop {
-
-			line := fmt.Sprintf("read:%d\tdispatcher:%d\twrite:%d\n", self.ReadFlow.changes(),
+			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d", self.name, self.ReadFlow.changes(),
 				self.DispatcherFlow.changes(), self.WriteFlow.changes())
-
 			log.Println(line)
 			time.Sleep(1 * time.Second)
-
 		}
 	}()
 }

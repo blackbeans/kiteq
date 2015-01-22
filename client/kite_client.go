@@ -81,15 +81,9 @@ func (self *KiteClient) Start() {
 	//开启写操作
 	go self.session.WritePacket()
 
+	go self.session.DispatcherPacket()
 	//启动读取
 	go self.session.ReadPacket()
-	//启动读取数据
-	go func() {
-		for !self.isClose {
-			packet := <-self.session.ReadChannel
-			self.onPacketRecieve(self.session, packet)
-		}
-	}()
 
 	//握手完成
 	err = self.handShake()
