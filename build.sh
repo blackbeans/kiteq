@@ -1,6 +1,7 @@
 #!/bin/bash
 
 go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+go get github.com/go-sql-driver/mysql
 
 go build go-kite/stat
 go build go-kite/protocol

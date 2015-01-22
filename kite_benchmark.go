@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-func buildStringMessage(id int32) *protocol.StringMessage {
+func buildStringMessage() *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
