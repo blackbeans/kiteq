@@ -12,7 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	rp "runtime/pprof"
+	// rp "runtime/pprof"
 	"strconv"
 	"time"
 )
@@ -21,18 +21,18 @@ func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
-	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	// var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 	flag.Parse()
 
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
-		if err != nil {
-			log.Fatal(err)
-		}
+	// if *cpuprofile != "" {
+	// 	f, err := os.Create(*cpuprofile)
+	// 	if err != nil {
+	// 		log.Fatal(err)
+	// 	}
 
-		rp.StartCPUProfile(f)
-		defer rp.StopCPUProfile()
-	}
+	// 	rp.StartCPUProfile(f)
+	// 	defer rp.StopCPUProfile()
+	// }
 
 	host, _, _ := net.SplitHostPort(*bindHost)
 	go func() {
