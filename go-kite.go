@@ -19,7 +19,7 @@ import (
 func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
-	mysql := flag.String("mysql", "", "-mysql=root:root@tcp(localhost:8889)/kite")
+	mysql := flag.String("mysql", "", "-mysql=root:root@tcp(localhost:3306)/kite")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 	flag.Parse()
 

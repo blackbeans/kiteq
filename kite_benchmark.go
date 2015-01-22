@@ -16,11 +16,11 @@ import (
 	"time"
 )
 
-func buildStringMessage() *protocol.StringMessage {
+func buildStringMessage(id int32) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:   proto.String("1234567"),
+		MessageId:   proto.String(messageId()),
 		Topic:       proto.String("trade"),
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(13700000000),
@@ -29,6 +29,14 @@ func buildStringMessage() *protocol.StringMessage {
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
+}
+
+var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
+
+func messageId() string {
+	b := make([]byte, 16)
+	f.Read(b)
+	return fmt.Sprintf("%x", b)
 }
 
 func main() {

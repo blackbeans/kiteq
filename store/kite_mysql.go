@@ -12,7 +12,7 @@ CREATE DATABASE IF NOT EXISTS `kite` DEFAULT CHARACTER SET utf8 COLLATE utf8_gen
 USE `kite` ;
 
 CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
-  `messageId` INT NOT NULL,
+  `messageId` CHAR(32) NOT NULL,
   `topic` VARCHAR(45) NULL DEFAULT 'default',
   `messageType` TINYINT NULL DEFAULT 0,
   `expiredTime` BIGINT NULL,
@@ -48,11 +48,8 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		return nil
 	}
 	defer stmt.Close()
-	pk, err := strconv.Atoi(messageId)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
+	pk := messageId
+
 	entity := &MessageEntity{}
 	err = stmt.QueryRow(pk).Scan(
 		&entity.messageId,
@@ -76,11 +73,8 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 		return false
 	}
 	defer stmt.Close()
-	pk, err := strconv.Atoi(entity.messageId)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
+	pk := entity.messageId
+
 	if _, err := stmt.Exec(pk, entity.topic, entity.messageType, entity.expiredTime, entity.commited, entity.body); err != nil {
 		log.Println(err)
 		return false
@@ -123,11 +117,8 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 		return false
 	}
 	defer stmt.Close()
-	pk, err := strconv.Atoi(entity.messageId)
-	if err != nil {
-		log.Println(err)
-		return false
-	}
+	pk := entity.messageId
+
 	if _, err := stmt.Exec(entity.topic, entity.messageType, entity.expiredTime, entity.commited, entity.body, pk); err != nil {
 		log.Println(err)
 		return false
