@@ -21,7 +21,7 @@ func NewRemotionServer(hostport string, keepalive time.Duration,
 	pipeline *handler.DefaultPipeline) *RemotingServer {
 
 	//设置为8个并发
-	runtime.GOMAXPROCS(8)
+	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
 		hostport:   hostport,

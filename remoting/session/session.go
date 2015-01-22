@@ -70,7 +70,7 @@ func (self *Session) ReadPacket() {
 			buff.Reset()
 			self.Close()
 			log.Printf("Session|ReadPacket|\\r|FAIL|CLOSE SESSION|%s\n", err)
-			continue
+			return
 		}
 
 		lflen, err := buff.Write(slice)
@@ -83,15 +83,21 @@ func (self *Session) ReadPacket() {
 
 		//读取下一个字节
 		delim, err := br.ReadByte()
-		if nil != err {
+		if nil != err && err != io.EOF {
+			log.Printf("Session|ReadPacket|\\n|FAIL|CLOSE SESSION|%s\n", err)
+			self.Close()
+			return
+		} else if nil != err {
+			log.Printf("Session|ReadPacket|\\n|FAIL|CLOSE SESSION|%s\n", err)
 			continue
 		}
 		buff.WriteByte(delim)
 		if buff.Len() > protocol.REQ_PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
 			//如果是\n那么就是一个完整的包
-			packet := make([]byte, 0, buff.Len())
-			packet = append(packet, buff.Bytes()...)
+			packet := make([]byte, buff.Len())
+			//拷贝数据
+			copy(packet, buff.Bytes())
 			//写入缓冲
 			self.ReadChannel <- packet
 			//重置buffer
@@ -105,14 +111,18 @@ func (self *Session) DispatcherPacket() {
 	//500个读协程
 	for i := 0; i < 100; i++ {
 		go func() {
+
 			//解析包
 			for !self.isClose {
-
+				select {
 				//1.读取数据包
-				packet := <-self.ReadChannel
+				case packet := <-self.ReadChannel:
+					//2.处理一下包
+					go self.onPacketRecieve(self, packet)
+					//100ms读超时
+				case <-time.After(100 * time.Millisecond):
+				}
 
-				//2.处理一下包
-				go self.onPacketRecieve(self, packet)
 			}
 		}()
 	}
@@ -125,17 +135,24 @@ func (self *Session) WritePacket() {
 	for i := 0; i < 100; i++ {
 		go func() {
 			for !self.isClose {
-				packet := <-self.WriteChannel
 
-				//并发去写
-				go func() {
-					length, err := self.conn.Write(packet)
-					if nil != err || length != len(packet) {
-						log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
-					} else {
-						// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
-					}
-				}()
+				select {
+				//1.读取数据包
+				case packet := <-self.WriteChannel:
+					//2.处理一下包
+					//并发去写
+					go func() {
+						length, err := self.conn.Write(packet)
+						if nil != err || length != len(packet) {
+							log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
+						} else {
+							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
+						}
+					}()
+					//100ms读超时
+				case <-time.After(100 * time.Millisecond):
+				}
+
 			}
 		}()
 	}
