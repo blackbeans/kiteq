@@ -6,16 +6,27 @@ import (
 	"go-kite/remoting/server"
 	"go-kite/store"
 	"log"
+	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
 	"time"
 )
 
 func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
+	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 	flag.Parse()
+	host, _, _ := net.SplitHostPort(*bindHost)
+	go func() {
+		if *pprofPort > 0 {
+			log.Println(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
+		}
+	}()
 
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline
