@@ -67,8 +67,9 @@ func (self *Session) ReadPacket() {
 		slice, err := br.ReadSlice(protocol.CMD_CRLF[0])
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err && err != io.EOF {
-			log.Printf("Session|ReadPacket|\\r|FAIL|%s\n", err)
 			buff.Reset()
+			self.Close()
+			log.Printf("Session|ReadPacket|\\r|FAIL|CLOSE SESSION|%s\n", err)
 			continue
 		}
 
