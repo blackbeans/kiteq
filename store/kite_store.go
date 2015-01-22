@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"go-kite/protocol"
 )
 
@@ -21,6 +22,10 @@ type MessageEntity struct {
 	succGroupTags   []string // 投递成功的分组
 	nextDeliverTime int64    //下一次投递的时间
 
+}
+
+func (self *MessageEntity) String() string {
+	return fmt.Sprintf("id:%s topic:%s commited:%t body:%s", self.messageId, self.topic, self.commited, string(self.body))
 }
 
 //创建stringmessage
