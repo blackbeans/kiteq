@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
   `messageId` INT NOT NULL,
   `topic` VARCHAR(45) NULL DEFAULT 'default',
   `messageType` TINYINT NULL DEFAULT 0,
-  `expiredTime` TIMESTAMP NULL,
+  `expiredTime` BIGINT NULL,
   `groupId` VARCHAR(45) NULL,
   `commited` TINYINT NULL DEFAULT 0 COMMENT '提交状态',
   `body` BLOB NULL,
