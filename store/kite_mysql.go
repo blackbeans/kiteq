@@ -11,16 +11,18 @@ CREATE DATABASE IF NOT EXISTS `kite` DEFAULT CHARACTER SET utf8 COLLATE utf8_gen
 USE `kite` ;
 
 CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
+  `id` INT NOT NULL AUTO_INCREMENT,
   `messageId` CHAR(32) NOT NULL,
   `topic` VARCHAR(45) NULL DEFAULT 'default',
-  `messageType` TINYINT NULL DEFAULT 0,
+  `messageType` CHAR(4) NULL DEFAULT 0,
   `expiredTime` BIGINT NULL,
   `groupId` VARCHAR(45) NULL,
   `commited` TINYINT NULL DEFAULT 0 COMMENT '提交状态',
   `body` BLOB NULL,
   `topo` TINYINT NULL DEFAULT 0 COMMENT '在哪个拓扑里',
-  PRIMARY KEY (`messageId`),
-  INDEX `idx_commited` (`commited` ASC))
+  INDEX `idx_commited` (`commited` ASC),
+  INDEX `idx_msgId` (`messageId` ASC),
+  PRIMARY KEY (`id`))
 ENGINE = InnoDB;
 */
 type KiteMysqlStore struct {
@@ -30,6 +32,8 @@ type KiteMysqlStore struct {
 
 func NewKiteMysql(addr string) *KiteMysqlStore {
 	db, err := sql.Open("mysql", addr)
+	db.SetMaxIdleConns(100)
+	db.SetMaxOpenConns(1024)
 	if err != nil {
 		log.Fatal("mysql can not connect")
 	}
