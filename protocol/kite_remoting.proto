@@ -19,7 +19,6 @@ message ConnectioMetaPacket{
     required string secretKey  = 2; //当前连接的授权key
 }
 
-
 //心跳响应包
 message HeartBeatACKPacket{
    required int64 ackId = 1;  //响应确认包

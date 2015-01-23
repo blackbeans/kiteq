@@ -4,6 +4,7 @@ go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 go get github.com/go-sql-driver/mysql
 
 go build go-kite/stat
+go build go-kite/binding
 go build go-kite/protocol
 go build go-kite/store
 go build go-kite/handler
@@ -14,6 +15,7 @@ go build go-kite/client
 
 #########
 go install go-kite/stat
+go install go-kite/binding
 go install go-kite/protocol
 go install go-kite/store
 go install go-kite/handler
