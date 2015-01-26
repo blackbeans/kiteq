@@ -3,10 +3,10 @@ package server
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"go-kite/client"
-	"go-kite/handler"
-	"go-kite/protocol"
-	"go-kite/store"
+	"kiteq/client"
+	"kiteq/handler"
+	"kiteq/protocol"
+	"kiteq/store"
 	"testing"
 	"time"
 )

@@ -2,8 +2,8 @@ package handler
 
 import (
 	"errors"
-	"go-kite/protocol"
-	"go-kite/store"
+	"kiteq/protocol"
+	"kiteq/store"
 	// "log"
 )
 

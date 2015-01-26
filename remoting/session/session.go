@@ -3,8 +3,8 @@ package session
 import (
 	"bufio"
 	"bytes"
-	"go-kite/protocol"
-	"go-kite/stat"
+	"kiteq/protocol"
+	"kiteq/stat"
 	"log"
 	"net"
 	"time"

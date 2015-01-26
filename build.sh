@@ -2,26 +2,27 @@
 
 go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
 go get github.com/go-sql-driver/mysql
+go get -u github.com/blackbeans/zk
 
-go build go-kite/stat
-go build go-kite/binding
-go build go-kite/protocol
-go build go-kite/store
-go build go-kite/handler
-go build go-kite/remoting/session
-go build go-kite/remoting/server
-go build go-kite/client
+go build kiteq/stat
+go build kiteq/binding
+go build kiteq/protocol
+go build kiteq/store
+go build kiteq/handler
+go build kiteq/remoting/session
+go build kiteq/remoting/server
+go build kiteq/client
 
 
 #########
-go install go-kite/stat
-go install go-kite/binding
-go install go-kite/protocol
-go install go-kite/store
-go install go-kite/handler
-go install go-kite/remoting/session
-go install go-kite/remoting/server
-go install go-kite/client
+go install kiteq/stat
+go install kiteq/binding
+go install kiteq/protocol
+go install kiteq/store
+go install kiteq/handler
+go install kiteq/remoting/session
+go install kiteq/remoting/server
+go install kiteq/client
 
 
 ##############

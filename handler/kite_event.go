@@ -1,9 +1,9 @@
 package handler
 
 import (
-	"go-kite/protocol"
-	"go-kite/remoting/session"
-	"go-kite/store"
+	"kiteq/protocol"
+	"kiteq/remoting/session"
+	"kiteq/store"
 )
 
 type IEvent interface {

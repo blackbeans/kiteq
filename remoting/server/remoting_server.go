@@ -1,9 +1,9 @@
 package server
 
 import (
-	"go-kite/handler"
-	"go-kite/remoting/session"
-	"go-kite/stat"
+	"kiteq/handler"
+	"kiteq/remoting/session"
+	"kiteq/stat"
 	"log"
 	"net"
 	"runtime"

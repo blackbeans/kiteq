@@ -2,7 +2,7 @@ package store
 
 import (
 	"github.com/golang/protobuf/proto"
-	"go-kite/protocol"
+	"kiteq/protocol"
 )
 
 type MockKiteStore struct {

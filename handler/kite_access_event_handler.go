@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"go-kite/protocol"
+	"kiteq/protocol"
 	// "log"
 )
 

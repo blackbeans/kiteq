@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	"go-kite/protocol"
+	"kiteq/protocol"
 )
 
 //用于持久化的messageEntity
