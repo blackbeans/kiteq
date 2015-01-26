@@ -3,26 +3,16 @@ package binding
 import (
 	"github.com/blackbeans/zk"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	FLUME_PATH            = "/kiteQ/"
-	FLUME_SOURCE_PATH_PID = "/flume_source"
+	KITEQ        = "/kiteq/"
+	KITEQ_SERVER = KITEQ + "server/" // 临时节点 # /kiteq/server/${topic}/ip:port
+	KITEQ_PUB    = KITEQ + "pub/"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
+	KITEQ_SUB    = KITEQ + "sub/"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}/bind/#$data(bind)
 )
-
-type HostPort struct {
-	Host string
-	Port int
-}
-
-func NewHostPort(hp string) HostPort {
-	hparr := strings.Split(hp, ":")
-	port, _ := strconv.Atoi(hparr[1])
-	return HostPort{Host: hparr[0], Port: port}
-}
 
 type ZKManager struct {
 	session *zk.Session
@@ -39,20 +29,20 @@ const (
 
 //每个watcher
 type IWatcher interface {
-	BusinessWatcher(business string, eventType ZkEvent)
-	ChildWatcher(business string, childNode []HostPort)
+	EventNotify(path string, eventType ZkEvent)
+	ChildWatcher(path string, childNode []string)
 }
 
 type Watcher struct {
 	watcher   IWatcher
 	zkwatcher chan zk.Event
-	business  string
+	path      string
 }
 
 //创建一个watcher
-func NewWatcher(business string, watcher IWatcher) *Watcher {
+func NewWatcher(path string, watcher IWatcher) *Watcher {
 	zkwatcher := make(chan zk.Event, 10)
-	return &Watcher{business: business, watcher: watcher, zkwatcher: zkwatcher}
+	return &Watcher{path: path, watcher: watcher, zkwatcher: zkwatcher}
 }
 
 func NewZKManager(zkhosts string) *ZKManager {
@@ -71,14 +61,14 @@ func NewZKManager(zkhosts string) *ZKManager {
 		return nil
 	}
 
-	exist, _, err := ss.Exists(FLUME_PATH, nil)
+	exist, _, err := ss.Exists(KITEQ, nil)
 	if nil != err {
-		panic("无法创建flume_path " + err.Error())
+		panic("无法创建KITEQ " + err.Error())
 	}
 
 	if !exist {
 
-		resp, err := ss.Create(FLUME_PATH, nil, zk.CreatePersistent, zk.AclOpen)
+		resp, err := ss.Create(KITEQ, nil, zk.CreatePersistent, zk.AclOpen)
 		if nil != err {
 			panic("can't create flume root path ! " + err.Error())
 		} else {
@@ -89,20 +79,87 @@ func NewZKManager(zkhosts string) *ZKManager {
 	return &ZKManager{session: ss}
 }
 
-//注册当前进程节点
-func (self *ZKManager) RegistePath(businesses []string, childpath string) {
-	for _, business := range businesses {
-		tmppath := FLUME_SOURCE_PATH_PID + "/" + business
-		err := self.traverseCreatePath(tmppath)
-		if nil == err {
-			resp, err := self.session.Create(tmppath+"/"+childpath, nil, zk.CreateEphemeral, zk.AclOpen)
-			if nil != err {
-				log.Println("can't create flume source path [" + resp + "]," + err.Error())
-			} else {
-				log.Println("create flume source path :[" + tmppath + "/" + childpath + "]")
-			}
+//发布topic对应的server
+func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
+	for _, topic := range topics {
+		path, err := self.registePath(KITEQ_SERVER, topic, zk.CreateEphemeral, nil)
+		if nil != err {
+			return err
+		}
+
+		path, err = self.registePath(path, hostport, zk.CreateEphemeral, nil)
+		if nil != err {
+			log.Printf("ZKManager|PublishServer|FAIL|%s|%s/%s\n", err, path, hostport)
+			return err
 		}
 	}
+
+	return nil
+}
+
+//发布可以使用的topic类型的publisher
+func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport string) error {
+	for _, topic := range topics {
+		path, err := self.registePath(KITEQ_PUB+topic, groupId, zk.CreateEphemeral, nil)
+		if nil != err {
+			return err
+		}
+
+		path, err = self.registePath(path, hostport, zk.CreateEphemeral, nil)
+		if nil != err {
+			log.Printf("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, path, hostport)
+			return err
+		}
+	}
+	return nil
+}
+
+//订阅消息类型
+func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error {
+	for _, binding := range bindings {
+		data, err := MarshalBind(binding)
+		if nil != err {
+			log.Printf("ZKManager|SubscribeTopic|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binding)
+			return err
+		}
+
+		//如果为非持久订阅则直接注册临时节点
+		createType := zk.CreatePersistent
+		if !binding.Persistent {
+			createType = zk.CreateEphemeral
+		}
+
+		//注册对应topic的groupId
+		path, err := self.registePath(KITEQ_SUB+binding.Topic, binding.GroupId, createType, nil)
+		if nil != err {
+			log.Printf("ZKManager|PublishTopic|GroupId|FAIL|%s|%s/%s\n", err, path, groupId)
+			return err
+		}
+
+		//注册订阅信息
+		path, err = self.registePath(path, "bind", createType, data)
+		if nil != err {
+			log.Printf("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binding)
+			return err
+		}
+	}
+	return nil
+}
+
+//注册当前进程节点
+func (self *ZKManager) registePath(path string, childpath string, createType zk.CreateType, data []byte) (string, error) {
+	err := self.traverseCreatePath(path)
+	if nil == err {
+		resp, err := self.session.Create(path+"/"+childpath, data, createType, zk.AclOpen)
+		if nil != err {
+			log.Printf("ZKManager|CREATE NODE|FAIL|%s|%s/%s|%s|%t\n", err, path, childpath, createType, data)
+		} else {
+			log.Printf("ZKManager|CREATE NODE|SUCC|%s/%s|%s|%t\n", path, childpath, createType, data)
+		}
+		return resp, err
+	}
+	return "", err
+
 }
 
 func (self *ZKManager) traverseCreatePath(path string) error {
@@ -116,7 +173,7 @@ func (self *ZKManager) traverseCreatePath(path string) error {
 			self.session.Create(tmppath, nil, zk.CreatePersistent, zk.AclOpen)
 			return nil
 		} else if nil != err {
-			log.Println("traverseCreatePath|fail|" + err.Error())
+			log.Printf("ZKManager|traverseCreatePath|FAIL|%s\n", err.Error())
 			return err
 		}
 		tmppath += "/"
@@ -125,33 +182,59 @@ func (self *ZKManager) traverseCreatePath(path string) error {
 	return nil
 }
 
-func (self *ZKManager) GetAndWatch(business string, nwatcher *Watcher) []HostPort {
+//获取QServer并添加watcher
+func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]string, error) {
 
-	path := FLUME_PATH + "/" + business
-	exist, _, err := self.session.Exists(path, nwatcher.zkwatcher)
-
-	//存在该节点
-	if !exist && nil == err {
-		resp, err := self.session.Create(path, nil, zk.CreatePersistent, zk.AclOpen)
-		if nil != err {
-			log.Println("can't create flume path " + path + "," + err.Error())
-			return nil
-		} else {
-			log.Println("create flume path succ ! " + resp)
-		}
-	} else if nil != err {
-		log.Println("can't create path [" + path + "]!")
-		return nil
-	}
-
-	childnodes, _, err := self.session.Children(path, nwatcher.zkwatcher)
+	path := KITEQ_SERVER + topic
+	//获取topic下的所有qserver
+	children, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
-		log.Println("get data from [" + path + "] fail! " + err.Error())
-		return nil
+		log.Printf("ZKManager|GetQServerAndWatch|FAIL|%s\n", path)
+		return nil, err
 	}
 
-	//赋值新的Node
-	flumenodes := self.DecodeNode(childnodes)
+	//增加监听
+	self.addWatch(path, nwatcher)
+	return children, nil
+}
+
+//获取订阅关系并添加watcher
+func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Binding, error) {
+
+	path := KITEQ_SUB + topic
+	//获取topic下的所有qserver
+	groupIds, _, err := self.session.Children(path, nwatcher.zkwatcher)
+	if nil != err {
+		log.Printf("ZKManager|GetBindAndWatch|GroupID|FAIL|%s\n", path)
+		return nil, err
+	}
+
+	hps := make([]*Binding, 0, len(groupIds))
+	//获取topic对应的所有groupId下的订阅关系
+	for _, groupId := range groupIds {
+		path += "/" + groupId + "/bind"
+
+		bindData, _, err := self.session.Get(path, nwatcher.zkwatcher)
+		//增加监听
+		self.addWatch(path, nwatcher)
+		if nil != err {
+			log.Printf("ZKManager|GetBindAndWatch|Binding|FAIL|%s|%s\n", err, path)
+			continue
+		}
+
+		binding, err := UmarshalBind(bindData)
+		if nil != err {
+			log.Printf("ZKManager|GetBindAndWatch|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
+			continue
+		}
+
+		hps = append(hps, binding)
+	}
+
+	return hps, nil
+}
+
+func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
 
 	//监听数据变更
 	go func() {
@@ -161,15 +244,14 @@ func (self *ZKManager) GetAndWatch(business string, nwatcher *Watcher) []HostPor
 			switch change.Type {
 			case zk.Created:
 				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.BusinessWatcher(business, Created)
-
+				nwatcher.watcher.EventNotify(path, Created)
 			case zk.Deleted:
 				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.BusinessWatcher(business, Deleted)
+				nwatcher.watcher.EventNotify(path, Deleted)
 
 			case zk.Changed:
 				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.BusinessWatcher(business, Changed)
+				nwatcher.watcher.EventNotify(path, Changed)
 
 			case zk.Child:
 				self.session.Children(path, nwatcher.zkwatcher)
@@ -179,30 +261,12 @@ func (self *ZKManager) GetAndWatch(business string, nwatcher *Watcher) []HostPor
 					log.Println("recieve child's changes fail ! [" + path + "]  " + err.Error())
 				} else {
 					log.Printf("%s|child's changed %s", path, childnodes)
-					nwatcher.watcher.ChildWatcher(business, self.DecodeNode(childnodes))
+					nwatcher.watcher.ChildWatcher(path, childnodes)
 				}
 			}
 		}
-		log.Printf("out of wacher range ! [%s]\n", path)
+		log.Printf("ZKManager|addWatch|FAIL|out of wacher range ! [%s]\n", path)
 	}()
-
-	return flumenodes
-}
-
-func (self *ZKManager) DecodeNode(paths []string) []HostPort {
-
-	//由小到大排序
-	flumehost := make([]HostPort, 0)
-	//选取出一半数量最小的Host作为master
-	for _, path := range paths {
-		split := strings.Split(path, "_")
-		hostport := split[0] + ":" + split[1]
-		hp := NewHostPort(hostport)
-		flumehost = append(flumehost, hp)
-	}
-
-	log.Println("running node :%s", flumehost)
-	return flumehost
 }
 
 func (self *ZKManager) Close() {

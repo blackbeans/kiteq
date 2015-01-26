@@ -1,8 +1,8 @@
 #!/bin/bash
 
-go get -u github.com/golang/protobuf/{proto,protoc-gen-go}
+go get github.com/golang/protobuf/{proto,protoc-gen-go}
 go get github.com/go-sql-driver/mysql
-go get -u github.com/blackbeans/zk
+go get github.com/blackbeans/zk
 
 go build kiteq/stat
 go build kiteq/binding

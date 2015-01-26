@@ -22,7 +22,8 @@ type Binding struct {
 	MessageType string   `json:"messageType"` // 消息的子分类
 	BindType    BindType `json:"bindType"`    //bingd类型
 	Version     string   `json:"version"`
-	Watermark   int32    `json:"watermark"` //本分组订阅的流量
+	Watermark   int32    `json:"watermark"`  //本分组订阅的流量
+	Persistent  bool     `json:"persistent"` //是否为持久订阅 即在客户端不在线的时候也需要推送消息
 }
 
 func UmarshalBind(bind []byte) (*Binding, error) {
@@ -37,22 +38,23 @@ func MarshalBind(bind *Binding) ([]byte, error) {
 }
 
 //直接订阅
-func Bind_Direct(groupId, topic, messageType string, watermark int32) *Binding {
-	return binding(groupId, topic, messageType, BIND_DIRECT, watermark)
+func Bind_Direct(groupId, topic, messageType string, watermark int32, persistent bool) *Binding {
+	return binding(groupId, topic, messageType, BIND_DIRECT, watermark, persistent)
 }
 
 //正则订阅
-func Bind_Regx(groupId, topic, messageType string, watermark int32) *Binding {
-	return binding(groupId, topic, messageType, BIND_REGX, watermark)
+func Bind_Regx(groupId, topic, messageType string, watermark int32, persistent bool) *Binding {
+	return binding(groupId, topic, messageType, BIND_REGX, watermark, persistent)
 }
 
 //订阅
-func binding(groupId, topic, messageType string, bindType BindType, watermark int32) *Binding {
+func binding(groupId, topic, messageType string, bindType BindType, watermark int32, persistent bool) *Binding {
 	return &Binding{
 		GroupId:     groupId,
 		Topic:       topic,
 		MessageType: messageType,
 		BindType:    bindType,
 		Watermark:   watermark,
-		Version:     BIND_VERSION}
+		Version:     BIND_VERSION,
+		Persistent:  persistent}
 }
