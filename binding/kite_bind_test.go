@@ -5,7 +5,7 @@ import (
 )
 
 func TestBinding(t *testing.T) {
-	bind := Bind_Direct("s-trade-a", "trace", "pay-200", 1000)
+	bind := Bind_Direct("s-trade-a", "trace", "pay-200", 1000, true)
 	data, err := MarshalBind(bind)
 	if nil != err {
 		t.Fail()

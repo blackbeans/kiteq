@@ -3,15 +3,16 @@ package binding
 import (
 	"github.com/blackbeans/zk"
 	"log"
+	_ "net"
 	"strings"
 	"time"
 )
 
 const (
-	KITEQ        = "/kiteq/"
-	KITEQ_SERVER = KITEQ + "server/" // 临时节点 # /kiteq/server/${topic}/ip:port
-	KITEQ_PUB    = KITEQ + "pub/"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
-	KITEQ_SUB    = KITEQ + "sub/"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}/bind/#$data(bind)
+	KITEQ        = "/kiteq"
+	KITEQ_SERVER = KITEQ + "/server" // 临时节点 # /kiteq/server/${topic}/ip:port
+	KITEQ_PUB    = KITEQ + "/pub"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
+	KITEQ_SUB    = KITEQ + "/sub"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}/bind/#$data(bind)
 )
 
 type ZKManager struct {
@@ -36,13 +37,12 @@ type IWatcher interface {
 type Watcher struct {
 	watcher   IWatcher
 	zkwatcher chan zk.Event
-	path      string
 }
 
 //创建一个watcher
-func NewWatcher(path string, watcher IWatcher) *Watcher {
+func NewWatcher(watcher IWatcher) *Watcher {
 	zkwatcher := make(chan zk.Event, 10)
-	return &Watcher{path: path, watcher: watcher, zkwatcher: zkwatcher}
+	return &Watcher{watcher: watcher, zkwatcher: zkwatcher}
 }
 
 func NewZKManager(zkhosts string) *ZKManager {
@@ -67,12 +67,11 @@ func NewZKManager(zkhosts string) *ZKManager {
 	}
 
 	if !exist {
-
 		resp, err := ss.Create(KITEQ, nil, zk.CreatePersistent, zk.AclOpen)
 		if nil != err {
-			panic("can't create flume root path ! " + err.Error())
+			panic("NewZKManager|CREATE ROOT PATH|FAIL|" + KITEQ + "|" + err.Error())
 		} else {
-			log.Println("create flume root path succ ! " + resp)
+			log.Printf("NewZKManager|CREATE ROOT PATH|SUCC|%s", resp)
 		}
 	}
 
@@ -81,15 +80,15 @@ func NewZKManager(zkhosts string) *ZKManager {
 
 //发布topic对应的server
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
+
 	for _, topic := range topics {
-		path, err := self.registePath(KITEQ_SERVER, topic, zk.CreateEphemeral, nil)
+		path, err := self.registePath(KITEQ_SERVER, topic, zk.CreatePersistent, nil)
 		if nil != err {
 			return err
 		}
-
 		path, err = self.registePath(path, hostport, zk.CreateEphemeral, nil)
 		if nil != err {
-			log.Printf("ZKManager|PublishServer|FAIL|%s|%s/%s\n", err, path, hostport)
+			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, path, hostport)
 			return err
 		}
 	}
@@ -99,6 +98,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 
 //发布可以使用的topic类型的publisher
 func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport string) error {
+
 	for _, topic := range topics {
 		path, err := self.registePath(KITEQ_PUB+topic, groupId, zk.CreateEphemeral, nil)
 		if nil != err {
@@ -148,29 +148,40 @@ func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error
 
 //注册当前进程节点
 func (self *ZKManager) registePath(path string, childpath string, createType zk.CreateType, data []byte) (string, error) {
-	err := self.traverseCreatePath(path)
+	err := self.traverseCreatePath(path, createType)
 	if nil == err {
-		resp, err := self.session.Create(path+"/"+childpath, data, createType, zk.AclOpen)
+		// log.Printf("ZKManager|registePath|%s\n", path+"/"+childpath)
+
+		exists, _, err := self.session.Exists(path+"/"+childpath, nil)
 		if nil != err {
-			log.Printf("ZKManager|CREATE NODE|FAIL|%s|%s/%s|%s|%t\n", err, path, childpath, createType, data)
+			log.Printf("ZKManager|registePath|EXISTS|FAIL|%s|%s\n", err, path+"/"+childpath)
+			return "", err
+		} else if exists {
+			return path + "/" + childpath, nil
 		} else {
-			log.Printf("ZKManager|CREATE NODE|SUCC|%s/%s|%s|%t\n", path, childpath, createType, data)
+			resp, err := self.session.Create(path+"/"+childpath, data, createType, zk.AclOpen)
+			if nil != err {
+				log.Printf("ZKManager|registePath|CREATE NODE|FAIL|%s|%s/%s|%s|%t\n", err, path, childpath, createType, data)
+				return "", err
+			} else {
+				log.Printf("ZKManager|registePath|CREATE NODE|SUCC|%s/%s|%s|%t\n", path, childpath, resp, data)
+				return resp, err
+			}
 		}
-		return resp, err
+
 	}
 	return "", err
 
 }
 
-func (self *ZKManager) traverseCreatePath(path string) error {
-	split := strings.SplitN(path, "/", 3)
-	log.Println(split)
+func (self *ZKManager) traverseCreatePath(path string, createType zk.CreateType) error {
+	split := strings.Split(path, "/")
 	tmppath := ""
 	for _, v := range split {
 		tmppath += v
 		exist, _, err := self.session.Exists(tmppath, nil)
 		if nil == err && !exist {
-			self.session.Create(tmppath, nil, zk.CreatePersistent, zk.AclOpen)
+			self.session.Create(tmppath, nil, createType, zk.AclOpen)
 			return nil
 		} else if nil != err {
 			log.Printf("ZKManager|traverseCreatePath|FAIL|%s\n", err.Error())
@@ -185,7 +196,7 @@ func (self *ZKManager) traverseCreatePath(path string) error {
 //获取QServer并添加watcher
 func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]string, error) {
 
-	path := KITEQ_SERVER + topic
+	path := KITEQ_SERVER + "/" + topic
 	//获取topic下的所有qserver
 	children, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
@@ -201,7 +212,7 @@ func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]st
 //获取订阅关系并添加watcher
 func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Binding, error) {
 
-	path := KITEQ_SUB + topic
+	path := KITEQ_SUB + "/" + topic
 	//获取topic下的所有qserver
 	groupIds, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
