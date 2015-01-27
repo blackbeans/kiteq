@@ -17,13 +17,13 @@ const (
 //用于定义订阅关系的结构
 
 type Binding struct {
-	GroupId     string   `json:"groupId"`     //订阅的分组名称
-	Topic       string   `json:"topic"`       //订阅的topic
-	MessageType string   `json:"messageType"` // 消息的子分类
-	BindType    BindType `json:"bindType"`    //bingd类型
-	Version     string   `json:"version"`
-	Watermark   int32    `json:"watermark"`  //本分组订阅的流量
-	Persistent  bool     `json:"persistent"` //是否为持久订阅 即在客户端不在线的时候也需要推送消息
+	GroupId     string   `json:"groupId" 		toml:"groupId"`       //订阅的分组名称
+	Topic       string   `json:"topic" 			toml:"topic"`          //订阅的topic
+	MessageType string   `json:"messageType"	toml:"messageType"` // 消息的子分类
+	BindType    BindType `json:"bindType"		toml:"bindType"`      //bingd类型
+	Version     string   `json:"version"		toml:"version"`
+	Watermark   int32    `json:"watermark"		toml:"watermark"`   //本分组订阅的流量
+	Persistent  bool     `json:"persistent"		toml:"persistent"` //是否为持久订阅 即在客户端不在线的时候也需要推送消息
 }
 
 func UmarshalBind(bind []byte) (*Binding, error) {
