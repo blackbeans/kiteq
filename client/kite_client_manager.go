@@ -92,6 +92,7 @@ func NewKiteClientManager() *KiteClientManager {
 		subConns: make(map[string]*KiteClientPool),
 	}
 	configFile := flag.String("conf", "conf.toml", "TOML configuration file")
+	flag.Parse()
 	f, err := os.Open(*configFile)
 	if err != nil {
 		log.Fatalf("KITECLIENT|NEWCONF|FAIL|%s|%s\n", *configFile, err)
