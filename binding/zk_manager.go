@@ -12,7 +12,7 @@ const (
 	KITEQ        = "/kiteq"
 	KITEQ_SERVER = KITEQ + "/server" // 临时节点 # /kiteq/server/${topic}/ip:port
 	KITEQ_PUB    = KITEQ + "/pub"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
-	KITEQ_SUB    = KITEQ + "/sub"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}/bind/#$data(bind)
+	KITEQ_SUB    = KITEQ + "/sub"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}-bind/#$data(bind)
 )
 
 type ZKManager struct {
@@ -83,15 +83,13 @@ func NewZKManager(zkhosts string) *ZKManager {
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 	return nil
 	for _, topic := range topics {
-		path, err := self.registePath(KITEQ_SERVER, topic, zk.CreatePersistent, nil)
+		qpath := KITEQ_SERVER + "/" + topic
+		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)
 		if nil != err {
+			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
 			return err
 		}
-		path, err = self.registePath(path, hostport, zk.CreateEphemeral, nil)
-		if nil != err {
-			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, path, hostport)
-			return err
-		}
+		log.Printf("ZKManager|PublishQServer|SUCC|%s\n", path)
 	}
 
 	return nil
@@ -101,16 +99,13 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport string) error {
 	return nil
 	for _, topic := range topics {
-		path, err := self.registePath(KITEQ_PUB+topic, groupId, zk.CreateEphemeral, nil)
+		pubPath := KITEQ_PUB + "/" + topic + "/" + groupId
+		path, err := self.registePath(pubPath, hostport, zk.CreateEphemeral, nil)
 		if nil != err {
+			log.Printf("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, pubPath, hostport)
 			return err
 		}
-
-		path, err = self.registePath(path, hostport, zk.CreateEphemeral, nil)
-		if nil != err {
-			log.Printf("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, path, hostport)
-			return err
-		}
+		log.Printf("ZKManager|PublishTopic|SUCC|%s\n", path)
 	}
 	return nil
 }
@@ -131,18 +126,14 @@ func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error
 			createType = zk.CreateEphemeral
 		}
 
-		//注册对应topic的groupId
-		path, err := self.registePath(KITEQ_SUB+binding.Topic, binding.GroupId, createType, nil)
-		if nil != err {
-			log.Printf("ZKManager|PublishTopic|GroupId|FAIL|%s|%s/%s\n", err, path, groupId)
-			return err
-		}
-
-		//注册订阅信息
-		path, err = self.registePath(path, "bind", createType, data)
+		path := KITEQ_SUB + "/" + binding.Topic
+		//注册对应topic的groupId //注册订阅信息
+		succpath, err := self.registePath(path, binding.GroupId+"-bind", createType, data)
 		if nil != err {
 			log.Printf("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binding)
 			return err
+		} else {
+			log.Printf("ZKManager|PublishTopic|Bind|SUCC|%s|%s\n", succpath, binding)
 		}
 	}
 	return nil
@@ -150,48 +141,74 @@ func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error
 
 //注册当前进程节点
 func (self *ZKManager) registePath(path string, childpath string, createType zk.CreateType, data []byte) (string, error) {
-	err := self.traverseCreatePath(path, createType)
+	err := self.traverseCreatePath(path, nil, zk.CreatePersistent)
 	if nil == err {
-		// log.Printf("ZKManager|registePath|%s\n", path+"/"+childpath)
-
-		exists, _, err := self.session.Exists(path+"/"+childpath, nil)
+		err := self.innerCreatePath(path+"/"+childpath, data, createType)
 		if nil != err {
-			log.Printf("ZKManager|registePath|EXISTS|FAIL|%s|%s\n", err, path+"/"+childpath)
+			log.Printf("ZKManager|registePath|CREATE CHILD|FAIL|%s|%s\n", err, path+"/"+childpath)
 			return "", err
-		} else if exists {
-			return path + "/" + childpath, nil
 		} else {
-			resp, err := self.session.Create(path+"/"+childpath, data, createType, zk.AclOpen)
-			if nil != err {
-				log.Printf("ZKManager|registePath|CREATE NODE|FAIL|%s|%s/%s|%s|%t\n", err, path, childpath, createType, data)
-				return "", err
-			} else {
-				log.Printf("ZKManager|registePath|CREATE NODE|SUCC|%s/%s|%s|%t\n", path, childpath, resp, data)
-				return resp, err
-			}
+			return path + "/" + childpath, nil
 		}
-
 	}
 	return "", err
 
 }
 
-func (self *ZKManager) traverseCreatePath(path string, createType zk.CreateType) error {
-	split := strings.Split(path, "/")
-	tmppath := ""
-	for _, v := range split {
+func (self *ZKManager) traverseCreatePath(path string, data []byte, createType zk.CreateType) error {
+	split := strings.Split(path, "/")[1:]
+	tmppath := "/"
+	for i, v := range split {
 		tmppath += v
-		exist, _, err := self.session.Exists(tmppath, nil)
-		if nil == err && !exist {
-			self.session.Create(tmppath, nil, createType, zk.AclOpen)
-			return nil
-		} else if nil != err {
-			log.Printf("ZKManager|traverseCreatePath|FAIL|%s\n", err.Error())
+		log.Printf("ZKManager|traverseCreatePath|%s\n", tmppath)
+		if i >= len(split)-1 {
+			break
+		}
+		err := self.innerCreatePath(tmppath, nil, zk.CreatePersistent)
+		if nil != err {
+			log.Printf("ZKManager|traverseCreatePath|FAIL|%s\n", err)
 			return err
 		}
 		tmppath += "/"
+
 	}
 
+	//对叶子节点创建及添加数据
+	return self.innerCreatePath(tmppath, data, createType)
+}
+
+//内部创建节点的方法
+func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType zk.CreateType) error {
+	exist, _, err := self.session.Exists(tmppath, nil)
+	if nil == err && !exist {
+		_, err := self.session.Create(tmppath, data, createType, zk.AclOpen)
+		if nil != err {
+			log.Printf("ZKManager|innerCreatePath|FAIL|%s|%s\n", err, tmppath)
+			return err
+		}
+
+		//做一下校验等待
+		for i := 0; i < 5; i++ {
+			exist, _, _ = self.session.Exists(tmppath, nil)
+			if !exist {
+				time.Sleep(time.Duration(i*100) * time.Millisecond)
+			} else {
+				break
+			}
+		}
+
+		return err
+	} else if nil != err {
+		log.Printf("ZKManager|innerCreatePath|FAIL|%s\n", err)
+		return err
+	} else if nil != data {
+		//存在该节点，推送新数据
+		_, err := self.session.Set(tmppath, data, -1)
+		if nil != err {
+			log.Printf("ZKManager|innerCreatePath|PUSH DATA|FAIL|%s|%s|%s\n", err, tmppath, string(data))
+			return err
+		}
+	}
 	return nil
 }
 
@@ -225,19 +242,21 @@ func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Bind
 	hps := make([]*Binding, 0, len(groupIds))
 	//获取topic对应的所有groupId下的订阅关系
 	for _, groupId := range groupIds {
-		path += "/" + groupId + "/bind"
+		tmppath := path + "/" + groupId
 
-		bindData, _, err := self.session.Get(path, nwatcher.zkwatcher)
+		bindData, _, err := self.session.Get(tmppath, nwatcher.zkwatcher)
 		//增加监听
-		self.addWatch(path, nwatcher)
+		self.addWatch(tmppath, nwatcher)
 		if nil != err {
-			log.Printf("ZKManager|GetBindAndWatch|Binding|FAIL|%s|%s\n", err, path)
+			log.Printf("ZKManager|GetBindAndWatch|Binding|FAIL|%s|%s\n", err, tmppath)
 			continue
 		}
 
+		log.Printf("ZKManager|GetBindAndWatch|Binding|SUCC|%s|%s\n", tmppath, string(bindData))
+
 		binding, err := UmarshalBind(bindData)
 		if nil != err {
-			log.Printf("ZKManager|GetBindAndWatch|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
+			log.Printf("ZKManager|GetBindAndWatch|UmarshalBind|FAIL|%s|%s|%s\n", err, tmppath, string(bindData))
 			continue
 		}
 
@@ -271,9 +290,9 @@ func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
 				//子节点发生变更，则获取全新的子节点
 				childnodes, _, err := self.session.Children(path, nil)
 				if nil != err {
-					log.Println("recieve child's changes fail ! [" + path + "]  " + err.Error())
+					log.Printf("ZKManager|addWatch|Child|%s|%s\n", err, path)
 				} else {
-					log.Printf("%s|child's changed %s", path, childnodes)
+					log.Printf("ZKManager|%s|child's changed| %s\n", path, childnodes)
 					nwatcher.watcher.ChildWatcher(path, childnodes)
 				}
 			}
