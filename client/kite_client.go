@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"kiteq/protocol"
 	"kiteq/remoting/session"
 	"kiteq/stat"
@@ -11,6 +10,8 @@ import (
 	"net"
 	"sync/atomic"
 	"time"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type KiteClient struct {
@@ -39,7 +40,8 @@ func NewKitClient(local, remote, groupId, secretKey string) *KiteClient {
 		isClose:     false,
 		holder:      make(map[int32]chan *protocol.ResponsePacket, MAX_WATER_MARK),
 		respHolder:  make([]chan *protocol.ResponsePacket, MAX_WATER_MARK, MAX_WATER_MARK),
-		flowContorl: stat.NewFlowControl(groupId)}
+		flowContorl: stat.NewFlowControl(groupId),
+	}
 
 	for i := 0; i < MAX_WATER_MARK; i++ {
 		client.respHolder[i] = make(chan *protocol.ResponsePacket, 100)
