@@ -22,15 +22,15 @@ type ZKManager struct {
 type ZkEvent zk.EventType
 
 const (
-	Created ZkEvent = 1 // From Exists, Get
-	Deleted ZkEvent = 2 // From Exists, Get
-	Changed ZkEvent = 3 // From Exists, Get
-	Child   ZkEvent = 4 // From Children
+	Created ZkEvent = 1 // From Exists, Get NodeCreated (1),
+	Deleted ZkEvent = 2 // From Exists, Get	NodeDeleted (2),
+	Changed ZkEvent = 3 // From Exists, Get NodeDataChanged (3),
+	Child   ZkEvent = 4 // From Children NodeChildrenChanged (4)
 )
 
 //每个watcher
 type IWatcher interface {
-	EventNotify(path string, eventType ZkEvent)
+	EventNotify(path string, eventType ZkEvent, binds []*Binding)
 	ChildWatcher(path string, childNode []string)
 }
 
@@ -111,27 +111,40 @@ func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport st
 
 //订阅消息类型
 func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error {
-	for _, binding := range bindings {
-		data, err := MarshalBind(binding)
+
+	//按topic分组
+	groupBind := make(map[string][]*Binding, 10)
+	for _, b := range bindings {
+		g, ok := groupBind[b.Topic]
+		if !ok {
+			g = make([]*Binding, 0, 2)
+		}
+		b.GroupId = groupId
+		g = append(g, b)
+		groupBind[b.Topic] = g
+	}
+
+	for topic, binds := range groupBind {
+		data, err := MarshalBinds(binds)
 		if nil != err {
-			log.Printf("ZKManager|SubscribeTopic|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binding)
+			log.Printf("ZKManager|SubscribeTopic|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
 			return err
 		}
 
 		//如果为非持久订阅则直接注册临时节点
 		createType := zk.CreatePersistent
-		if !binding.Persistent {
-			createType = zk.CreateEphemeral
-		}
+		// if !binding.Persistent {
+		// 	createType = zk.CreateEphemeral
+		// }
 
-		path := KITEQ_SUB + "/" + binding.Topic
+		path := KITEQ_SUB + "/" + topic
 		//注册对应topic的groupId //注册订阅信息
-		succpath, err := self.registePath(path, binding.GroupId+"-bind", createType, data)
+		succpath, err := self.registePath(path, groupId+"-bind", createType, data)
 		if nil != err {
-			log.Printf("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binding)
+			log.Printf("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binds)
 			return err
 		} else {
-			log.Printf("ZKManager|PublishTopic|Bind|SUCC|%s|%s\n", succpath, binding)
+			log.Printf("ZKManager|PublishTopic|Bind|SUCC|%s|%s\n", succpath, binds)
 		}
 	}
 	return nil
@@ -233,35 +246,44 @@ func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Bind
 	//获取topic下的所有qserver
 	groupIds, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
-		log.Printf("ZKManager|GetBindAndWatch|GroupID|FAIL|%s\n", path)
+		log.Printf("ZKManager|GetBindAndWatch|GroupID|FAIL|%s|%s\n", err, path)
 		return nil, err
 	}
+
+	//加入对订阅topic节点的变化
+	self.addWatch(path, nwatcher)
 
 	hps := make([]*Binding, 0, len(groupIds))
 	//获取topic对应的所有groupId下的订阅关系
 	for _, groupId := range groupIds {
 		tmppath := path + "/" + groupId
-
-		bindData, _, err := self.session.Get(tmppath, nwatcher.zkwatcher)
-		//增加监听
-		self.addWatch(tmppath, nwatcher)
+		binds, err := self.getBindData(tmppath, nwatcher.zkwatcher)
 		if nil != err {
-			log.Printf("ZKManager|GetBindAndWatch|Binding|FAIL|%s|%s\n", err, tmppath)
 			continue
 		}
-
-		log.Printf("ZKManager|GetBindAndWatch|Binding|SUCC|%s|%s\n", tmppath, string(bindData))
-
-		binding, err := UmarshalBind(bindData)
-		if nil != err {
-			log.Printf("ZKManager|GetBindAndWatch|UmarshalBind|FAIL|%s|%s|%s\n", err, tmppath, string(bindData))
-			continue
-		}
-
-		hps = append(hps, binding)
+		hps = append(hps, binds...)
 	}
 
 	return hps, nil
+}
+
+//获取绑定对象的数据
+func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Binding, error) {
+
+	bindData, _, err := self.session.Get(path, zkwatcher)
+	if nil != err {
+		log.Printf("ZKManager|getBindData|Binding|FAIL|%s|%s\n", err, path)
+		return nil, err
+	}
+
+	log.Printf("ZKManager|getBindData|Binding|SUCC|%s|%s\n", path, string(bindData))
+
+	binding, err := UmarshalBinds(bindData)
+	if nil != err {
+		log.Printf("ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
+
+	}
+	return binding, err
 }
 
 func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
@@ -274,19 +296,25 @@ func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
 			switch change.Type {
 			case zk.Created:
 				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.EventNotify(path, Created)
+				nwatcher.watcher.EventNotify(path, Created, nil)
 			case zk.Deleted:
 				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.EventNotify(path, Deleted)
+				nwatcher.watcher.EventNotify(path, Deleted, nil)
 
 			case zk.Changed:
-				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.EventNotify(path, Changed)
+
+				//获取一下数据
+				binding, err := self.getBindData(path, nwatcher.zkwatcher)
+				if nil != err {
+					log.Printf("ZKManager|addWatch|Changed|Get DATA|FAIL|%s|%s\n", err, path)
+					//忽略
+					continue
+				}
+				nwatcher.watcher.EventNotify(path, Changed, binding)
 
 			case zk.Child:
-				self.session.Children(path, nwatcher.zkwatcher)
 				//子节点发生变更，则获取全新的子节点
-				childnodes, _, err := self.session.Children(path, nil)
+				childnodes, _, err := self.session.Children(path, nwatcher.zkwatcher)
 				if nil != err {
 					log.Printf("ZKManager|addWatch|Child|%s|%s\n", err, path)
 				} else {

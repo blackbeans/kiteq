@@ -9,7 +9,7 @@ import (
 type DefaultWatcher struct {
 }
 
-func (self *DefaultWatcher) EventNotify(path string, eventType ZkEvent) {
+func (self *DefaultWatcher) EventNotify(path string, eventType ZkEvent, binds []*Binding) {
 	fmt.Printf("DefaultWatcher|EventNotify|%s|%t\n", path, eventType)
 }
 func (self *DefaultWatcher) ChildWatcher(path string, childNode []string) {
@@ -59,6 +59,7 @@ func cleanUp(t *testing.T, zk *ZKManager, path string) {
 		if len(tchildren) <= 0 {
 			//开始删除
 			zk.session.Delete(path+"/"+v, -1)
+			time.Sleep(2 * time.Second)
 			t.Logf("cleanUp|%s\n", path+"/"+v)
 		} else {
 			cleanUp(t, zk, path+"/"+v)

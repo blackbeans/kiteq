@@ -6,7 +6,7 @@ import (
 
 func TestBinding(t *testing.T) {
 	bind := Bind_Direct("s-trade-a", "trace", "pay-200", 1000, true)
-	data, err := MarshalBind(bind)
+	data, err := MarshalBinds([]*Binding{bind})
 	if nil != err {
 		t.Fail()
 		return
@@ -14,12 +14,12 @@ func TestBinding(t *testing.T) {
 
 	t.Log(string(data))
 
-	ubind, err := UmarshalBind(data)
+	binds, err := UmarshalBinds(data)
 	if nil != err {
 		t.Fail()
 		return
 	}
-
+	ubind := binds[0]
 	if bind.BindType == ubind.BindType &&
 		bind.GroupId == ubind.GroupId &&
 		bind.Topic == ubind.Topic &&
