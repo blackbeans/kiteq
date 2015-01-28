@@ -46,7 +46,6 @@ func NewWatcher(watcher IWatcher) *Watcher {
 }
 
 func NewZKManager(zkhosts string) *ZKManager {
-	return nil
 	if len(zkhosts) <= 0 {
 		log.Println("使用默认zkhosts！|localhost:2181\n")
 		zkhosts = "localhost:2181"
@@ -81,7 +80,7 @@ func NewZKManager(zkhosts string) *ZKManager {
 
 //发布topic对应的server
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
-	return nil
+
 	for _, topic := range topics {
 		qpath := KITEQ_SERVER + "/" + topic
 		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)
@@ -97,7 +96,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 
 //发布可以使用的topic类型的publisher
 func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport string) error {
-	return nil
+
 	for _, topic := range topics {
 		pubPath := KITEQ_PUB + "/" + topic + "/" + groupId
 		path, err := self.registePath(pubPath, hostport, zk.CreateEphemeral, nil)
@@ -112,7 +111,6 @@ func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport st
 
 //订阅消息类型
 func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error {
-	return nil
 	for _, binding := range bindings {
 		data, err := MarshalBind(binding)
 		if nil != err {
@@ -214,7 +212,7 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 
 //获取QServer并添加watcher
 func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]string, error) {
-	return []string{":18000"}, nil
+
 	path := KITEQ_SERVER + "/" + topic
 	//获取topic下的所有qserver
 	children, _, err := self.session.Children(path, nwatcher.zkwatcher)

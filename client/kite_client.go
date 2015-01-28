@@ -47,7 +47,7 @@ func NewKitClient(local, remote, groupId, secretKey string) *KiteClient {
 		client.respHolder[i] = make(chan *protocol.ResponsePacket, 100)
 	}
 
-	// client.Start()
+	//client.Start()
 	return client
 }
 
@@ -68,6 +68,7 @@ func (self *KiteClient) dial() (*net.TCPConn, error) {
 }
 
 func (self *KiteClient) Start() {
+
 	//连接
 	conn, err := self.dial()
 	if nil != err {
