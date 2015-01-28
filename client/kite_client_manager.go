@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"kiteq/binding"
+	"kiteq/protocol"
 	"log"
 	"os"
 )
@@ -110,4 +111,13 @@ func NewKiteClientManager() *KiteClientManager {
 		log.Fatalf("KITECLIENT|ZKREGISTER|FAIL|%s\n", err)
 	}
 	return ins
+}
+
+func (self *KiteClientManager) SendMessage(msg *protocol.StringMessage) error {
+	clientPool := self.pubConns[*msg.Header.Topic]
+	if clientPool == nil {
+		return errors.New(fmt.Sprintf("THIS CLIENT CANT SEND TYPE %s\n", msg.Header.Topic))
+	}
+	client := clientPool.Get()
+	return client.SendMessage(msg)
 }
