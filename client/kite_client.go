@@ -47,7 +47,7 @@ func NewKitClient(local, remote, groupId, secretKey string) *KiteClient {
 		client.respHolder[i] = make(chan *protocol.ResponsePacket, 100)
 	}
 
-	//client.Start()
+	client.Start()
 	return client
 }
 
