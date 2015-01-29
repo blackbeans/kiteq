@@ -29,7 +29,7 @@ func (self *KiteClientManager) String() string {
 	return fmt.Sprintf("\npubs:%s \nlocal:%s \nsubs:%s\n", self.Pubs, self.Local, self.Subs)
 }
 
-func (self *KiteClientManager) EventNotify(path string, eventType binding.ZkEvent) {
+func (self *KiteClientManager) EventNotify(path string, eventType binding.ZkEvent, binds []*binding.Binding) {
 	// @todo关闭或者新增相应的pub/sub connections
 	log.Println("KITE CLIENT MANAGER|ZKEVENT NOTIFY|PATH|%s|ZKEVENT|%s\n", path, eventType)
 }
