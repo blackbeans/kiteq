@@ -98,7 +98,7 @@ outter:
 }
 
 //根据topic和messageType 类型获取订阅关系
-func (self *BindExchanger) FindBinds(topic string, messageType string) []*Binding {
+func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *Binding) bool) []*Binding {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	groups, ok := self.exchanger[topic]
@@ -110,7 +110,8 @@ func (self *BindExchanger) FindBinds(topic string, messageType string) []*Bindin
 	validBinds := make([]*Binding, 0, 10)
 	for _, binds := range groups {
 		for _, b := range binds {
-			if b.matches(topic, messageType) {
+			//匹配并且不被过滤
+			if b.matches(topic, messageType) && !filter(b) {
 				validBinds = append(validBinds, b)
 			}
 		}

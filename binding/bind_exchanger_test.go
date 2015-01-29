@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+func filter(b *Binding) bool {
+
+	return false
+}
+
 func TestSubscribeBindings(t *testing.T) {
 
 	zkmanager := NewZKManager("localhost:2181")
@@ -25,7 +30,7 @@ func TestSubscribeBindings(t *testing.T) {
 		t.Fail()
 	}
 
-	tradeBind := exchanger.FindBinds("trade", "trade-succ-200")
+	tradeBind := exchanger.FindBinds("trade", "trade-succ-200", filter)
 	if len(tradeBind) != 1 {
 		t.Fail()
 		return
@@ -37,7 +42,7 @@ func TestSubscribeBindings(t *testing.T) {
 		return
 	}
 
-	feedBindU := exchanger.FindBinds("feed", "feed-geo-update")
+	feedBindU := exchanger.FindBinds("feed", "feed-geo-update", filter)
 
 	if len(feedBindU) != 1 {
 		t.Fail()
@@ -51,7 +56,7 @@ func TestSubscribeBindings(t *testing.T) {
 		return
 	}
 
-	feedBindD := exchanger.FindBinds("feed", "feed-geo-delete")
+	feedBindD := exchanger.FindBinds("feed", "feed-geo-delete", filter)
 	if len(feedBindD) != 1 {
 		t.Fail()
 		return
@@ -71,7 +76,7 @@ func TestSubscribeBindings(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 
-	tradeBind = exchanger.FindBinds("trade", "trade-succ-200")
+	tradeBind = exchanger.FindBinds("trade", "trade-succ-200", filter)
 	if len(tradeBind) != 0 {
 		t.Fail()
 		return
