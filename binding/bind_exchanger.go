@@ -23,26 +23,33 @@ func NewBindExchanger(zkhost string) *BindExchanger {
 }
 
 //推送Qserver到配置中心
-func (self *BindExchanger) PushQServer(hostport string, topics []string) {
+func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	err := self.zkmanager.PublishQServer(hostport, topics)
 	if nil != err {
-		log.Fatalf("BindExchanger|PushQServer|FAIL|%s|%s|%s\n", err, hostport, topics)
+		log.Printf("BindExchanger|PushQServer|FAIL|%s|%s|%s\n", err, hostport, topics)
+		return false
 	}
 	log.Printf("BindExchanger|PushQServer|SUCC|%s|%s\n", hostport, topics)
 	self.topics = append(self.topics, topics...)
 	sort.Strings(self.topics)
+
+	//订阅订阅关系变更
+	return self.subscribeBinds(self.topics)
 }
 
 //监听topics的对应的订阅关系的变更
-func (self *BindExchanger) SubscribeBinds(topics []string) {
+func (self *BindExchanger) subscribeBinds(topics []string) bool {
 	for _, topic := range topics {
 		binds, err := self.zkmanager.GetBindAndWatch(topic, NewWatcher(self))
 		if nil != err {
-			log.Fatalf("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
+			log.Printf("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
+			return false
 		} else {
 			self.onBindChanged(topic, binds)
 		}
 	}
+
+	return true
 }
 
 //订阅关系改变
@@ -91,7 +98,7 @@ outter:
 }
 
 //根据topic和messageType 类型获取订阅关系
-func (self *BindExchanger) FindBinds(topic string, messageType string) []*Binding {
+func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *Binding) bool) []*Binding {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	groups, ok := self.exchanger[topic]
@@ -103,7 +110,8 @@ func (self *BindExchanger) FindBinds(topic string, messageType string) []*Bindin
 	validBinds := make([]*Binding, 0, 10)
 	for _, binds := range groups {
 		for _, b := range binds {
-			if b.matches(topic, messageType) {
+			//匹配并且不被过滤
+			if b.matches(topic, messageType) && !filter(b) {
 				validBinds = append(validBinds, b)
 			}
 		}
@@ -154,6 +162,7 @@ func (self *BindExchanger) ChildWatcher(path string, childNode []string) {
 		}
 
 		self.lock.Lock()
+		self.lock.Unlock()
 
 		groupIds, ok := self.exchanger[topic]
 		if !ok {
@@ -182,8 +191,6 @@ func (self *BindExchanger) ChildWatcher(path string, childNode []string) {
 
 		//直接替换到当前topic中的订阅关系
 		self.exchanger[topic] = copyMap
-
-		self.lock.Unlock()
 
 	} else {
 		//其他都不处理，因为服务端只有对订阅关系节点的处理
