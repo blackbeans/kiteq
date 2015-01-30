@@ -1,7 +1,7 @@
 package handler
 
 import (
-	_ "log"
+// "log"
 )
 
 //远程操作的remotinghandler

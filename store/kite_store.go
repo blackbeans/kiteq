@@ -28,6 +28,10 @@ func (self *MessageEntity) String() string {
 	return fmt.Sprintf("id:%s topic:%s commited:%t body:%s", self.messageId, self.topic, self.commited, string(self.body))
 }
 
+func (self *MessageEntity) GetBody() []byte {
+	return self.body
+}
+
 //创建stringmessage
 func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 	entity := &MessageEntity{

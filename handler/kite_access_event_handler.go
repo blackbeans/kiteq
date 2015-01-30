@@ -2,6 +2,7 @@ package handler
 
 import (
 	"kiteq/protocol"
+	"kiteq/remoting/session"
 	// "log"
 )
 
@@ -9,13 +10,15 @@ import (
 type AccessHandler struct {
 	BaseForwardHandler
 	IEventProcessor
+	sessionmanager *session.SessionManager
 }
 
 //------创建鉴权handler
-func NewAccessHandler(name string) *AccessHandler {
+func NewAccessHandler(name string, sessionmanager *session.SessionManager) *AccessHandler {
 	ahandler := &AccessHandler{}
 	ahandler.name = name
 	ahandler.processor = ahandler
+	ahandler.sessionmanager = sessionmanager
 	return ahandler
 }
 
@@ -39,7 +42,8 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	//做权限校验.............
-
+	// 权限验证通过 保存到session
+	self.sessionmanager.Add(aevent.GroupId, aevent.session)
 	aevent.session.GroupId = aevent.GroupId
 	//响应包
 	responsePacket := &protocol.ResponsePacket{

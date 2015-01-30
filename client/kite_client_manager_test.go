@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -34,7 +35,7 @@ func messageId() string {
 	return fmt.Sprintf("%x", b)
 }
 
-func TestNew(t *testing.T) {
+func TestNewManager(t *testing.T) {
 	// 创建客户端
 	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456")
 	// 设置发送类型
@@ -44,7 +45,7 @@ func TestNew(t *testing.T) {
 	// 设置接收类型
 	if err := manager.SetSubs(
 		[]*binding.Binding{
-			binding.Bind_Direct("s-trade-a", "trade", "pay-200", 1000, true),
+			binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 		},
 		// 这是从服务器投递过来的message
 		func(msg *protocol.StringMessage) bool {
@@ -64,4 +65,6 @@ func TestNew(t *testing.T) {
 	} else {
 		log.Println("SEND MESSAGE |SUCCESS")
 	}
+	time.Sleep(time.Second * 10)
+
 }

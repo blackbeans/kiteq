@@ -140,12 +140,6 @@ func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
 
 }
 
-func (self *KiteClient) RecvMessage(msgs chan *protocol.StringMessage) error {
-	for {
-
-	}
-}
-
 func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {
 	// self.write(cmdType, packet)
 	// return nil

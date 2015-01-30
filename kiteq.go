@@ -5,6 +5,7 @@ import (
 	"kiteq/binding"
 	"kiteq/handler"
 	"kiteq/remoting/server"
+	"kiteq/remoting/session"
 	"kiteq/store"
 	"log"
 	"net"
@@ -38,16 +39,23 @@ func main() {
 		kitedb = store.NewKiteMysql(*mysql)
 	}
 	// 临时在这里注册一下
-	zk := binding.NewZKManager("")
-	zk.PublishQServer(*bindHost, []string{"trade"})
+	// zk := binding.NewZKManager("")
+	// zk.PublishQServer(*bindHost, []string{"trade"})
+	// 临时在这里创建的SessionManager
+	sessionManager := session.NewSessionManager()
+	// 临时在这里创建的BindExchanger
+	exchanger := binding.NewBindExchanger("localhost:2181")
+	exchanger.PushQServer(*bindHost, []string{"trade"})
 
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline
 	pipeline := handler.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
-	pipeline.RegisteHandler("access", handler.NewAccessHandler("access"))
+	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", sessionManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", sessionManager, kitedb))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
 
 	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second, pipeline)

@@ -120,5 +120,6 @@ func (self *KiteClientManager) SendMessage(msg *protocol.StringMessage) error {
 		return errors.New(fmt.Sprintf("THIS CLIENT CANT SEND TYPE %s\n", msg.Header.Topic))
 	}
 	client := clientPool.Get()
+	defer clientPool.Put(client)
 	return client.SendMessage(msg)
 }

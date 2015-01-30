@@ -63,7 +63,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 			deliver.Topic = pevent.entity.Header.GetTopic()
 			deliver.MessageType = pevent.entity.Header.GetMessageType()
 			deliver.ExpiredTime = pevent.entity.Header.GetExpiredTime()
-			ctx.SendForward(event)
+			ctx.SendForward(deliver)
 
 		}()
 		responsePacket.Status = protocol.RESP_STATUS_SUCC
