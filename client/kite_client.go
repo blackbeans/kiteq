@@ -104,7 +104,7 @@ func (self *KiteClient) onPacketRecieve(session *session.Session, packet []byte)
 		//ignore
 		log.Printf("KiteClient|onPacketRecieve|INALID PACKET|%s|%t\n", err, packet)
 	} else {
-
+		log.Println("client recv packet", respPacket)
 		ch, ok := self.holder[respPacket.Opaque]
 		if ok {
 			ch <- respPacket

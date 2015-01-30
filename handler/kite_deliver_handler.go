@@ -1,7 +1,12 @@
 package handler
 
 import (
+	"kiteq/protocol"
 	"kiteq/remoting/session"
+	"kiteq/store"
+	// "log"
+
+	"github.com/golang/protobuf/proto"
 )
 
 //----------------持久化的handler
@@ -9,14 +14,16 @@ type DeliverHandler struct {
 	BaseForwardHandler
 	IEventProcessor
 	sessionmanager *session.SessionManager
+	kitestore      store.IKiteStore
 }
 
 //------创建deliverpre
-func NewDeliverHandler(name string, sessionmanager *session.SessionManager) *DeliverHandler {
+func NewDeliverHandler(name string, sessionmanager *session.SessionManager, kitestore store.IKiteStore) *DeliverHandler {
 	phandler := &DeliverHandler{}
 	phandler.name = name
 	phandler.processor = phandler
 	phandler.sessionmanager = sessionmanager
+	phandler.kitestore = kitestore
 	return phandler
 }
 
@@ -45,9 +52,24 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	})
 
 	//获取投递的消息数据
+	entity := self.kitestore.Query(pevent.MessageId)
+	// @todo 判断类型创建string或者byte message
+	message := &protocol.StringMessage{}
+	message.Header = entity.Header
+	message.Body = proto.String(string(entity.GetBody()))
+	data, err := proto.Marshal(message)
+	if nil != err {
+		return err
+	}
 
+	wpacket := &protocol.RequestPacket{
+		CmdType: protocol.CMD_TYPE_STRING_MESSAGE,
+		Data:    data,
+		// @todo 生成序号如何生成
+		Opaque: 1,
+	}
 	//创建投递事件
-	revent := newRemotingEvent(nil, sessions...)
+	revent := newRemotingEvent(wpacket, sessions...)
 
 	//向后转发
 	ctx.SendForward(revent)
