@@ -104,7 +104,7 @@ func (self *KiteClient) onPacketRecieve(session *session.Session, packet []byte)
 		//ignore
 		log.Printf("KiteClient|onPacketRecieve|INALID PACKET|%s|%t\n", err, packet)
 	} else {
-
+		log.Println("client recv packet", respPacket)
 		ch, ok := self.holder[respPacket.Opaque]
 		if ok {
 			ch <- respPacket
@@ -138,6 +138,12 @@ func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
 
 	return self.innerSend(protocol.CMD_TYPE_STRING_MESSAGE, packet)
 
+}
+
+func (self *KiteClient) RecvMessage(msgs chan *protocol.StringMessage) error {
+	for {
+
+	}
 }
 
 func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {

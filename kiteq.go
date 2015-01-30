@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"kiteq/binding"
 	"kiteq/handler"
 	"kiteq/remoting/server"
 	"kiteq/store"
@@ -36,6 +37,9 @@ func main() {
 	} else {
 		kitedb = store.NewKiteMysql(*mysql)
 	}
+	// 临时在这里注册一下
+	zk := binding.NewZKManager("")
+	zk.PublishQServer(*bindHost, []string{"trade"})
 
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline

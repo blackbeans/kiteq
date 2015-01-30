@@ -13,7 +13,7 @@ type KiteClientPool struct {
 	secretKey  string
 	remotes    []string
 	roundRobin int
-	sync.Locker
+	sync.Mutex
 	queue chan *KiteClient
 }
 
