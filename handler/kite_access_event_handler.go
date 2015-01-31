@@ -41,15 +41,17 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	//做权限校验.............
 
 	aevent.session.GroupId = aevent.GroupId
+
+	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
+
 	//响应包
-	responsePacket := &protocol.ResponsePacket{
-		Opaque:     aevent.opaque,
-		RemoteAddr: aevent.session.RemotingAddr(),
-		CmdType:    protocol.CMD_CONN_META,
-		Status:     protocol.RESP_STATUS_SUCC}
+	packet := protocol.NewPacket(
+		aevent.opaque,
+		protocol.CMD_CONN_AUTH,
+		cmd)
 
 	//向当前连接写入一个存储成功的response
-	remoteEvent := newRemotingEvent(responsePacket, aevent.session)
+	remoteEvent := newRemotingEvent(packet, aevent.session)
 
 	//向后走网络传输
 	ctx.SendForward(remoteEvent)

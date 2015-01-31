@@ -40,7 +40,7 @@ func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 		commited:     msg.GetHeader().GetCommited(),
 		expiredTime:  msg.GetHeader().GetExpiredTime(),
 		//消息种类
-		msgType: protocol.CMD_TYPE_STRING_MESSAGE,
+		msgType: protocol.CMD_STRING_MESSAGE,
 		body:    []byte(msg.GetBody())}
 	return entity
 
@@ -58,7 +58,7 @@ func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 		expiredTime:  msg.GetHeader().GetExpiredTime(),
 
 		//消息种类
-		msgType: protocol.CMD_TYPE_BYTES_MESSAGE,
+		msgType: protocol.CMD_BYTES_MESSAGE,
 		body:    msg.GetBody()}
 
 	return entity

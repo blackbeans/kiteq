@@ -42,72 +42,72 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
-
 	//decode2requestPacket
-	packet := self.decode(pevent.packet)
-	if nil == packet {
+	tlv, err := protocol.UnmarshalTLV(pevent.packet)
+	if nil == tlv || nil != err {
+		log.Printf("PacketHandler|UnmarshalTLV|FAIL|%s|%s\n", err, pevent.packet)
 		//如果为空
 		return INVALID_PACKET_ERROR
 	}
 
-	event, err := self.wrapEvent(pevent, packet)
+	cevent, err := self.handlePacket(pevent, tlv)
 	if nil != err {
-		log.Printf("PacketHandler|Process|wrapEvent|FAIL|%s\n", err)
-	} else {
-		//向后投递
-		ctx.SendForward(event)
+		return err
 	}
-	return err
-
+	ctx.SendForward(cevent)
+	return nil
 }
 
-func (self *PacketHandler) decode(packet []byte) *protocol.RequestPacket {
+//对于响应事件
 
-	//解析packet的数据位requestPacket
-	reqPacket := &protocol.RequestPacket{}
-	err := reqPacket.Unmarshal(packet)
-	if nil != err {
-		//ignore
-		log.Printf("PacketHandler|decode|INALID PACKET|%s|%t\n", err, packet)
-		return nil
-	} else {
-		return reqPacket
-	}
-}
-
-func (self *PacketHandler) wrapEvent(pevent *PacketEvent, packet *protocol.RequestPacket) (IEvent, error) {
+//对于请求事件
+func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Packet) (IEvent, error) {
 	var err error
 	var event IEvent
 	//根据类型反解packet
 	switch packet.CmdType {
 	//连接的元数据
 	case protocol.CMD_CONN_META:
-		connMeta := &protocol.ConnectioMetaPacket{}
+		connMeta := &protocol.ConnMeta{}
 		err = proto.Unmarshal(packet.Data, connMeta)
 		if nil == err {
 			event = NewAccessEvent(connMeta.GetGroupId(), connMeta.GetSecretKey(), pevent.session, packet.Opaque)
 		}
+		//连接授权确认
+	case protocol.CMD_CONN_AUTH:
+		auth := &protocol.ConnAuthAck{}
+		err = proto.Unmarshal(packet.Data, auth)
+
 	//心跳
-	case protocol.CMD_TYPE_HEARTBEAT:
-		hearbeat := &protocol.HeartBeatACKPacket{}
+	case protocol.CMD_HEARTBEAT:
+		hearbeat := &protocol.HeartBeat{}
 		err = proto.Unmarshal(packet.Data, hearbeat)
+		//投递结果确认
+	case protocol.CMD_DELIVERY_ACK:
+		delAck := &protocol.DeliveryAck{}
+		err = proto.Unmarshal(packet.Data, delAck)
+
+		//消息持久化
+	case protocol.CMD_MESSAGE_STORE_ACK:
+		pesisteAck := &protocol.MessageStoreAck{}
+		err = proto.Unmarshal(packet.Data, pesisteAck)
 
 	case protocol.CMD_TX_ACK:
-		txAck := &protocol.TranscationACKPacket{}
+		txAck := &protocol.TxACKPacket{}
 		err = proto.Unmarshal(packet.Data, txAck)
 	//发送的是bytesmessage
-	case protocol.CMD_TYPE_BYTES_MESSAGE:
+	case protocol.CMD_BYTES_MESSAGE:
 		msg := &protocol.BytesMessage{}
 		err = proto.Unmarshal(packet.Data, msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_TYPE_BYTES_MESSAGE, msg, pevent.session, packet.Opaque)
+			event = NewAcceptEvent(protocol.CMD_BYTES_MESSAGE, msg, pevent.session, packet.Opaque)
 		}
 	//发送的是StringMessage
-	case protocol.CMD_TYPE_STRING_MESSAGE:
+	case protocol.CMD_STRING_MESSAGE:
 		msg := &protocol.StringMessage{}
 		err = proto.Unmarshal(packet.Data, msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_TYPE_STRING_MESSAGE, msg, pevent.session, packet.Opaque)
+			event = NewAcceptEvent(protocol.CMD_STRING_MESSAGE, msg, pevent.session, packet.Opaque)
 		}
 	}
 

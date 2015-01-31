@@ -9,20 +9,26 @@ import (
 
 type ITLVPacket interface {
 	Marshal() []byte
-	Unmarshal(packet []byte) error
+	Unmarshal(r *bytes.Reader) error
 }
 
 //请求的packet
-type RequestPacket struct {
-	CmdType    uint8  //类型
-	dataLength uint32 //数据长度
-	Data       []byte
-	Opaque     int32
+type Packet struct {
+	CmdType uint8 //类型
+	Data    []byte
+	Opaque  int32
 }
 
-func (self *RequestPacket) Marshal() []byte {
-	//总长度	  4 字节+ 1字节 + 4字节 + var + \r + \n
-	length := REQ_PACKET_HEAD_LEN + len(self.Data) + 2
+func NewPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
+	return &Packet{
+		CmdType: cmdtype,
+		Data:    data,
+		Opaque:  opaque}
+}
+
+func (self *Packet) Marshal() []byte {
+	//总长度	 1+ 4 字节+ 1字节 + 4字节 + var + \r + \n
+	length := PACKET_HEAD_LEN + len(self.Data) + 2
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 
@@ -35,99 +41,54 @@ func (self *RequestPacket) Marshal() []byte {
 	return buff.Bytes()
 }
 
-func (self *RequestPacket) Unmarshal(upacket []byte) error {
+var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
-	packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
-	reader := bytes.NewReader(packet)
+func (self *Packet) Unmarshal(r *bytes.Reader) error {
 
-	err := binary.Read(reader, binary.BigEndian, &self.Opaque)
+	err := binary.Read(r, binary.BigEndian, &self.Opaque)
 	if nil != err {
 		return err
 	}
 
-	err = binary.Read(reader, binary.BigEndian, &self.CmdType)
+	err = binary.Read(r, binary.BigEndian, &self.CmdType)
 	if nil != err {
 		return err
 	}
 
-	err = binary.Read(reader, binary.BigEndian, &self.dataLength)
+	var dataLength uint32 //数据长度
+	err = binary.Read(r, binary.BigEndian, &dataLength)
 	if nil != err {
 		return err
 	}
 
-	if self.dataLength > 0 {
+	if dataLength > 0 {
 		//读取数据包
-		self.Data = make([]byte, self.dataLength, self.dataLength)
-		err = binary.Read(reader, binary.BigEndian, self.Data)
+		self.Data = make([]byte, dataLength, dataLength)
+		err = binary.Read(r, binary.BigEndian, self.Data)
 		rl := uint32(len(self.Data))
-		if nil != err || rl != self.dataLength {
-			// log.Printf("RequestPacket|Unmarshal|Corrupt Data|%s|%d/%d|%t\n", err, rl,
-			// 	self.dataLength, packet)
+		if nil != err || rl != dataLength {
+			// log.Printf("Packet|Unmarshal|Corrupt Data|%s|%d/%d|%t\n", err, rl,
+			// 	dataLength, packet)
 			return errors.New("Corrupt PacketData")
 		}
 
 	} else {
-		log.Printf("RequestPacket|Unmarshal|NO Data|%t\n", self)
+		log.Printf("Packet|Unmarshal|NO Data|%t\n", self)
 	}
 
 	return nil
 }
 
-//返回响应packet
-type ResponsePacket struct {
-	CmdType    uint8
-	Opaque     int32
-	Status     int32
-	RemoteAddr string
-}
+//解码packet
+func UnmarshalTLV(packet []byte) (*Packet, error) {
+	packet = bytes.TrimRight(packet, CMD_STR_CRLF)
+	r := bytes.NewReader(packet)
 
-func (self *ResponsePacket) Marshal() []byte {
-	addr := []byte(self.RemoteAddr)
-	//总长度 4 + 4 + data + \r + \n
-	length := RESP_PACKET_HEAD_LEN + len(addr) + 2
-	buffer := make([]byte, 0, length)
-	buff := bytes.NewBuffer(buffer)
-
-	binary.Write(buff, binary.BigEndian, self.Opaque) // 请求id
-	//彻底包装response
-	binary.Write(buff, binary.BigEndian, self.CmdType)      //回馈包的类型
-	binary.Write(buff, binary.BigEndian, self.Status)       //数据类型
-	binary.Write(buff, binary.BigEndian, uint32(len(addr))) //总数据包长度
-	binary.Write(buff, binary.BigEndian, addr)              // 数据包
-	binary.Write(buff, binary.BigEndian, CMD_CRLF)
-	return buff.Bytes()
-}
-
-func (self *ResponsePacket) Unmarshal(upacket []byte) error {
-	packet := bytes.TrimRight(upacket, CMD_STR_CRLF)
-	reader := bytes.NewReader(packet)
-	var dl uint32
-
-	err := binary.Read(reader, binary.BigEndian, &self.Opaque)
+	tlv := &Packet{}
+	err := tlv.Unmarshal(r)
 	if nil != err {
-		return err
+		return nil, err
+	} else {
+		return tlv, nil
 	}
-	err = binary.Read(reader, binary.BigEndian, &self.CmdType)
-	if nil != err {
-		return err
-	}
-
-	err = binary.Read(reader, binary.BigEndian, &self.Status)
-	if nil != err {
-		return err
-	}
-	err = binary.Read(reader, binary.BigEndian, &dl)
-	if nil != err {
-		return err
-	}
-
-	addr := make([]byte, dl, dl)
-	err = binary.Read(reader, binary.BigEndian, addr)
-	wl := uint32(len(addr))
-	if nil != err || wl != dl {
-		// log.Printf("ResponsePacket|Unmarshal|Corrupt Data|%s|%d/%d|%t\n", err, wl, dl, packet)
-		return errors.New("Corrupt PacketData")
-	}
-	self.RemoteAddr = string(addr)
-	return nil
 }

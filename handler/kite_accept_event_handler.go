@@ -42,9 +42,9 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	//这里处理一下acceptEvent,做一下校验
 	var msg *store.MessageEntity
 	switch acceptEvent.msgType {
-	case protocol.CMD_TYPE_BYTES_MESSAGE:
+	case protocol.CMD_BYTES_MESSAGE:
 		msg = store.NewBytesMessageEntity(acceptEvent.msg.(*protocol.BytesMessage))
-	case protocol.CMD_TYPE_STRING_MESSAGE:
+	case protocol.CMD_STRING_MESSAGE:
 		msg = store.NewStringMessageEntity(acceptEvent.msg.(*protocol.StringMessage))
 	default:
 		//这只是一个bug不支持的数据类型能给你

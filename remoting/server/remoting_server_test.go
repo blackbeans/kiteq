@@ -6,6 +6,8 @@ import (
 	"kiteq/client"
 	"kiteq/handler"
 	"kiteq/protocol"
+	rclient "kiteq/remoting/client"
+	"kiteq/stat"
 	"kiteq/store"
 	"testing"
 	"time"
@@ -77,8 +79,14 @@ func init() {
 		}
 	}()
 	time.Sleep(10 * time.Second)
+
 	//开始向服务端发送数据
-	kclient = client.NewKitClient("localhost:23800", "localhost:13800", "/user-service", "123456")
+	cpipe := handler.NewDefaultPipeline()
+	cpipe.RegisteHandler("packet", handler.NewPacketHandler("packet"))
+	cpipe.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
+	remoteClient := rclient.NewRemotingClient("localhost:23800", "localhost:13800",
+		stat.NewFlowControl("user-service"), 3*time.Second, cpipe)
+	kclient = client.NewKitClient("/user-service", "123456", remoteClient)
 }
 
 func BenchmarkRemotingServer(t *testing.B) {

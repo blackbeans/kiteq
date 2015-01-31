@@ -5,6 +5,8 @@ go get github.com/go-sql-driver/mysql
 go get github.com/blackbeans/zk
 go get github.com/BurntSushi/toml
 
+protoc --go_out=. ./protocol/*.proto
+
 go build kiteq/stat
 go build kiteq/binding
 go build kiteq/protocol
@@ -12,6 +14,7 @@ go build kiteq/store
 go build kiteq/handler
 go build kiteq/remoting/session
 go build kiteq/remoting/server
+go build kiteq/remoting/client
 go build kiteq/client
 
 
@@ -23,6 +26,7 @@ go install kiteq/store
 go install kiteq/handler
 go install kiteq/remoting/session
 go install kiteq/remoting/server
+go install kiteq/remoting/client
 go install kiteq/client
 
 

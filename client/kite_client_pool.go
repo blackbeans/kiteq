@@ -32,12 +32,13 @@ func NewKitClientPool(maxConn int, remotes []string, groupId, secretKey, local s
 }
 
 func (self *KiteClientPool) newClient(remote string) (*KiteClient, error) {
-	return NewKitClient(
-		self.local,
-		remote,
-		self.groupId,
-		self.secretKey,
-	), nil
+	// return NewKitClient(
+	// 	self.local,
+	// 	remote,
+	// 	self.groupId,
+	// 	self.secretKey,
+	// ), nil
+	return nil, nil
 }
 
 func (self *KiteClientPool) Get() *KiteClient {

@@ -1,34 +1,42 @@
 package protocol;
 
 //心跳请求包
-message HeartBeatPacket{
+message HeartBeat{
     required int64 id  = 1;
-    required SerializeType type  = 2 [default = JSON]; //序列化类型
-    enum SerializeType {
-        JSON =0;
-        MSGPACK=1;
-        PROTOC = 2;
-    }
-  
 }
 
-
 //连接的Meta数据包
-message ConnectioMetaPacket{
+message ConnMeta{
     required string groupId = 1; //当前客户端连接所属分组名称
     required string secretKey  = 2; //当前连接的授权key
 }
 
-//心跳响应包
-message HeartBeatACKPacket{
-   required int64 ackId = 1;  //响应确认包
+//握手确认数据包
+message ConnAuthAck{
+    required bool status = 1 [default = true];//状态
+    required string feedback =2;//返回原因
+}
+
+//消息确认接收数据包
+message MessageStoreAck{
+    required string messageId = 1;
+    required bool status = 2 [default = true];//状态
+    required string feedback =3;//返回原因
+}
+
+
+//消息接收packet
+message DeliveryAck{
+    required string messageId =1;//消息id
+    required string groupId = 2; //消息处理  
 }
 
 //事务确认数据包
-message TranscationACKPacket{
-     required int64 ackId = 1;  //响应确认包
-     required string messageId = 2; //消息Id
+message TxACKPacket{    
+     required string messageId = 1; //消息Id
+     required int32 status = 2 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
 }
+
 
 message Header{
     required string messageId = 1;

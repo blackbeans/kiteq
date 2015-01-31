@@ -98,7 +98,7 @@ func (self *Session) ReadPacket() {
 			return
 		}
 
-		if buff.Len() > protocol.REQ_PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
+		if buff.Len() > protocol.PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
 			//如果是\n那么就是一个完整的包
 			packet := make([]byte, buff.Len())
