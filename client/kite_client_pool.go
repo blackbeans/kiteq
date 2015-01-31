@@ -13,7 +13,7 @@ type KiteClientPool struct {
 	secretKey  string
 	remotes    []string
 	roundRobin int
-	sync.Locker
+	sync.Mutex
 	queue chan *KiteClient
 }
 
@@ -51,7 +51,8 @@ func (self *KiteClientPool) Get() *KiteClient {
 	if self.idle == 0 && self.alloc < self.max {
 		// 创建一个新的链接
 		remote := self.remotes[self.roundRobin%len(self.remotes)]
-		self.newClient(remote)
+		client, _ := self.newClient(remote)
+		self.queue <- client
 		self.roundRobin += 1
 		self.alloc += 1
 	}

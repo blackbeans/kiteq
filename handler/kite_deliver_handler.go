@@ -1,10 +1,19 @@
 package handler
 
 import (
+<<<<<<< HEAD
 	// "github.com/golang/protobuf/proto"
 	// "kiteq/protocol"
 	"kiteq/remoting/session"
 	"kiteq/store"
+=======
+	"kiteq/protocol"
+	"kiteq/remoting/session"
+	"kiteq/store"
+	// "log"
+
+	"github.com/golang/protobuf/proto"
+>>>>>>> 45404355cf365ac9e1fb80d59a2659f669c4638b
 )
 
 //----------------持久化的handler
@@ -12,16 +21,28 @@ type DeliverHandler struct {
 	BaseForwardHandler
 	IEventProcessor
 	sessionmanager *session.SessionManager
+<<<<<<< HEAD
 	store          store.IKiteStore
 }
 
 //------创建deliverpre
 func NewDeliverHandler(name string, sessionmanager *session.SessionManager, store store.IKiteStore) *DeliverHandler {
+=======
+	kitestore      store.IKiteStore
+}
+
+//------创建deliverpre
+func NewDeliverHandler(name string, sessionmanager *session.SessionManager, kitestore store.IKiteStore) *DeliverHandler {
+>>>>>>> 45404355cf365ac9e1fb80d59a2659f669c4638b
 	phandler := &DeliverHandler{}
 	phandler.name = name
 	phandler.processor = phandler
 	phandler.sessionmanager = sessionmanager
+<<<<<<< HEAD
 	phandler.store = store
+=======
+	phandler.kitestore = kitestore
+>>>>>>> 45404355cf365ac9e1fb80d59a2659f669c4638b
 	return phandler
 }
 
@@ -50,12 +71,30 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	})
 
 	//获取投递的消息数据
+<<<<<<< HEAD
 	// msgEntity := self.store.Query(pevent.MessageId)
 
 	//发起一个请求包
+=======
+	entity := self.kitestore.Query(pevent.MessageId)
+	// @todo 判断类型创建string或者byte message
+	message := &protocol.StringMessage{}
+	message.Header = entity.Header
+	message.Body = proto.String(string(entity.GetBody()))
+	data, err := proto.Marshal(message)
+	if nil != err {
+		return err
+	}
+>>>>>>> 45404355cf365ac9e1fb80d59a2659f669c4638b
 
+	wpacket := &protocol.RequestPacket{
+		CmdType: protocol.CMD_TYPE_STRING_MESSAGE,
+		Data:    data,
+		// @todo 生成序号如何生成
+		Opaque: 1,
+	}
 	//创建投递事件
-	revent := newRemotingEvent(nil, sessions...)
+	revent := newRemotingEvent(wpacket, sessions...)
 
 	//向后转发
 	ctx.SendForward(revent)

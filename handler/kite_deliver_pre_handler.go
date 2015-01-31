@@ -2,8 +2,8 @@ package handler
 
 import (
 	"kiteq/binding"
-	"sort"
 	// "log"
+	"sort"
 )
 
 //----------------持久化的handler
@@ -49,8 +49,8 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	groupIds := make([]string, 0, len(binds))
 	//按groupid归并
 	for _, bind := range binds {
-		//认为不存在，则加入到投递分组中
-		if sort.SearchStrings(groupIds, bind.GroupId) < 0 {
+		//认为不存在，则加入到投递分组中 SearchString如果没找到是返回slice长度而不是-1
+		if sort.SearchStrings(groupIds, bind.GroupId) == len(groupIds) {
 			groupIds = append(groupIds, bind.GroupId)
 		}
 	}
