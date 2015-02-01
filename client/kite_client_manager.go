@@ -121,5 +121,5 @@ func (self *KiteClientManager) SendMessage(msg *protocol.StringMessage) error {
 	}
 	client := clientPool.Get()
 	defer clientPool.Put(client)
-	return client.SendMessage(msg)
+	return client.SendStringMessage(msg)
 }

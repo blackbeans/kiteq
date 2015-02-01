@@ -4,13 +4,17 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func marshalPbMessage(message proto.Message) ([]byte, error) {
+func UnmarshalPbMessage(data []byte, msg proto.Message) error {
+	return proto.Unmarshal(data, msg)
+}
+
+func MarshalPbMessage(message proto.Message) ([]byte, error) {
 	return proto.Marshal(message)
 }
 
 func MarshalConnMeta(groupId, secretKey string) []byte {
 
-	data, _ := marshalPbMessage(&ConnMeta{
+	data, _ := MarshalPbMessage(&ConnMeta{
 		GroupId:   proto.String(groupId),
 		SecretKey: proto.String(secretKey)})
 	return data
@@ -18,14 +22,14 @@ func MarshalConnMeta(groupId, secretKey string) []byte {
 
 func MarshalConnAuthAck(succ bool, feedback string) []byte {
 
-	data, _ := marshalPbMessage(&ConnAuthAck{
+	data, _ := MarshalPbMessage(&ConnAuthAck{
 		Status:   proto.Bool(succ),
 		Feedback: proto.String(feedback)})
 	return data
 }
 
 func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte {
-	data, _ := marshalPbMessage(&MessageStoreAck{
+	data, _ := MarshalPbMessage(&MessageStoreAck{
 		MessageId: proto.String(messageId),
 		Status:    proto.Bool(succ),
 		Feedback:  proto.String(feedback)})
@@ -33,7 +37,7 @@ func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
 }
 
 func MarshalTxACKPacket(messageId string, txstatus TxStatus) []byte {
-	data, _ := marshalPbMessage(&TxACKPacket{
+	data, _ := MarshalPbMessage(&TxACKPacket{
 		MessageId: proto.String(messageId),
 		Status:    proto.Int32(int32(txstatus))})
 	return data

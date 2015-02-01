@@ -1,7 +1,7 @@
 package server
 
 import (
-	"kiteq/handler"
+	rclient "kiteq/remoting/client"
 	"kiteq/remoting/session"
 	"kiteq/stat"
 	"log"
@@ -11,27 +11,27 @@ import (
 )
 
 type RemotingServer struct {
-	hostport    string
-	keepalive   time.Duration
-	stopChan    chan bool
-	isShutdown  bool
-	pipeline    *handler.DefaultPipeline
-	flowControl *stat.FlowControl
+	hostport         string
+	keepalive        time.Duration
+	stopChan         chan bool
+	isShutdown       bool
+	packetDispatcher func(remoteClient *rclient.RemotingClient, packet []byte)
+	flowControl      *stat.FlowControl
 }
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
-	pipeline *handler.DefaultPipeline) *RemotingServer {
+	packetDispatcher func(remoteClient *rclient.RemotingClient, packet []byte)) *RemotingServer {
 
 	//设置为8个并发
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
-		hostport:    hostport,
-		keepalive:   keepalive,
-		stopChan:    make(chan bool, 1),
-		pipeline:    pipeline,
-		isShutdown:  false,
-		flowControl: stat.NewFlowControl(hostport)}
+		hostport:         hostport,
+		keepalive:        keepalive,
+		stopChan:         make(chan bool, 1),
+		packetDispatcher: packetDispatcher,
+		isShutdown:       false,
+		flowControl:      stat.NewFlowControl(hostport)}
 	return server
 }
 
@@ -69,8 +69,8 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//session处理,应该有个session管理器
-			session := session.NewSession(conn, self.hostport, self.onPacketRecieve, self.flowControl)
-			self.handleSession(session)
+			rempteSession := session.NewSession(conn, self.hostport, self.flowControl)
+			self.handleSession(rempteSession)
 		}
 	}
 	return nil
@@ -78,24 +78,11 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 
 //处理session
 func (self *RemotingServer) handleSession(session *session.Session) {
-	//根据不同的cmdtype 走不同的processor
+	//根据不同的cmdtype 走不同的packetDispatcheror
 	//读取合法的包
-	go session.ReadPacket()
-	//分发包
-	go session.DispatcherPacket()
-	//开启网路的写出packet
-	go session.WritePacket()
+	remoteClient := rclient.NewRemotingClient(session, self.packetDispatcher)
+	remoteClient.Start()
 
-}
-
-//数据包处理
-func (self *RemotingServer) onPacketRecieve(session *session.Session, packet []byte) {
-
-	event := handler.NewPacketEvent(session, packet)
-	err := self.pipeline.FireWork(event)
-	if nil != err {
-		log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
-	}
 }
 
 func (self *RemotingServer) Shutdown() {

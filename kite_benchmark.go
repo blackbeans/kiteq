@@ -5,7 +5,11 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"kiteq/client"
+	"kiteq/client/chandler"
+	"kiteq/pipe"
 	"kiteq/protocol"
+	rclient "kiteq/remoting/client"
+	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -51,9 +55,26 @@ func main() {
 
 	portv, _ := strconv.ParseInt(port, 10, 0)
 
+	clientm := rclient.NewClientManager()
+	cpipe := pipe.NewDefaultPipeline()
+	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept"))
+	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
+
 	for i := 0; i < *conn; i++ {
+
+		kclient := client.NewKitClient("user-service", "1234",
+			net.JoinHostPort(host, strconv.Itoa(int(portv)+i)), *remote,
+			func(remoteClient *rclient.RemotingClient, packet []byte) {
+				event := pipe.NewPacketEvent(remoteClient, packet)
+				err := cpipe.FireWork(event)
+				if nil != err {
+					log.Printf("KiteClient|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+				}
+			})
+
 		//开始向服务端发送数据
-		kclient := client.NewKitClient(net.JoinHostPort(host, strconv.Itoa(int(portv)+i)), *remote, "/user-service", "123456")
+
 		clients = append(clients, kclient)
 	}
 
@@ -86,7 +107,7 @@ func main() {
 				for !stop {
 					idx := rand.Intn(len(clients))
 					tmpclient := clients[idx]
-					err := tmpclient.SendMessage(buildStringMessage())
+					err := tmpclient.SendStringMessage(buildStringMessage())
 					if nil != err {
 						fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
 						atomic.AddInt32(&fc, 1)

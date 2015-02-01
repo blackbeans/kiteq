@@ -7,23 +7,27 @@ import (
 	"log"
 )
 
-type ITLVPacket interface {
-	Marshal() []byte
-	Unmarshal(r *bytes.Reader) error
-}
-
 //请求的packet
 type Packet struct {
+	future  chan interface{}
+	Opaque  int32
 	CmdType uint8 //类型
 	Data    []byte
-	Opaque  int32
 }
 
-func NewPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
+func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
 		CmdType: cmdtype,
 		Data:    data,
-		Opaque:  opaque}
+		future:  make(chan interface{}, 1)}
+}
+
+func (self *Packet) Get() chan interface{} {
+	return self.future
+}
+
+func (self *Packet) Attach(resp interface{}) {
+	self.future <- resp
 }
 
 func (self *Packet) Marshal() []byte {

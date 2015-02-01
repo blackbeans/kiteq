@@ -2,21 +2,20 @@ package handler
 
 import (
 	"errors"
+	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	// "log"
+	"log"
 )
 
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
 	BaseForwardHandler
-	IEventProcessor
 }
 
 func NewAcceptHandler(name string) *AcceptHandler {
 	ahandler := &AcceptHandler{}
-	ahandler.name = name
-	ahandler.processor = ahandler
+	ahandler.BaseForwardHandler = NewBaseForwardHandler(name, ahandler)
 	return ahandler
 }
 
@@ -33,7 +32,7 @@ func (self *AcceptHandler) cast(event IEvent) (val *AcceptEvent, ok bool) {
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
 func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	// log.Printf("AcceptHandler|Process|%t\n", event)
+	// log.Printf("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
 	acceptEvent, ok := self.cast(event)
 	if !ok {
@@ -41,17 +40,18 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 	//这里处理一下acceptEvent,做一下校验
 	var msg *store.MessageEntity
-	switch acceptEvent.msgType {
+	switch acceptEvent.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
-		msg = store.NewBytesMessageEntity(acceptEvent.msg.(*protocol.BytesMessage))
+		msg = store.NewBytesMessageEntity(acceptEvent.Msg.(*protocol.BytesMessage))
 	case protocol.CMD_STRING_MESSAGE:
-		msg = store.NewStringMessageEntity(acceptEvent.msg.(*protocol.StringMessage))
+		msg = store.NewStringMessageEntity(acceptEvent.Msg.(*protocol.StringMessage))
 	default:
 		//这只是一个bug不支持的数据类型能给你
+		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, acceptEvent.Msg)
 	}
 
 	if nil != msg {
-		pevent := NewPersistentEvent(msg, acceptEvent.session, acceptEvent.opaque)
+		pevent := NewPersistentEvent(msg, acceptEvent.RemoteClient, acceptEvent.Opaque)
 		ctx.SendForward(pevent)
 		return nil
 	}

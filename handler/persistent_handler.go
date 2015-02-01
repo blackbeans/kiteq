@@ -2,9 +2,10 @@ package handler
 
 import (
 	"errors"
+	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	// "log"
+	"log"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")
@@ -12,16 +13,14 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 //----------------持久化的handler
 type PersistentHandler struct {
 	BaseForwardHandler
-	IEventProcessor
 	kitestore store.IKiteStore
 }
 
 //------创建persitehandler
 func NewPersistentHandler(name string, kitestore store.IKiteStore) *PersistentHandler {
 	phandler := &PersistentHandler{}
-	phandler.name = name
+	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
-	phandler.processor = phandler
 	return phandler
 }
 
@@ -37,7 +36,7 @@ func (self *PersistentHandler) cast(event IEvent) (val *PersistentEvent, ok bool
 
 func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("PersistentHandler|Process|%t\n", event)
+	// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
@@ -60,15 +59,17 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	} else if succ {
 		//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 		go func() {
-			remoteEvent := newRemotingEvent(self.tXAck(pevent.opaque,
-				pevent.entity.Header.GetMessageId()))
+			remoteEvent := NewRemotingEvent(self.tXAck(pevent.opaque,
+				pevent.entity.Header.GetMessageId()), []string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
 		}()
+	} else {
+		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity)
 	}
 
 	//发送存储结果ack
-	remoteEvent := newRemotingEvent(self.storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), succ), pevent.session)
+	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+		pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 	return nil
 }
@@ -77,11 +78,7 @@ func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ boo
 
 	storeAck := protocol.MarshalMessageStoreAck(messageid, succ, "0:SUCC|1:FAIL")
 	//响应包
-	packet := &protocol.Packet{
-		Opaque:  opaque,
-		Data:    storeAck,
-		CmdType: protocol.CMD_MESSAGE_STORE_ACK}
-	return packet
+	return protocol.NewPacket(protocol.CMD_MESSAGE_STORE_ACK, storeAck)
 }
 
 //发送事务ack信息
@@ -90,10 +87,5 @@ func (self PersistentHandler) tXAck(opaque int32,
 
 	txack := protocol.MarshalTxACKPacket(messageid, protocol.TX_UNKNOW)
 	//响应包
-	packet := &protocol.Packet{
-		Opaque:  opaque,
-		Data:    txack,
-		CmdType: protocol.CMD_TX_ACK}
-
-	return packet
+	return protocol.NewPacket(protocol.CMD_TX_ACK, txack)
 }

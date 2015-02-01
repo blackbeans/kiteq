@@ -2,23 +2,22 @@ package handler
 
 import (
 	"kiteq/binding"
-	// "log"
+	. "kiteq/pipe"
+	"log"
 	"sort"
 )
 
 //----------------持久化的handler
 type DeliverPreHandler struct {
 	BaseForwardHandler
-	IEventProcessor
 	exchanger *binding.BindExchanger
 }
 
 //------创建deliverpre
 func NewDeliverPreHandler(name string, exchanger *binding.BindExchanger) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
-	phandler.name = name
+	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.exchanger = exchanger
-	phandler.processor = phandler
 	return phandler
 }
 
@@ -34,7 +33,7 @@ func (self *DeliverPreHandler) cast(event IEvent) (val *DeliverEvent, ok bool) {
 
 func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("DeliverPreHandler|Process|%t\n", event)
+	// log.Printf("DeliverPreHandler|Process|%s|%t\n", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
@@ -57,6 +56,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//如果没有可用的分组则直接跳过
 	if len(groupIds) <= 0 {
+		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s,%s\n", pevent.Topic, pevent.MessageType)
 		return nil
 	}
 

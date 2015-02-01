@@ -1,4 +1,4 @@
-package handler
+package pipe
 
 import (
 	"container/list"

@@ -2,43 +2,38 @@ package client
 
 import (
 	"errors"
-	// "fmt"
+	"fmt"
 	"kiteq/protocol"
 	rcient "kiteq/remoting/client"
+	"kiteq/remoting/session"
+	"kiteq/stat"
 	"log"
-	"sync/atomic"
+	"net"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 )
 
 type KiteClient struct {
-	remoteClient *rcient.RemotingClient
-	id           int32
-	groupId      string
-	secretKey    string
-	isClose      bool
-
-	holder     map[int32]chan *protocol.Packet
-	respHolder []chan *protocol.Packet
+	local            string
+	remote           string
+	groupId          string
+	secretKey        string
+	isClose          bool
+	flowControl      *stat.FlowControl
+	remoteClient     *rcient.RemotingClient
+	packetDispatcher func(remoteClient *rcient.RemotingClient, packet []byte)
 }
 
-var MAX_WATER_MARK int = 100000
-
-func NewKitClient(groupId, secretKey string, remoteClient *rcient.RemotingClient) *KiteClient {
+func NewKitClient(groupId, secretKey, local, remote string,
+	packetDispatcher func(remoteClient *rcient.RemotingClient, packet []byte)) *KiteClient {
 
 	client := &KiteClient{
-		id:           0,
-		groupId:      groupId,
-		secretKey:    secretKey,
-		remoteClient: remoteClient,
-		isClose:      false,
-		holder:       make(map[int32]chan *protocol.Packet, MAX_WATER_MARK),
-		respHolder:   make([]chan *protocol.Packet, MAX_WATER_MARK, MAX_WATER_MARK)}
-
-	for i := 0; i < MAX_WATER_MARK; i++ {
-		client.respHolder[i] = make(chan *protocol.Packet, 100)
-	}
+		local:            local,
+		remote:           remote,
+		groupId:          groupId,
+		secretKey:        secretKey,
+		flowControl:      stat.NewFlowControl(groupId),
+		isClose:          false,
+		packetDispatcher: packetDispatcher}
 
 	client.Start()
 	return client
@@ -46,64 +41,100 @@ func NewKitClient(groupId, secretKey string, remoteClient *rcient.RemotingClient
 
 func (self *KiteClient) Start() {
 
+	//连接
+	conn, err := self.dial()
+	if nil != err {
+		log.Fatalf("RemotingClient|START|FAIL|%s\n", err)
+	} else {
+		rsession := session.NewSession(conn, self.remote, self.flowControl)
+		self.remoteClient = rcient.NewRemotingClient(rsession, self.packetDispatcher)
+	}
+
 	//启动remotingClient
 	self.remoteClient.Start()
 	//握手完成
-	err := self.handShake()
+	err = self.handshake()
 	if nil != err {
-		log.Fatalf("KiteClient|START|FAIL|%s\n", err)
+		log.Fatalf("RemotingClient|START|FAIL|%s\n", err)
 		return
 	}
+}
 
+func (self *KiteClient) dial() (*net.TCPConn, error) {
+	localAddr, err_l := net.ResolveTCPAddr("tcp4", self.local)
+	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", self.remote)
+	if nil != err_l || nil != err_r {
+		log.Fatalf("RemotingClient|RESOLVE ADDR |FAIL|L:%s|R:%s", err_l, err_r)
+		return nil, err_l
+	}
+	conn, err := net.DialTCP("tcp4", localAddr, remoteAddr)
+	if nil != err {
+		log.Fatalf("RemotingClient|CONNECT|%s|FAIL|%s\n", self.remote, err)
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 //先进行初次握手上传连接元数据
-func (self *KiteClient) handShake() error {
-	metaPacket := protocol.MarshalConnMeta(self.groupId, self.secretKey)
-	return self.innerSend(protocol.CMD_CONN_META, metaPacket)
+func (self *KiteClient) handshake() error {
+	packet := protocol.MarshalConnMeta(self.groupId, self.secretKey)
+	rpacket := protocol.NewPacket(protocol.CMD_CONN_META, packet)
 
+	resp, err := self.remoteClient.WriteAndGet(rpacket, 500*time.Millisecond)
+	if nil != err {
+		return err
+	} else {
+		authAck, ok := resp.(*protocol.ConnAuthAck)
+		if !ok {
+			return errors.New("Unmatches Handshake Ack Type! ")
+		} else {
+			if authAck.GetStatus() {
+				log.Printf("RemotingClient|handShake|SUCC|%s\n", authAck.GetFeedback())
+				return nil
+			} else {
+				log.Printf("RemotingClient|handShake|FAIL|%s\n", authAck.GetFeedback())
+				return errors.New("Auth FAIL![" + authAck.GetFeedback() + "]")
+			}
+		}
+	}
 }
 
-func (self *KiteClient) SendMessage(msg *protocol.StringMessage) error {
-	packet, err := proto.Marshal(msg)
+func (self *KiteClient) SendStringMessage(message *protocol.StringMessage) error {
+	data, err := protocol.MarshalPbMessage(message)
+	if nil != err {
+		return err
+	}
+	return self.innerSendMessage(protocol.CMD_STRING_MESSAGE, data)
+}
+
+func (self *KiteClient) SendBytsMessage(message *protocol.BytesMessage) error {
+	data, err := protocol.MarshalPbMessage(message)
 	if nil != err {
 		return err
 	}
 
-	return self.innerSend(protocol.CMD_STRING_MESSAGE, packet)
-
+	return self.innerSendMessage(protocol.CMD_BYTES_MESSAGE, data)
 }
 
-func (self *KiteClient) innerSend(cmdType uint8, packet []byte) error {
-	rid := self.write(cmdType, packet)
-	rholder := self.respHolder[rid]
-	self.holder[rid] = rholder
+func (self *KiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
+	msgpacket := protocol.NewPacket(cmdType, packet)
 
-	var resp *protocol.Packet
-	select {
-	case <-time.After(500 * time.Millisecond):
-		// 清除holder
-		delete(self.holder, rid)
-	case resp = <-rholder:
-		log.Printf("innerSend|%t\n", resp)
+	resp, err := self.remoteClient.WriteAndGet(msgpacket, 200*time.Millisecond)
+	if nil != err {
+		return err
+	} else {
+		storeAck, ok := resp.(*protocol.MessageStoreAck)
+		if !ok || !storeAck.GetStatus() {
+			return errors.New(fmt.Sprintf("KiteClient|SendMessage|FAIL|%s\n", resp))
+		} else {
+			log.Printf("KiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
+			return nil
+		}
 	}
-	return errors.New("SEND MESSAGE TIMEOUT ")
-}
-
-//最底层的网络写入
-func (self *KiteClient) write(cmdType uint8, packet []byte) int32 {
-	tid := atomic.AddInt32(&self.id, 1) % int32(MAX_WATER_MARK)
-	rpacket := &protocol.Packet{
-		CmdType: cmdType,
-		Data:    packet,
-		Opaque:  tid}
-
-	self.remoteClient.Write(rpacket)
-	return tid
 }
 
 func (self *KiteClient) Close() {
 	self.isClose = true
-	// self.session.Close()
-	log.Printf("KiteClient|Close|REQ_RESP|%t\n", self.holder)
+	self.remoteClient.Shutdown()
 }

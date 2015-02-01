@@ -11,19 +11,17 @@ import (
 )
 
 type Session struct {
-	GroupId         string
-	conn            *net.TCPConn //tcp的session
-	remoteAddr      string
-	heartbeat       int64       //心跳包的时间
-	ReadChannel     chan []byte //request的channel
-	WriteChannel    chan []byte //response的channel
-	isClose         bool
-	onPacketRecieve func(session *Session, packet []byte)
-	flowControl     *stat.FlowControl //流量统计
+	GroupId      string
+	conn         *net.TCPConn //tcp的session
+	remoteAddr   string       //远端地址
+	heartbeat    int64        //心跳包的时间
+	ReadChannel  chan []byte  //request的channel
+	WriteChannel chan []byte  //response的channel
+	isClose      bool
+	flowControl  *stat.FlowControl //流量统计
 }
 
 func NewSession(conn *net.TCPConn, remoteAddr string,
-	onPacketRecieve func(session *Session, packet []byte),
 	flowControl *stat.FlowControl) *Session {
 
 	conn.SetKeepAlive(true)
@@ -31,14 +29,13 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 	conn.SetNoDelay(true)
 
 	session := &Session{
-		conn:            conn,
-		heartbeat:       0,
-		ReadChannel:     make(chan []byte, 500),
-		WriteChannel:    make(chan []byte, 500),
-		isClose:         false,
-		remoteAddr:      remoteAddr,
-		onPacketRecieve: onPacketRecieve,
-		flowControl:     flowControl}
+		conn:         conn,
+		heartbeat:    0,
+		ReadChannel:  make(chan []byte, 500),
+		WriteChannel: make(chan []byte, 500),
+		isClose:      false,
+		remoteAddr:   remoteAddr,
+		flowControl:  flowControl}
 
 	return session
 }
@@ -112,31 +109,6 @@ func (self *Session) ReadPacket() {
 			self.flowControl.ReadFlow.Incr(1)
 
 		}
-	}
-}
-
-func (self *Session) DispatcherPacket() {
-
-	//500个读协程
-	for i := 0; i < 200; i++ {
-		go func() {
-
-			//解析包
-			for !self.isClose {
-				select {
-				//1.读取数据包
-				case packet := <-self.ReadChannel:
-					//2.处理一下包
-					go self.onPacketRecieve(self, packet)
-
-					self.flowControl.DispatcherFlow.Incr(1)
-
-					//100ms读超时
-				case <-time.After(100 * time.Millisecond):
-				}
-
-			}
-		}()
 	}
 }
 

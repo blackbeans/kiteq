@@ -1,14 +1,16 @@
 package server
 
 import (
-	"fmt"
 	"github.com/golang/protobuf/proto"
+	// "kiteq/binding"
 	"kiteq/client"
+	"kiteq/client/chandler"
 	"kiteq/handler"
+	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
-	"kiteq/stat"
 	"kiteq/store"
+	"log"
 	"testing"
 	"time"
 )
@@ -58,19 +60,30 @@ var remotingServer *RemotingServer
 func init() {
 
 	//初始化pipeline
-	pipeline := handler.NewDefaultPipeline()
+	pipeline := pipe.NewDefaultPipeline()
+	clientManager := rclient.NewClientManager()
+	// exchanger := binding.NewBindExchanger("localhost:2181")
+
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
-	pipeline.RegisteHandler("access", handler.NewAccessHandler("access"))
+	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
-	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
-	fmt.Println(pipeline)
+	// pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitestore))
+	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting", clientManager))
 
-	remotingServer = NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
+	remotingServer = NewRemotionServer("localhost:13800", 3*time.Second,
+		func(remoteClient *rclient.RemotingClient, packet []byte) {
+			event := pipe.NewPacketEvent(remoteClient, packet)
+			err := pipeline.FireWork(event)
+			if nil != err {
+				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			}
+		})
+
 	go func() {
 
 		err := remotingServer.ListenAndServer()
-		//
 		if nil != err {
 			ch <- false
 
@@ -81,17 +94,29 @@ func init() {
 	time.Sleep(10 * time.Second)
 
 	//开始向服务端发送数据
-	cpipe := handler.NewDefaultPipeline()
-	cpipe.RegisteHandler("packet", handler.NewPacketHandler("packet"))
-	cpipe.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
-	remoteClient := rclient.NewRemotingClient("localhost:23800", "localhost:13800",
-		stat.NewFlowControl("user-service"), 3*time.Second, cpipe)
-	kclient = client.NewKitClient("/user-service", "123456", remoteClient)
+
+	clientm := rclient.NewClientManager()
+
+	cpipe := pipe.NewDefaultPipeline()
+	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept"))
+	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
+
+	kclient = client.NewKitClient("user-service", "1234",
+		"localhost:23800", "localhost:13800",
+		func(remoteClient *rclient.RemotingClient, packet []byte) {
+			event := pipe.NewPacketEvent(remoteClient, packet)
+			err := cpipe.FireWork(event)
+			if nil != err {
+				log.Printf("KiteClient|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			}
+		})
+
 }
 
 func BenchmarkRemotingServer(t *testing.B) {
 	for i := 0; i < t.N; i++ {
-		err := kclient.SendMessage(buildStringMessage())
+		err := kclient.SendStringMessage(buildStringMessage())
 		if nil != err {
 			t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 		}
@@ -100,48 +125,19 @@ func BenchmarkRemotingServer(t *testing.B) {
 
 func TestRemotingServer(t *testing.T) {
 
-	// //初始化存储
-	// kitestore := &defaultStore{}
-
-	// //初始化pipeline
-	// pipeline := handler.NewDefaultPipeline()
-	// pipeline.RegisteHandler("packet_event", handler.NewPacketHandler("packet_event"))
-	// pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
-	// pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
-	// pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
-	// fmt.Println(pipeline)
-	// ch := make(chan bool, 1)
-	// remotingServer := NewRemotionServer("localhost:13800", 3*time.Second, pipeline)
-	// go func() {
-
-	// 	err := remotingServer.ListenAndServer()
-	// 	//
-	// 	if nil != err {
-	// 		ch <- false
-	// 		t.Failed()
-	// 		t.Fatal("start remoting server fail!")
-	// 	} else {
-	// 		ch <- true
-	// 	}
-	// }()
-
-	//开始向服务端发送数据
-	// client := client.NewKitClient("localhost:13800", "/user-service", "123456")
-	// client.Start()
-
-	err := kclient.SendMessage(buildStringMessage())
+	err := kclient.SendStringMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = kclient.SendMessage(buildStringMessage())
+	err = kclient.SendStringMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = kclient.SendMessage(buildStringMessage())
+	err = kclient.SendStringMessage(buildStringMessage())
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)

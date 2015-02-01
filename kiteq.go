@@ -4,8 +4,9 @@ import (
 	"flag"
 	"kiteq/binding"
 	"kiteq/handler"
+	"kiteq/pipe"
+	"kiteq/remoting/client"
 	"kiteq/remoting/server"
-	"kiteq/remoting/session"
 	"kiteq/store"
 	"log"
 	"net"
@@ -25,6 +26,8 @@ func main() {
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 	flag.Parse()
 
+	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
+
 	host, _, _ := net.SplitHostPort(*bindHost)
 	go func() {
 		if *pprofPort > 0 {
@@ -42,28 +45,38 @@ func main() {
 	// zk := binding.NewZKManager("")
 	// zk.PublishQServer(*bindHost, []string{"trade"})
 	// 临时在这里创建的SessionManager
-	sessionManager := session.NewSessionManager()
+
+	clientManager := client.NewClientManager()
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger("localhost:2181")
-	exchanger.PushQServer(*bindHost, []string{"trade"})
 
-	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 	//初始化pipeline
-	pipeline := handler.NewDefaultPipeline()
+	pipeline := pipe.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
-	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", sessionManager))
+	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", sessionManager, kitedb))
-	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting"))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitedb))
+	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting", clientManager))
 
-	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second, pipeline)
+	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second,
+		func(rclient *client.RemotingClient, packet []byte) {
+			event := pipe.NewPacketEvent(rclient, packet)
+			err := pipeline.FireWork(event)
+			if nil != err {
+				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			}
+		})
+
 	stopCh := make(chan error, 1)
 	go func() {
 		err := remotingServer.ListenAndServer()
 		stopCh <- err
 	}()
+
+	//推送可发送的topic列表
+	exchanger.PushQServer(*bindHost, []string{"trade"})
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Kill)

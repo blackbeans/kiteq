@@ -17,8 +17,9 @@ const (
 	TX_FAIL   = TxStatus(2)
 
 	//message
-	CMD_BYTES_MESSAGE  = uint8(0x12)
-	CMD_STRING_MESSAGE = uint8(0x13)
+	CMD_BYTES_MESSAGE  = uint8(0x11)
+	CMD_STRING_MESSAGE = uint8(0x12)
+	CMD_CHECK_MESSAGE  = uint8(0x13)
 
 	//最大packet的字节数
 	MAX_PACKET_BYTES    = 8 * 1024 * 1024
