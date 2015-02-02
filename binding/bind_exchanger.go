@@ -46,6 +46,7 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 			return false
 		} else {
 			self.onBindChanged(topic, binds)
+			log.Printf("BindExchanger|SubscribeBinds|SUCC|%s\n", binds)
 		}
 	}
 
@@ -121,7 +122,7 @@ func (self *BindExchanger) FindBinds(topic string, messageType string, filter fu
 }
 
 func (self *BindExchanger) EventNotify(path string, eventType ZkEvent, binds []*Binding) {
-
+	log.Printf("BindExchanger|EventNotify|Recieve Notify|%s|%s\n", path, binds)
 	//订阅关系变更才处理
 	if eventType == Changed && strings.HasPrefix(path, KITEQ_SUB) {
 		split := strings.Split(path, "/")

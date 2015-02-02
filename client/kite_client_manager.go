@@ -79,7 +79,7 @@ func (self *KiteClientManager) SetPubs(topics []string) error {
 func (self *KiteClientManager) SetSubs(bindings []*binding.Binding, callback SubscribeCallback) error {
 	self.Subs = bindings
 	// 注册订阅的Topics
-	if err := self.zkManager.SubscribeTopic(
+	if err := self.zkManager.PublishBindings(
 		self.GroupId, self.Subs); err != nil {
 		return err
 	}

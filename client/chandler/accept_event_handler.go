@@ -41,10 +41,10 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	switch acceptEvent.MsgType {
 	case protocol.CMD_CHECK_MESSAGE:
 		//回调事务完成的监听器
-		log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
+		log.Printf("AcceptHandler|Check Message|%s\n", acceptEvent.Msg)
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
-		log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
+		log.Printf("AcceptHandler|Recieve Message|%s\n", acceptEvent.Msg)
 	default:
 		return INVALID_MSG_TYPE_ERROR
 	}

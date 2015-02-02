@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/golang/protobuf/proto"
-	// "kiteq/binding"
+	"kiteq/binding"
 	"kiteq/client"
 	"kiteq/client/chandler"
 	"kiteq/handler"
@@ -43,7 +43,7 @@ func buildStringMessage() *protocol.StringMessage {
 		MessageId:   proto.String("1234567"),
 		Topic:       proto.String("trade"),
 		MessageType: proto.String("pay-succ"),
-		ExpiredTime: proto.Int64(13700000000),
+		ExpiredTime: proto.Int64(time.Now().Unix()),
 		GroupId:     proto.String("go-kite-test"),
 		Commited:    proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
@@ -59,16 +59,23 @@ var remotingServer *RemotingServer
 
 func init() {
 
+	initKiteServer()
+	log.Println("KiteServer|START|....")
+	initKiteClient()
+	log.Println("KiteClient|START|....")
+}
+
+func initKiteServer() {
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()
 	clientManager := rclient.NewClientManager()
-	// exchanger := binding.NewBindExchanger("localhost:2181")
+	exchanger := binding.NewBindExchanger("localhost:2181")
 
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitestore))
-	// pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitestore))
 	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting", clientManager))
 
@@ -91,8 +98,13 @@ func init() {
 			ch <- true
 		}
 	}()
-	time.Sleep(10 * time.Second)
 
+	exchanger.PushQServer("localhost:13800", []string{"trade"})
+	//临时在这里创建的SessionManager
+	time.Sleep(1 * time.Second)
+}
+
+func initKiteClient() {
 	//开始向服务端发送数据
 
 	clientm := rclient.NewClientManager()
@@ -112,6 +124,13 @@ func init() {
 			}
 		})
 
+	zk := binding.NewZKManager("localhost:2181")
+	err := zk.PublishTopic([]string{"trade"}, "user-service", "localhost:23800")
+	log.Printf("initKiteClient|PublishTopic|SUCC|%s...\n", err)
+	err = zk.PublishBindings("user-service", []*binding.Binding{binding.Bind_Direct("user-service", "trade", "pay-succ", -1, true)})
+	log.Println("initKiteClient|PublishBindings|SUCC|%s...\n", err)
+
+	time.Sleep(1 * time.Second)
 }
 
 func BenchmarkRemotingServer(t *testing.B) {

@@ -109,8 +109,8 @@ func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport st
 	return nil
 }
 
-//订阅消息类型
-func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error {
+//发布订阅关系
+func (self *ZKManager) PublishBindings(groupId string, bindings []*Binding) error {
 
 	//按topic分组
 	groupBind := make(map[string][]*Binding, 10)
@@ -127,7 +127,7 @@ func (self *ZKManager) SubscribeTopic(groupId string, bindings []*Binding) error
 	for topic, binds := range groupBind {
 		data, err := MarshalBinds(binds)
 		if nil != err {
-			log.Printf("ZKManager|SubscribeTopic|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
+			log.Printf("ZKManager|PublishBindings|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
 			return err
 		}
 
@@ -302,6 +302,12 @@ func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
 				nwatcher.watcher.EventNotify(path, Deleted, nil)
 
 			case zk.Changed:
+				split := strings.Split(path, "/")
+				//如果不是bind级别的变更则忽略
+				if len(split) < 5 || strings.LastIndex(split[4], "-bind") <= 0 {
+					self.session.Exists(path, nwatcher.zkwatcher)
+					continue
+				}
 
 				//获取一下数据
 				binding, err := self.getBindData(path, nwatcher.zkwatcher)
