@@ -1,4 +1,4 @@
-package client
+package core
 
 import (
 	"errors"
@@ -61,13 +61,13 @@ func (self *KiteClient) Start() {
 }
 
 func (self *KiteClient) dial() (*net.TCPConn, error) {
-	localAddr, err_l := net.ResolveTCPAddr("tcp4", self.local)
+	_, err_l := net.ResolveTCPAddr("tcp4", self.local)
 	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", self.remote)
 	if nil != err_l || nil != err_r {
 		log.Fatalf("RemotingClient|RESOLVE ADDR |FAIL|L:%s|R:%s", err_l, err_r)
 		return nil, err_l
 	}
-	conn, err := net.DialTCP("tcp4", localAddr, remoteAddr)
+	conn, err := net.DialTCP("tcp4", nil, remoteAddr)
 	if nil != err {
 		log.Fatalf("RemotingClient|CONNECT|%s|FAIL|%s\n", self.remote, err)
 		return nil, err

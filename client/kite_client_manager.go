@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"kiteq/binding"
+	"kiteq/client/chandler"
+	"kiteq/client/core"
+	"kiteq/client/listener"
+	"kiteq/pipe"
 	"kiteq/protocol"
+	rclient "kiteq/remoting/client"
 	"log"
 )
 
 const MAX_CLIENT_CONN = 10
-
-type SubscribeCallback func(msg *protocol.StringMessage) bool
-type PublishCallback func(messageId string) bool
 
 type KiteClientManager struct {
 	Subs      []*binding.Binding
@@ -20,8 +22,9 @@ type KiteClientManager struct {
 	Pubs      []string
 	GroupId   string
 	SecretKey string
-	conns     map[string]*KiteClientPool
+	conns     map[string]*core.KiteClientPool
 	zkManager *binding.ZKManager
+	listener  listener.IListener
 }
 
 func (self *KiteClientManager) String() string {
@@ -38,7 +41,7 @@ func (self *KiteClientManager) ChildWatcher(path string, childNode []string) {
 	log.Println("KITE CLIENT MANAGER|ZK CHILDWATCHER|PATH|%s|CHILDREN|%s\n", path, childNode)
 }
 
-func (self *KiteClientManager) newClientPool(topic string) (*KiteClientPool, error) {
+func (self *KiteClientManager) newClientPool(topic string) (*core.KiteClientPool, error) {
 	// @todo server地址改变的时候需要通知client重连
 	addrs, err := self.zkManager.GetQServerAndWatch(topic, binding.NewWatcher(self))
 	if err != nil {
@@ -47,7 +50,28 @@ func (self *KiteClientManager) newClientPool(topic string) (*KiteClientPool, err
 	if len(addrs) == 0 {
 		return nil, errors.New(fmt.Sprint("%s没有可用的server地址", topic))
 	}
-	ins, err := NewKitClientPool(MAX_CLIENT_CONN, addrs, self.GroupId, self.SecretKey, self.Local)
+	cpipe := pipe.NewDefaultPipeline()
+	clientm := rclient.NewClientManager()
+	clientm = rclient.NewClientManager()
+	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", self.listener))
+	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
+
+	ins, err := core.NewKitClientPool(
+		MAX_CLIENT_CONN,
+		addrs,
+		self.GroupId,
+		self.SecretKey,
+		self.Local,
+		cpipe,
+		func(remoteClient *rclient.RemotingClient, packet []byte) {
+			event := pipe.NewPacketEvent(remoteClient, packet)
+			err := cpipe.FireWork(event)
+			if nil != err {
+				log.Printf("KiteClient|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			}
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +100,7 @@ func (self *KiteClientManager) SetPubs(topics []string) error {
 	return nil
 }
 
-func (self *KiteClientManager) SetSubs(bindings []*binding.Binding, callback SubscribeCallback) error {
+func (self *KiteClientManager) SetSubs(bindings []*binding.Binding) error {
 	self.Subs = bindings
 	// 注册订阅的Topics
 	if err := self.zkManager.PublishBindings(
@@ -98,13 +122,17 @@ func (self *KiteClientManager) SetSubs(bindings []*binding.Binding, callback Sub
 	return nil
 }
 
+func (self *KiteClientManager) AddListener(listener listener.IListener) {
+	self.listener = listener
+}
+
 func NewKiteClientManager(local, zkAddr, groupId, secretKey string) *KiteClientManager {
 	ins := &KiteClientManager{
 		Local:     local,
 		ZkAddr:    zkAddr,
 		GroupId:   groupId,
 		SecretKey: secretKey,
-		conns:     make(map[string]*KiteClientPool),
+		conns:     make(map[string]*core.KiteClientPool),
 	}
 
 	// 连接zookeeper
@@ -113,8 +141,7 @@ func NewKiteClientManager(local, zkAddr, groupId, secretKey string) *KiteClientM
 	return ins
 }
 
-func (self *KiteClientManager) SendMessage(msg *protocol.StringMessage) error {
-	log.Println("send ", *msg.Header.Topic)
+func (self *KiteClientManager) SendStringMessage(msg *protocol.StringMessage) error {
 	clientPool := self.conns[*msg.Header.Topic]
 	if clientPool == nil {
 		return errors.New(fmt.Sprintf("THIS CLIENT CANT SEND TYPE %s\n", msg.Header.Topic))

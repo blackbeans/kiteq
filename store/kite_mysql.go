@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang/protobuf/proto"
+	"kiteq/protocol"
 	"log"
 )
 
@@ -45,7 +47,7 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 }
 
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
-	stmt, err := self.db.Prepare("SELECT messageId,topic,messageType,expiredTime,commited,body FROM `kite_msg` WHERE `messageId` = ?")
+	stmt, err := self.db.Prepare("SELECT messageId,topic,messageType,groupId,expiredTime,commited,body FROM `kite_msg` WHERE `messageId` = ?")
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -54,10 +56,12 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	pk := messageId
 
 	entity := &MessageEntity{}
+	var groupId string
 	err = stmt.QueryRow(pk).Scan(
 		&entity.messageId,
 		&entity.topic,
 		&entity.messageType,
+		&groupId,
 		&entity.expiredTime,
 		&entity.commited,
 		&entity.body,
@@ -66,11 +70,19 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		log.Println(err)
 		return nil
 	}
+	entity.Header = &protocol.Header{
+		MessageId:   proto.String(entity.messageId),
+		Topic:       proto.String(entity.topic),
+		MessageType: proto.String(entity.messageType),
+		GroupId:     proto.String(groupId),
+		ExpiredTime: proto.Int64(entity.expiredTime),
+		Commited:    proto.Bool(entity.commited),
+	}
 	return entity
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
-	stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,expiredTime,commited,body) VALUES(?, ?, ?, ?, ?, ?)")
+	stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,groupId,expiredTime,commited,body) VALUES(?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -78,7 +90,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	defer stmt.Close()
 	pk := entity.messageId
 
-	if _, err := stmt.Exec(pk, entity.topic, entity.messageType, entity.expiredTime, entity.commited, entity.body); err != nil {
+	if _, err := stmt.Exec(pk, entity.topic, entity.messageType, entity.Header.GroupId, entity.expiredTime, entity.commited, entity.body); err != nil {
 		log.Println(err)
 		return false
 	}

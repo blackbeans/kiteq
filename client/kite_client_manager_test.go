@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"kiteq/binding"
+	"kiteq/client/listener"
 	"kiteq/protocol"
 	"log"
 	"os"
@@ -38,33 +39,44 @@ func messageId() string {
 func TestNewManager(t *testing.T) {
 	// 创建客户端
 	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456")
+	manager.AddListener(&listener.ConsoleListener{})
 	// 设置发送类型
 	if err := manager.SetPubs([]string{"trade"}); err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 	// 设置接收类型
 	if err := manager.SetSubs(
 		[]*binding.Binding{
 			binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 		},
-		// 这是从服务器投递过来的message
-		func(msg *protocol.StringMessage) bool {
-			log.Println("recv from server", msg)
-			return true
-		},
 	); err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
-	// 构造发送请求
-	msg := buildStringMessage()
-	log.Println("msg entity: ", msg)
+
 	// 发送数据
-	err := manager.SendMessage(msg)
+	err := manager.SendStringMessage(buildStringMessage())
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
 		log.Println("SEND MESSAGE |SUCCESS")
 	}
-	time.Sleep(time.Second * 10)
+
+	// 发送数据
+	err = manager.SendStringMessage(buildStringMessage())
+	if nil != err {
+		log.Println("SEND MESSAGE |FAIL|", err)
+	} else {
+		log.Println("SEND MESSAGE |SUCCESS")
+	}
+
+	// 发送数据
+	err = manager.SendStringMessage(buildStringMessage())
+	if nil != err {
+		log.Println("SEND MESSAGE |FAIL|", err)
+	} else {
+		log.Println("SEND MESSAGE |SUCCESS")
+	}
+
+	time.Sleep(time.Second * 100)
 
 }

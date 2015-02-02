@@ -2,6 +2,7 @@ package chandler
 
 import (
 	"errors"
+	"kiteq/client/listener"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"log"
@@ -10,11 +11,13 @@ import (
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
 	BaseForwardHandler
+	listener listener.IListener
 }
 
-func NewAcceptHandler(name string) *AcceptHandler {
+func NewAcceptHandler(name string, listener listener.IListener) *AcceptHandler {
 	ahandler := &AcceptHandler{}
 	ahandler.BaseForwardHandler = NewBaseForwardHandler(name, ahandler)
+	ahandler.listener = listener
 	return ahandler
 }
 
@@ -40,11 +43,14 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	switch acceptEvent.MsgType {
 	case protocol.CMD_CHECK_MESSAGE:
+
 		//回调事务完成的监听器
-		log.Printf("AcceptHandler|Check Message|%s\n", acceptEvent.Msg)
+		log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
+		self.listener.OnMessageCheck(acceptEvent.Msg.(string))
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
-		log.Printf("AcceptHandler|Recieve Message|%s\n", acceptEvent.Msg)
+		log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
+		self.listener.OnMessage(acceptEvent.Msg.(*protocol.StringMessage))
 	default:
 		return INVALID_MSG_TYPE_ERROR
 	}
