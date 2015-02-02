@@ -78,7 +78,7 @@ func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ boo
 
 	storeAck := protocol.MarshalMessageStoreAck(messageid, succ, "0:SUCC|1:FAIL")
 	//响应包
-	return protocol.NewPacket(protocol.CMD_MESSAGE_STORE_ACK, storeAck)
+	return protocol.NewRespPacket(opaque, protocol.CMD_MESSAGE_STORE_ACK, storeAck)
 }
 
 //发送事务ack信息
@@ -87,5 +87,5 @@ func (self PersistentHandler) tXAck(opaque int32,
 
 	txack := protocol.MarshalTxACKPacket(messageid, protocol.TX_UNKNOW)
 	//响应包
-	return protocol.NewPacket(protocol.CMD_TX_ACK, txack)
+	return protocol.NewRespPacket(opaque, protocol.CMD_TX_ACK, txack)
 }

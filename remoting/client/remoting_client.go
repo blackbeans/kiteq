@@ -4,6 +4,7 @@ import (
 	"errors"
 	"kiteq/protocol"
 	"kiteq/remoting/session"
+	// "log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -74,8 +75,13 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 var TIMEOUT_ERROR = errors.New("SEND MESSAGE TIMEOUT ")
 
 func (self *RemotingClient) fillOpaque(packet *protocol.Packet) int32 {
-	tid := atomic.AddInt32(&self.id, 1) % int32(MAX_WATER_MARK)
-	packet.Opaque = tid
+	tid := packet.Opaque
+	//只有在默认值没有赋值的时候才去赋值
+	if tid < 0 {
+		id := atomic.AddInt32(&self.id, 1) % int32(MAX_WATER_MARK)
+		packet.Opaque = id
+		tid = id
+	}
 	return tid
 }
 

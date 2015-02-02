@@ -17,9 +17,16 @@ type Packet struct {
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
+		Opaque:  -1,
 		CmdType: cmdtype,
 		Data:    data,
 		future:  make(chan interface{}, 1)}
+}
+
+func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
+	p := NewPacket(cmdtype, data)
+	p.Opaque = opaque
+	return p
 }
 
 func (self *Packet) Get() chan interface{} {

@@ -19,7 +19,7 @@ type defaultStore struct {
 }
 
 func (self *defaultStore) Query(messageId string) *store.MessageEntity {
-	entity := store.NewStringMessageEntity(buildStringMessage())
+	entity := store.NewStringMessageEntity(buildStringMessage(messageId))
 	return entity
 
 }
@@ -36,11 +36,11 @@ func (self *defaultStore) UpdateEntity(entity *store.MessageEntity) bool {
 	return true
 }
 
-func buildStringMessage() *protocol.StringMessage {
+func buildStringMessage(id string) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:   proto.String("1234567"),
+		MessageId:   proto.String("1234567_" + id),
 		Topic:       proto.String("trade"),
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(time.Now().Unix()),
@@ -135,7 +135,7 @@ func initKiteClient() {
 
 func BenchmarkRemotingServer(t *testing.B) {
 	for i := 0; i < t.N; i++ {
-		err := kclient.SendStringMessage(buildStringMessage())
+		err := kclient.SendStringMessage(buildStringMessage("1"))
 		if nil != err {
 			t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 		}
@@ -144,19 +144,19 @@ func BenchmarkRemotingServer(t *testing.B) {
 
 func TestRemotingServer(t *testing.T) {
 
-	err := kclient.SendStringMessage(buildStringMessage())
+	err := kclient.SendStringMessage(buildStringMessage("1"))
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = kclient.SendStringMessage(buildStringMessage())
+	err = kclient.SendStringMessage(buildStringMessage("2"))
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
 	}
 
-	err = kclient.SendStringMessage(buildStringMessage())
+	err = kclient.SendStringMessage(buildStringMessage("3"))
 	if nil != err {
 		t.Fail()
 		t.Logf("SEND MESSAGE |FAIL|%s\n", err)
