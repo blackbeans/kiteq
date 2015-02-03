@@ -18,13 +18,30 @@ const MAX_CLIENT_CONN = 10
 type KiteClientManager struct {
 	Subs      []*binding.Binding
 	Local     string
-	ZkAddr    string
 	Pubs      []string
 	GroupId   string
 	SecretKey string
 	conns     map[string]*core.KiteClientPool
 	zkManager *binding.ZKManager
-	listener  listener.IListener
+	pipeline  *pipe.DefaultPipeline
+}
+
+func NewKiteClientManager(local, zkAddr, groupId, secretKey string, listener listener.IListener) *KiteClientManager {
+	pipeline := pipe.NewDefaultPipeline()
+	clientm := rclient.NewClientManager()
+	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listener))
+	pipeline.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
+
+	ins := &KiteClientManager{
+		Local:     local,
+		GroupId:   groupId,
+		SecretKey: secretKey,
+		conns:     make(map[string]*core.KiteClientPool),
+		pipeline:  pipeline,
+		zkManager: binding.NewZKManager(zkAddr)}
+
+	return ins
 }
 
 func (self *KiteClientManager) String() string {
@@ -50,12 +67,6 @@ func (self *KiteClientManager) newClientPool(topic string) (*core.KiteClientPool
 	if len(addrs) == 0 {
 		return nil, errors.New(fmt.Sprint("%s没有可用的server地址", topic))
 	}
-	cpipe := pipe.NewDefaultPipeline()
-	clientm := rclient.NewClientManager()
-	clientm = rclient.NewClientManager()
-	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
-	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", self.listener))
-	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	ins, err := core.NewKitClientPool(
 		MAX_CLIENT_CONN,
@@ -63,10 +74,9 @@ func (self *KiteClientManager) newClientPool(topic string) (*core.KiteClientPool
 		self.GroupId,
 		self.SecretKey,
 		self.Local,
-		cpipe,
 		func(remoteClient *rclient.RemotingClient, packet []byte) {
 			event := pipe.NewPacketEvent(remoteClient, packet)
-			err := cpipe.FireWork(event)
+			err := self.pipeline.FireWork(event)
 			if nil != err {
 				log.Printf("KiteClient|onPacketRecieve|FAIL|%s|%t\n", err, packet)
 			}
@@ -120,25 +130,6 @@ func (self *KiteClientManager) SetSubs(bindings []*binding.Binding) error {
 	}
 
 	return nil
-}
-
-func (self *KiteClientManager) AddListener(listener listener.IListener) {
-	self.listener = listener
-}
-
-func NewKiteClientManager(local, zkAddr, groupId, secretKey string) *KiteClientManager {
-	ins := &KiteClientManager{
-		Local:     local,
-		ZkAddr:    zkAddr,
-		GroupId:   groupId,
-		SecretKey: secretKey,
-		conns:     make(map[string]*core.KiteClientPool),
-	}
-
-	// 连接zookeeper
-	ins.zkManager = binding.NewZKManager(ins.ZkAddr)
-
-	return ins
 }
 
 func (self *KiteClientManager) SendStringMessage(msg *protocol.StringMessage) error {

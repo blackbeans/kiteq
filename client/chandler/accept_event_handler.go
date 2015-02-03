@@ -46,7 +46,25 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 		//回调事务完成的监听器
 		log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
-		self.listener.OnMessageCheck(acceptEvent.Msg.(string))
+		txPacket := acceptEvent.Msg.(*protocol.TxACKPacket)
+		messageId := txPacket.GetMessageId()
+		tx := protocol.NewTxResponse(messageId)
+		err := self.listener.OnMessageCheck(messageId, tx)
+		if nil != err {
+			tx.Unknown(err.Error())
+		}
+		//发起一个向后的处理时间发送出去
+		//填充条件
+		tx.ConvertTxAckPacket(txPacket)
+
+		txData, _ := protocol.MarshalPbMessage(txPacket)
+
+		txResp := protocol.NewRespPacket(acceptEvent.Opaque, acceptEvent.MsgType, txData)
+
+		//发送提交结果确认的Packet
+		remotingEvent := NewRemotingEvent(txResp, []string{acceptEvent.RemoteClient.RemoteAddr()})
+		ctx.SendForward(remotingEvent)
+
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
 		log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)

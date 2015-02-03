@@ -12,9 +12,9 @@ const (
 	CMD_TX_ACK            = uint8(0x10) //事务确认
 
 	//事务处理失败与否
-	TX_UNKNOW = TxStatus(0)
-	TX_SUCC   = TxStatus(1)
-	TX_FAIL   = TxStatus(2)
+	TX_UNKNOWN  = TxStatus(0)
+	TX_COMMIT   = TxStatus(1)
+	TX_ROLLBACK = TxStatus(2)
 
 	//message
 	CMD_BYTES_MESSAGE  = uint8(0x11)

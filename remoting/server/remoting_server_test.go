@@ -4,6 +4,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"kiteq/binding"
 	"kiteq/client"
+	"kiteq/client/core"
 	"kiteq/client/listener"
 	"kiteq/handler"
 	"kiteq/pipe"
@@ -45,7 +46,7 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(time.Now().Unix()),
 		GroupId:     proto.String("go-kite-test"),
-		Commited:    proto.Bool(true)}
+		Commit:      proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
@@ -106,7 +107,7 @@ func initKiteServer() {
 
 func initKiteClient() {
 	//开始向服务端发送数据
-    manager = client.NewKiteClientManager(":18002", "", "s-trade-a", "123456")
+	manager = client.NewKiteClientManager(":18002", "", "s-trade-a", "123456")
 	manager.AddListener(&listener.ConsoleListener{})
 	// 设置发送类型
 	if err := manager.SetPubs([]string{"trade"}); err != nil {
@@ -154,4 +155,3 @@ func TestRemotingServer(t *testing.T) {
 
 	time.Sleep(20 * time.Second)
 }
-

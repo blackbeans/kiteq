@@ -35,6 +35,7 @@ message DeliveryAck{
 message TxACKPacket{    
      required string messageId = 1; //消息Id
      required int32 status = 2 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
+     required string feedback = 3; //回馈
 }
 
 
@@ -44,7 +45,7 @@ message Header{
     required string messageType = 3; //消息类型
     required int64 expiredTime =4; //消息过期时间
     required string groupId = 5; // 消息发送来源
-    required bool commited = 6; //本消息是否提交
+    required bool commit = 6; //本消息是否提交
 }
 
 //byte类消息

@@ -35,7 +35,7 @@ func buildStringMessage() *protocol.StringMessage {
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(13700000000),
 		GroupId:     proto.String("go-kite-test"),
-		Commited:    proto.Bool(true)}
+		Commit:      proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity

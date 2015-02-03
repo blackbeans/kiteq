@@ -1,7 +1,6 @@
 package core
 
 import (
-	"kiteq/pipe"
 	rcient "kiteq/remoting/client"
 	// "log"
 	"sync"
@@ -17,13 +16,11 @@ type KiteClientPool struct {
 	remotes    []string
 	roundRobin int
 	sync.Mutex
-	pipeline         *pipe.DefaultPipeline
 	packetDispatcher func(remoteClient *rcient.RemotingClient, packet []byte)
 	queue            chan *KiteClient
 }
 
 func NewKitClientPool(maxConn int, remotes []string, groupId, secretKey, local string,
-	pipeline *pipe.DefaultPipeline,
 	packetDispatcher func(remoteClient *rcient.RemotingClient, packet []byte)) (*KiteClientPool, error) {
 
 	return &KiteClientPool{
@@ -35,7 +32,6 @@ func NewKitClientPool(maxConn int, remotes []string, groupId, secretKey, local s
 		secretKey:        secretKey,
 		local:            local,
 		remotes:          remotes,
-		pipeline:         pipeline,
 		packetDispatcher: packetDispatcher,
 		queue:            make(chan *KiteClient, maxConn),
 	}, nil

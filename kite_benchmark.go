@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"kiteq/client"
 	"kiteq/client/chandler"
+	"kiteq/client/core"
+	"kiteq/client/listener"
 	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
@@ -29,7 +30,7 @@ func buildStringMessage() *protocol.StringMessage {
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(13700000000),
 		GroupId:     proto.String("go-kite-test"),
-		Commited:    proto.Bool(true)}
+		Commit:      proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
@@ -51,19 +52,19 @@ func main() {
 	remote := flag.String("remote", "localhost:13800", "-remote=localhost:13800")
 	flag.Parse()
 	host, port, _ := net.SplitHostPort(*local)
-	clients := make([]*client.KiteClient, 0, *conn)
+	clients := make([]*core.KiteClient, 0, *conn)
 
 	portv, _ := strconv.ParseInt(port, 10, 0)
 
 	clientm := rclient.NewClientManager()
 	cpipe := pipe.NewDefaultPipeline()
 	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
-	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept"))
+	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", &listener.ConsoleListener{}))
 	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	for i := 0; i < *conn; i++ {
 
-		kclient := client.NewKitClient("user-service", "1234",
+		kclient := core.NewKitClient("user-service", "1234",
 			net.JoinHostPort(host, strconv.Itoa(int(portv)+i)), *remote,
 			func(remoteClient *rclient.RemotingClient, packet []byte) {
 				event := pipe.NewPacketEvent(remoteClient, packet)

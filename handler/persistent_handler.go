@@ -45,7 +45,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
-	if succ && pevent.entity.Header.GetCommited() {
+	if succ && pevent.entity.Header.GetCommit() {
 		//启动异步协程处理分发逻辑
 		go func() {
 			deliver := &DeliverEvent{}
@@ -85,7 +85,7 @@ func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ boo
 func (self PersistentHandler) tXAck(opaque int32,
 	messageid string) *protocol.Packet {
 
-	txack := protocol.MarshalTxACKPacket(messageid, protocol.TX_UNKNOW)
+	txack := protocol.MarshalTxACKPacket(messageid, protocol.TX_UNKNOWN)
 	//响应包
 	return protocol.NewRespPacket(opaque, protocol.CMD_TX_ACK, txack)
 }

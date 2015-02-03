@@ -161,6 +161,7 @@ func (m *DeliveryAck) GetGroupId() string {
 type TxACKPacket struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
 	Status           *int32  `protobuf:"varint,2,req,name=status,def=0" json:"status,omitempty"`
+	Feedback         *string `protobuf:"bytes,3,req,name=feedback" json:"feedback,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -184,13 +185,20 @@ func (m *TxACKPacket) GetStatus() int32 {
 	return Default_TxACKPacket_Status
 }
 
+func (m *TxACKPacket) GetFeedback() string {
+	if m != nil && m.Feedback != nil {
+		return *m.Feedback
+	}
+	return ""
+}
+
 type Header struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
 	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
 	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
 	ExpiredTime      *int64  `protobuf:"varint,4,req,name=expiredTime" json:"expiredTime,omitempty"`
 	GroupId          *string `protobuf:"bytes,5,req,name=groupId" json:"groupId,omitempty"`
-	Commited         *bool   `protobuf:"varint,6,req,name=commited" json:"commited,omitempty"`
+	Commit           *bool   `protobuf:"varint,6,req,name=commit" json:"commit,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -233,9 +241,9 @@ func (m *Header) GetGroupId() string {
 	return ""
 }
 
-func (m *Header) GetCommited() bool {
-	if m != nil && m.Commited != nil {
-		return *m.Commited
+func (m *Header) GetCommit() bool {
+	if m != nil && m.Commit != nil {
+		return *m.Commit
 	}
 	return false
 }

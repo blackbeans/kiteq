@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
   `messageType` CHAR(4) NULL DEFAULT 0,
   `expiredTime` BIGINT NULL,
   `groupId` VARCHAR(45) NULL,
-  `commited` TINYINT NULL DEFAULT 0 COMMENT '提交状态',
+  `commit` TINYINT NULL DEFAULT 0 COMMENT '提交状态',
   `body` BLOB NULL,
   `topo` TINYINT NULL DEFAULT 0 COMMENT '在哪个拓扑里',
-  INDEX `idx_commited` (`commited` ASC),
+  INDEX `idx_commit` (`commit` ASC),
   INDEX `idx_msgId` (`messageId` ASC),
   PRIMARY KEY (`id`))
 ENGINE = InnoDB;
@@ -47,7 +47,7 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 }
 
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
-	stmt, err := self.db.Prepare("SELECT messageId,topic,messageType,groupId,expiredTime,commited,body FROM `kite_msg` WHERE `messageId` = ?")
+	stmt, err := self.db.Prepare("SELECT messageId,topic,messageType,groupId,expiredTime,commit,body FROM `kite_msg` WHERE `messageId` = ?")
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -63,7 +63,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		&entity.messageType,
 		&groupId,
 		&entity.expiredTime,
-		&entity.commited,
+		&entity.commit,
 		&entity.body,
 	)
 	if err != nil {
@@ -76,13 +76,13 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		MessageType: proto.String(entity.messageType),
 		GroupId:     proto.String(groupId),
 		ExpiredTime: proto.Int64(entity.expiredTime),
-		Commited:    proto.Bool(entity.commited),
+		Commit:      proto.Bool(entity.commit),
 	}
 	return entity
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
-	stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,groupId,expiredTime,commited,body) VALUES(?, ?, ?, ?, ?, ?, ?)")
+	stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,groupId,expiredTime,commit,body) VALUES(?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -90,7 +90,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	defer stmt.Close()
 	pk := entity.messageId
 
-	if _, err := stmt.Exec(pk, entity.topic, entity.messageType, entity.Header.GroupId, entity.expiredTime, entity.commited, entity.body); err != nil {
+	if _, err := stmt.Exec(pk, entity.topic, entity.messageType, entity.Header.GroupId, entity.expiredTime, entity.commit, entity.body); err != nil {
 		log.Println(err)
 		return false
 	}
@@ -98,7 +98,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
-	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commited=? where messageId=?")
+	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commit=? where messageId=?")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -112,7 +112,7 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) Rollback(messageId string) bool {
-	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commited=? where messageId=?")
+	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commit=? where messageId=?")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -126,7 +126,7 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
-	stmt, err := self.db.Prepare("UPDATE `kite_msg` set topic=?, messageType=?, expiredTime=?, commited=?, body=? where messageId=?")
+	stmt, err := self.db.Prepare("UPDATE `kite_msg` set topic=?, messageType=?, expiredTime=?, commit=?, body=? where messageId=?")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -134,7 +134,7 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 	defer stmt.Close()
 	pk := entity.messageId
 
-	if _, err := stmt.Exec(entity.topic, entity.messageType, entity.expiredTime, entity.commited, entity.body, pk); err != nil {
+	if _, err := stmt.Exec(entity.topic, entity.messageType, entity.expiredTime, entity.commit, entity.body, pk); err != nil {
 		log.Println(err)
 		return false
 	}

@@ -108,7 +108,7 @@ func (self *KiteClient) SendStringMessage(message *protocol.StringMessage) error
 	return self.innerSendMessage(protocol.CMD_STRING_MESSAGE, data)
 }
 
-func (self *KiteClient) SendBytsMessage(message *protocol.BytesMessage) error {
+func (self *KiteClient) SendBytesMessage(message *protocol.BytesMessage) error {
 	data, err := protocol.MarshalPbMessage(message)
 	if nil != err {
 		return err

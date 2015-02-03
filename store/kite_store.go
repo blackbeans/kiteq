@@ -7,25 +7,28 @@ import (
 
 //用于持久化的messageEntity
 type MessageEntity struct {
-	Header       *protocol.Header
+	Header *protocol.Header
+	body   []byte //序列化后的消息
+	//-----------------
+	msgType uint8 //消息类型
+
 	messageId    string
 	topic        string //topic
 	messageType  string //messageType
 	publishGroup string //发布的groupId
-	commited     bool   //是否已提交
+	commit       bool   //是否已提交
 	expiredTime  int64  //过期时间
 
-	//-----------------
-	msgType         uint8    //消息类型
-	body            []byte   //序列化后的消息
-	failGroupTags   []string //投递失败的分组tags
-	succGroupTags   []string // 投递成功的分组
-	nextDeliverTime int64    //下一次投递的时间
+	kiteQServer string // 当前的处理kiteqserver地址
+
+	failGroupTags []string //投递失败的分组tags
+	// succGroupTags   []string // 投递成功的分组
+	nextDeliverTime int64 //下一次投递的时间
 
 }
 
 func (self *MessageEntity) String() string {
-	return fmt.Sprintf("id:%s topic:%s commited:%t body:%s", self.messageId, self.topic, self.commited, string(self.body))
+	return fmt.Sprintf("id:%s topic:%s commit:%t body:%s", self.messageId, self.topic, self.commit, string(self.body))
 }
 
 func (self *MessageEntity) GetBody() []byte {
@@ -41,7 +44,7 @@ func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 		topic:        msg.GetHeader().GetTopic(),
 		publishGroup: msg.GetHeader().GetGroupId(),
 		messageType:  msg.GetHeader().GetMessageType(),
-		commited:     msg.GetHeader().GetCommited(),
+		commit:       msg.GetHeader().GetCommit(),
 		expiredTime:  msg.GetHeader().GetExpiredTime(),
 		//消息种类
 		msgType: protocol.CMD_STRING_MESSAGE,
@@ -58,7 +61,7 @@ func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 		topic:        msg.GetHeader().GetTopic(),
 		publishGroup: msg.GetHeader().GetGroupId(),
 		messageType:  msg.GetHeader().GetMessageType(),
-		commited:     msg.GetHeader().GetCommited(),
+		commit:       msg.GetHeader().GetCommit(),
 		expiredTime:  msg.GetHeader().GetExpiredTime(),
 
 		//消息种类

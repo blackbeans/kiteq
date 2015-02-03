@@ -42,3 +42,34 @@ func MarshalTxACKPacket(messageId string, txstatus TxStatus) []byte {
 		Status:    proto.Int32(int32(txstatus))})
 	return data
 }
+
+//事务处理类型
+type TxResponse struct {
+	messageId string
+	status    TxStatus //事务状态 0; //未知  1;  //已提交 2; //回滚
+	feedback  string   //回馈
+}
+
+func NewTxResponse(messageId string) *TxResponse {
+	return &TxResponse{
+		messageId: messageId,
+	}
+}
+
+func (self *TxResponse) Unknown(feedback string) {
+	self.status = TX_UNKNOWN
+	self.feedback = feedback
+}
+
+func (self *TxResponse) Rollback(feedback string) {
+	self.status = TX_ROLLBACK
+	self.feedback = feedback
+}
+func (self *TxResponse) Commit() {
+	self.status = TX_COMMIT
+}
+
+func (self *TxResponse) ConvertTxAckPacket(packet *TxACKPacket) {
+	packet.Status = proto.Int32(int32(self.status))
+	packet.Feedback = proto.String(self.feedback)
+}
