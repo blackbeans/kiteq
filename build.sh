@@ -17,6 +17,7 @@ go build kiteq/remoting/session
 go build kiteq/remoting/server
 go build kiteq/remoting/client
 go build kiteq/client/chandler
+go build kiteq/server
 go build kiteq/client
 
 
@@ -31,7 +32,9 @@ go install kiteq/remoting/session
 go install kiteq/remoting/server
 go install kiteq/remoting/client
 go install kiteq/client/chandler
+go install kiteq/server
 go install kiteq/client
+
 
 
 ##############

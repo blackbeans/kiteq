@@ -1,0 +1,86 @@
+package server
+
+import (
+	"kiteq/binding"
+	"kiteq/handler"
+	"kiteq/pipe"
+	"kiteq/remoting/client"
+	"kiteq/remoting/server"
+	"kiteq/store"
+	"log"
+	"time"
+)
+
+type KiteQServer struct {
+	local          string
+	topics         []string
+	clientManager  *client.ClientManager
+	exchanger      *binding.BindExchanger
+	remotingServer *server.RemotingServer
+	pipeline       *pipe.DefaultPipeline
+}
+
+func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQServer {
+	var kitedb store.IKiteStore
+	if mysql == "" {
+		kitedb = &store.MockKiteStore{}
+	} else {
+		kitedb = store.NewKiteMysql(mysql)
+	}
+
+	clientManager := client.NewClientManager()
+	// 临时在这里创建的BindExchanger
+	exchanger := binding.NewBindExchanger(zkhost)
+
+	//初始化pipeline
+	pipeline := pipe.NewDefaultPipeline()
+	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
+	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
+	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
+	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitedb))
+	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting", clientManager))
+
+	return &KiteQServer{
+		local:         local,
+		topics:        topics,
+		clientManager: clientManager,
+		exchanger:     exchanger,
+		pipeline:      pipeline}
+
+}
+
+func (self *KiteQServer) Start() {
+
+	self.remotingServer = server.NewRemotionServer(self.local, 3*time.Second,
+		func(rclient *client.RemotingClient, packet []byte) {
+			event := pipe.NewPacketEvent(rclient, packet)
+			err := self.pipeline.FireWork(event)
+			if nil != err {
+				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			}
+		})
+
+	err := self.remotingServer.ListenAndServer()
+	if nil != err {
+		log.Fatalf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.local)
+	} else {
+		log.Printf("KiteQServer|RemotionServer|START|SUCC|%s\n", self.local)
+	}
+	//推送可发送的topic列表并且获取了对应topic下的订阅关系
+	succ := self.exchanger.PushQServer(self.local, self.topics)
+	if !succ {
+		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.topics)
+	} else {
+		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
+	}
+
+}
+
+func (self *KiteQServer) Shutdown() {
+	self.clientManager.Shutdown()
+	self.remotingServer.Shutdown()
+	self.exchanger.Shutdown()
+}

@@ -21,7 +21,7 @@ type Session struct {
 	flowControl  *stat.FlowControl //流量统计
 }
 
-func NewSession(conn *net.TCPConn, remoteAddr string,
+func NewSession(conn *net.TCPConn,
 	flowControl *stat.FlowControl) *Session {
 
 	conn.SetKeepAlive(true)
@@ -34,7 +34,7 @@ func NewSession(conn *net.TCPConn, remoteAddr string,
 		ReadChannel:  make(chan []byte, 500),
 		WriteChannel: make(chan []byte, 500),
 		isClose:      false,
-		remoteAddr:   remoteAddr,
+		remoteAddr:   conn.RemoteAddr().String(),
 		flowControl:  flowControl}
 
 	return session

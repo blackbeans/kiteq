@@ -2,6 +2,7 @@ package handler
 
 import (
 	. "kiteq/pipe"
+	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
 	"kiteq/store"
 )
@@ -20,6 +21,17 @@ func NewAccessEvent(groupId, secretKey string, remoteClient *rclient.RemotingCli
 		SecretKey:    secretKey,
 		remoteClient: remoteClient,
 		opaque:       opaque}
+
+}
+
+type TxAckEvent struct {
+	IForwardEvent
+	txPacket *protocol.TxACKPacket
+	opaque   int32
+}
+
+func NewTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32) *TxAckEvent {
+	return &TxAckEvent{txPacket: txPacket, opaque: opaque}
 
 }
 

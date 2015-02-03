@@ -1,6 +1,7 @@
 package client
 
 import (
+	// "log"
 	"sync"
 )
 
@@ -22,7 +23,7 @@ func (self *ClientManager) Add(groupId string, remoteClient *RemotingClient) {
 	defer self.lock.Unlock()
 
 	cs, ok := self.groupClients[groupId]
-	if ok {
+	if !ok {
 		cs = make([]*RemotingClient, 0, 50)
 	}
 
@@ -35,7 +36,7 @@ func (self *ClientManager) Add(groupId string, remoteClient *RemotingClient) {
 func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-
+	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
 	rclient, _ := self.allClients[hostport]
 	return rclient
 }
@@ -63,4 +64,10 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 	}
 	// log.Println("Find clients result ", clients)
 	return clients
+}
+
+func (self *ClientManager) Shutdown() {
+	for _, c := range self.allClients {
+		c.Shutdown()
+	}
 }

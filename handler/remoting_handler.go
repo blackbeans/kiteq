@@ -64,7 +64,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 				futures[host] = rclient.Write(event.Packet)
 			} else {
 				//记为失败的下次需要重新发送
-				log.Printf("RemotingHandler|invokeGroup|NO RemoteClient|%s\n", host)
+				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s|%s\n", self.GetName(), host, event.Packet)
 			}
 		}
 	}

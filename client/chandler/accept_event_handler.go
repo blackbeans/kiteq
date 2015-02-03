@@ -5,7 +5,7 @@ import (
 	"kiteq/client/listener"
 	. "kiteq/pipe"
 	"kiteq/protocol"
-	"log"
+	// "log"
 )
 
 //--------------------如下为具体的处理Handler
@@ -42,10 +42,10 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	switch acceptEvent.MsgType {
-	case protocol.CMD_CHECK_MESSAGE:
+	case protocol.CMD_TX_ACK:
 
 		//回调事务完成的监听器
-		log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
+		// log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
 		txPacket := acceptEvent.Msg.(*protocol.TxACKPacket)
 		messageId := txPacket.GetMessageId()
 		tx := protocol.NewTxResponse(messageId)
@@ -64,10 +64,11 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//发送提交结果确认的Packet
 		remotingEvent := NewRemotingEvent(txResp, []string{acceptEvent.RemoteClient.RemoteAddr()})
 		ctx.SendForward(remotingEvent)
+		// log.Printf("AcceptHandler|Recieve TXMessage|%t\n", acceptEvent.Msg)
 
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
-		log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
+		// log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
 		self.listener.OnMessage(acceptEvent.Msg.(*protocol.StringMessage))
 	default:
 		return INVALID_MSG_TYPE_ERROR

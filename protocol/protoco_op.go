@@ -3,13 +3,13 @@ package protocol
 type TxStatus int32
 
 const (
-	CMD_HEARTBEAT = uint8(0x00) //心跳包
+	CMD_HEARTBEAT = uint8(0x01) //心跳包
 	CMD_CONN_META = uint8(0x02) //连接元信息
 	CMD_CONN_AUTH = uint8(0x03) //权限验证cmd
 	//消息持久化cmd
 	CMD_MESSAGE_STORE_ACK = uint8(0x04) //持久化确认
 	CMD_DELIVERY_ACK      = uint8(0x05) //投递确认
-	CMD_TX_ACK            = uint8(0x10) //事务确认
+	CMD_TX_ACK            = uint8(0x06) //事务确认
 
 	//事务处理失败与否
 	TX_UNKNOWN  = TxStatus(0)
@@ -19,7 +19,6 @@ const (
 	//message
 	CMD_BYTES_MESSAGE  = uint8(0x11)
 	CMD_STRING_MESSAGE = uint8(0x12)
-	CMD_CHECK_MESSAGE  = uint8(0x13)
 
 	//最大packet的字节数
 	MAX_PACKET_BYTES    = 8 * 1024 * 1024

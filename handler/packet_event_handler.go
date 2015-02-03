@@ -43,7 +43,7 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	//decode2requestPacket
 	tlv, err := protocol.UnmarshalTLV(pevent.Packet)
 	if nil == tlv || nil != err {
-		log.Printf("PacketHandler|UnmarshalTLV|FAIL|%s|%s\n", err, pevent.Packet)
+		log.Printf("PacketHandler|%s|UnmarshalTLV|FAIL|%s|%s\n", self.GetName(), err, pevent.Packet)
 		//如果为空
 		return INVALID_PACKET_ERROR
 	}
@@ -85,6 +85,10 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket
 		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
+		if nil == err {
+			event = NewTxAckEvent(&txAck, packet.Opaque)
+		}
+
 	//发送的是bytesmessage
 	case protocol.CMD_BYTES_MESSAGE:
 		var msg protocol.BytesMessage

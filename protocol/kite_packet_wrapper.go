@@ -36,10 +36,11 @@ func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
 	return data
 }
 
-func MarshalTxACKPacket(messageId string, txstatus TxStatus) []byte {
+func MarshalTxACKPacket(messageId string, txstatus TxStatus, feedback string) []byte {
 	data, _ := MarshalPbMessage(&TxACKPacket{
 		MessageId: proto.String(messageId),
-		Status:    proto.Int32(int32(txstatus))})
+		Status:    proto.Int32(int32(txstatus)),
+		Feedback:  proto.String(feedback)})
 	return data
 }
 

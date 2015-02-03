@@ -55,7 +55,9 @@ func (self *RemotingServer) ListenAndServer() error {
 	stopListener := &StoppedListener{listener, self.stopChan, self.keepalive}
 
 	//开始服务获取连接
-	return self.serve(stopListener)
+	go self.serve(stopListener)
+
+	return nil
 
 }
 
@@ -64,12 +66,12 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 		conn, err := l.AcceptTCP()
 		if nil != err {
 			log.Printf("RemotingServer|serve|AcceptTCP|FAIL|%s\n", err)
-			return err
+			continue
 		} else {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//session处理,应该有个session管理器
-			rempteSession := session.NewSession(conn, self.hostport, self.flowControl)
+			rempteSession := session.NewSession(conn, self.flowControl)
 			self.handleSession(rempteSession)
 		}
 	}

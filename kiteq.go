@@ -2,28 +2,25 @@ package main
 
 import (
 	"flag"
-	"kiteq/binding"
-	"kiteq/handler"
-	"kiteq/pipe"
-	"kiteq/remoting/client"
-	"kiteq/remoting/server"
-	"kiteq/store"
+	"kiteq/server"
 	"log"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
 	"strconv"
-	"time"
+	"strings"
 )
 
 func main() {
 
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
+	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
+	topics := flag.String("topics", "", "-topics=trade,a,b")
 	mysql := flag.String("mysql", "", "-mysql=root:root@tcp(localhost:3306)/kite")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
+
 	flag.Parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
@@ -35,48 +32,9 @@ func main() {
 		}
 	}()
 
-	var kitedb store.IKiteStore
-	if *mysql == "" {
-		kitedb = &store.MockKiteStore{}
-	} else {
-		kitedb = store.NewKiteMysql(*mysql)
-	}
-	// 临时在这里注册一下
-	// zk := binding.NewZKManager("")
-	// zk.PublishQServer(*bindHost, []string{"trade"})
-	// 临时在这里创建的SessionManager
+	qserver := server.NewKiteQServer(*bindHost, *zkhost, strings.Split(*topics, ","), *mysql)
 
-	clientManager := client.NewClientManager()
-	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger("localhost:2181")
-
-	//初始化pipeline
-	pipeline := pipe.NewDefaultPipeline()
-	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
-	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
-	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitedb))
-	pipeline.RegisteHandler("remoting", handler.NewRemotingHandler("remoting", clientManager))
-
-	remotingServer := server.NewRemotionServer(*bindHost, 3*time.Second,
-		func(rclient *client.RemotingClient, packet []byte) {
-			event := pipe.NewPacketEvent(rclient, packet)
-			err := pipeline.FireWork(event)
-			if nil != err {
-				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
-			}
-		})
-
-	stopCh := make(chan error, 1)
-	go func() {
-		err := remotingServer.ListenAndServer()
-		stopCh <- err
-	}()
-
-	//推送可发送的topic列表
-	exchanger.PushQServer(*bindHost, []string{"trade"})
+	qserver.Start()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Kill)
@@ -84,9 +42,9 @@ func main() {
 	select {
 	//kill掉的server
 	case <-ch:
-	case <-stopCh:
+
 	}
 
-	remotingServer.Shutdown()
-	log.Println("RemotingServer IS STOPPED!")
+	qserver.Shutdown()
+	log.Println("KiteQServer IS STOPPED!")
 }

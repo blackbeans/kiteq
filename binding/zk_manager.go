@@ -95,7 +95,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 }
 
 //发布可以使用的topic类型的publisher
-func (self *ZKManager) PublishTopic(topics []string, groupId string, hostport string) error {
+func (self *ZKManager) PublishTopics(topics []string, groupId string, hostport string) error {
 
 	for _, topic := range topics {
 		pubPath := KITEQ_PUB + "/" + topic + "/" + groupId
@@ -171,7 +171,7 @@ func (self *ZKManager) traverseCreatePath(path string, data []byte, createType z
 	tmppath := "/"
 	for i, v := range split {
 		tmppath += v
-		log.Printf("ZKManager|traverseCreatePath|%s\n", tmppath)
+		// log.Printf("ZKManager|traverseCreatePath|%s\n", tmppath)
 		if i >= len(split)-1 {
 			break
 		}
@@ -276,7 +276,7 @@ func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Bin
 		return nil, err
 	}
 
-	log.Printf("ZKManager|getBindData|Binding|SUCC|%s|%s\n", path, string(bindData))
+	// log.Printf("ZKManager|getBindData|Binding|SUCC|%s|%s\n", path, string(bindData))
 
 	binding, err := UmarshalBinds(bindData)
 	if nil != err {

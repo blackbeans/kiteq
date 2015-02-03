@@ -4,18 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"kiteq/client/chandler"
-	"kiteq/client/core"
+	"kiteq/client"
 	"kiteq/client/listener"
-	"kiteq/pipe"
 	"kiteq/protocol"
-	rclient "kiteq/remoting/client"
-	"log"
-	"math/rand"
-	"net"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,37 +40,10 @@ func messageId() string {
 func main() {
 
 	c := flag.Int("c", 10, "-c=10")
-	conn := flag.Int("conn", 1, "-conn=1")
-	local := flag.String("local", "localhost:13800", "-local=localhost:13800")
-	remote := flag.String("remote", "localhost:13800", "-remote=localhost:13800")
+	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
-	host, port, _ := net.SplitHostPort(*local)
-	clients := make([]*core.KiteClient, 0, *conn)
 
-	portv, _ := strconv.ParseInt(port, 10, 0)
-
-	clientm := rclient.NewClientManager()
-	cpipe := pipe.NewDefaultPipeline()
-	cpipe.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
-	cpipe.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", &listener.ConsoleListener{}))
-	cpipe.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
-
-	for i := 0; i < *conn; i++ {
-
-		kclient := core.NewKitClient("user-service", "1234",
-			net.JoinHostPort(host, strconv.Itoa(int(portv)+i)), *remote,
-			func(remoteClient *rclient.RemotingClient, packet []byte) {
-				event := pipe.NewPacketEvent(remoteClient, packet)
-				err := cpipe.FireWork(event)
-				if nil != err {
-					log.Printf("KiteClient|onPacketRecieve|FAIL|%s|%t\n", err, packet)
-				}
-			})
-
-		//开始向服务端发送数据
-
-		clients = append(clients, kclient)
-	}
+	kite := client.NewKiteQClient(*zkhost, "ps-mts-test", "123456", &listener.MockListener{})
 
 	count := int32(0)
 	lc := int32(0)
@@ -101,25 +67,21 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	stop := false
-	for j := 0; j < *conn; j++ {
-		for i := 0; i < *c; i++ {
-			go func() {
-				wg.Add(1)
-				for !stop {
-					idx := rand.Intn(len(clients))
-					tmpclient := clients[idx]
-					err := tmpclient.SendStringMessage(buildStringMessage())
-					if nil != err {
-						fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
-						atomic.AddInt32(&fc, 1)
-					} else {
-						atomic.AddInt32(&count, 1)
-					}
+	for i := 0; i < *c; i++ {
+		go func() {
+			wg.Add(1)
+			for !stop {
+				err := kite.SendStringMessage(buildStringMessage())
+				if nil != err {
+					fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
+					atomic.AddInt32(&fc, 1)
+				} else {
+					atomic.AddInt32(&count, 1)
 				}
-				wg.Done()
+			}
+			wg.Done()
 
-			}()
-		}
+		}()
 	}
 
 	ch := make(chan os.Signal, 1)
@@ -132,8 +94,5 @@ func main() {
 	}
 
 	wg.Wait()
-	for _, v := range clients {
-		v.Close()
-	}
-
+	kite.Destory()
 }

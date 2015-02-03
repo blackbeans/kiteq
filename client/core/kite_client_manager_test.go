@@ -1,4 +1,4 @@
-package client
+package core
 
 import (
 	"fmt"
@@ -39,7 +39,7 @@ func messageId() string {
 func TestNewManager(t *testing.T) {
 	// 创建客户端
 	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456")
-	manager.AddListener(&listener.ConsoleListener{})
+	manager.AddListener(&listener.MockListener{})
 	// 设置发送类型
 	if err := manager.SetPubs([]string{"trade"}); err != nil {
 		log.Fatal(err)
