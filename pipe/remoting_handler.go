@@ -1,7 +1,6 @@
-package handler
+package pipe
 
 import (
-	. "kiteq/pipe"
 	"kiteq/remoting/client"
 	"log"
 	"math/rand"

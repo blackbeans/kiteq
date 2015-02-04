@@ -2,7 +2,7 @@ package protocol;
 
 //心跳请求包
 message HeartBeat{
-    required int64 id  = 1;
+    required int64 version  = 1;
 }
 
 //连接的Meta数据包

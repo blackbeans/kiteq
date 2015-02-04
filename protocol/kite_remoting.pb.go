@@ -30,7 +30,7 @@ var _ = math.Inf
 
 // 心跳请求包
 type HeartBeat struct {
-	Id               *int64 `protobuf:"varint,1,req,name=id" json:"id,omitempty"`
+	Version          *int64 `protobuf:"varint,1,req,name=version" json:"version,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
@@ -38,9 +38,9 @@ func (m *HeartBeat) Reset()         { *m = HeartBeat{} }
 func (m *HeartBeat) String() string { return proto.CompactTextString(m) }
 func (*HeartBeat) ProtoMessage()    {}
 
-func (m *HeartBeat) GetId() int64 {
-	if m != nil && m.Id != nil {
-		return *m.Id
+func (m *HeartBeat) GetVersion() int64 {
+	if m != nil && m.Version != nil {
+		return *m.Version
 	}
 	return 0
 }

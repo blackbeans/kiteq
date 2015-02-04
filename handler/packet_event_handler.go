@@ -77,6 +77,10 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 	case protocol.CMD_HEARTBEAT:
 		var hearbeat protocol.HeartBeat
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
+		if nil == err {
+			hb := &hearbeat
+			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
+		}
 		//投递结果确认
 	case protocol.CMD_DELIVERY_ACK:
 		var delAck protocol.DeliveryAck

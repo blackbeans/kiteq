@@ -132,6 +132,10 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
 	}
 }
 
+func (self *kiteClient) closed() bool {
+	return self.remoteClient.IsClosed()
+}
+
 func (self *kiteClient) close() {
 	self.isClose = true
 	self.remoteClient.Shutdown()

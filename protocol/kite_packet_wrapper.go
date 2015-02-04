@@ -44,6 +44,12 @@ func MarshalTxACKPacket(messageId string, txstatus TxStatus, feedback string) []
 	return data
 }
 
+func MarshalHeartbeatPacket(version int64) []byte {
+	data, _ := MarshalPbMessage(&HeartBeat{
+		Version: proto.Int64(version)})
+	return data
+}
+
 //事务处理类型
 type TxResponse struct {
 	messageId string

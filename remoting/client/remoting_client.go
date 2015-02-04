@@ -16,6 +16,7 @@ var MAX_WATER_MARK int = 100000
 type RemotingClient struct {
 	id               int32
 	isClose          bool
+	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet []byte) //包处理函数
 	lock             sync.Mutex
@@ -51,6 +52,10 @@ func (self *RemotingClient) Start() {
 	go self.remoteSession.ReadPacket()
 }
 
+func (self *RemotingClient) IsClosed() bool {
+	return self.remoteSession.Closed()
+}
+
 func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 	//50个读协程
@@ -72,7 +77,30 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	}
 }
 
-var TIMEOUT_ERROR = errors.New("SEND MESSAGE TIMEOUT ")
+//同步发起ping的命令
+func (self *RemotingClient) Ping(heartbeat *protocol.Packet) error {
+	pong, err := self.WriteAndGet(heartbeat, 300*time.Millisecond)
+	if nil != err {
+		return err
+	}
+	version, ok := pong.(int64)
+	if !ok {
+		return errors.New("ERROR PONG TYPE !")
+	}
+	self.updateHeartBeat(version)
+	return nil
+}
+
+func (self *RemotingClient) updateHeartBeat(version int64) {
+	if version > self.heartbeat {
+		self.heartbeat = version
+	}
+}
+
+func (self *RemotingClient) Pong(opaque int32, version int64) {
+	self.Attach(opaque, version)
+	self.updateHeartBeat(version)
+}
 
 func (self *RemotingClient) fillOpaque(packet *protocol.Packet) int32 {
 	tid := packet.Opaque
@@ -108,6 +136,8 @@ func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 	return packet.Get()
 }
 
+var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
+
 //写数据并且得到相应
 func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
@@ -124,6 +154,8 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	//
 	select {
 	case <-time.After(timeout):
+		//删除掉当前holder
+		delete(self.holder, tid)
 		return nil, TIMEOUT_ERROR
 	case resp = <-packet.Get():
 		return resp, nil
@@ -133,4 +165,5 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 func (self *RemotingClient) Shutdown() {
 	self.isClose = true
 	self.remoteSession.Close()
+	self.remoteSession = nil
 }

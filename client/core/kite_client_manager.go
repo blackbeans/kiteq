@@ -34,8 +34,9 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	pipeline := pipe.NewDefaultPipeline()
 	clientm := rclient.NewClientManager()
 	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat"))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
-	pipeline.RegisteHandler("kiteclient-remoting", chandler.NewRemotingHandler("kiteclient-remoting", clientm))
+	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	return &KiteClientManager{
 		groupId:       groupId,

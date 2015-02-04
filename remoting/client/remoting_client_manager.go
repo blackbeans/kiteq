@@ -37,7 +37,12 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
-	rclient, _ := self.allClients[hostport]
+	rclient, ok := self.allClients[hostport]
+	if !ok || rclient.IsClosed() {
+		return nil
+	} else {
+
+	}
 	return rclient
 }
 
@@ -55,7 +60,8 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 		}
 
 		for _, client := range self.groupClients[gid] {
-			if !filter(client.remoteSession.GroupId) {
+			//如果当前client处于非关闭状态并且没有过滤则入选
+			if !client.IsClosed() && !filter(client.remoteSession.GroupId) {
 				// log.Println("find a client", client.groupId)
 				gclient = append(gclient, client)
 			}

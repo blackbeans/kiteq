@@ -45,6 +45,22 @@ func NewAcceptEvent(msgType uint8, msg interface{}, remoteClient *rclient.Remoti
 		RemoteClient: remoteClient}
 }
 
+type HeartbeatEvent struct {
+	IForwardEvent
+	RemoteClient *rclient.RemotingClient
+	Opaque       int32
+	Version      int64
+}
+
+//心跳事件
+func NewHeartbeatEvent(remoteClient *rclient.RemotingClient, opaque int32, version int64) *HeartbeatEvent {
+	return &HeartbeatEvent{
+		Version:      version,
+		Opaque:       opaque,
+		RemoteClient: remoteClient}
+
+}
+
 //远程操作事件
 type RemotingEvent struct {
 	TargetHost []string         //发送的特定hostport

@@ -33,7 +33,7 @@ type IForwardHandler interface {
 	HandleForward(ctx *DefaultPipelineContext, event IForwardEvent) error
 }
 
-var ERROR_INVALID_EVENT_TYPE error = errors.New("invalid event type !")
+var ERROR_INVALID_EVENT_TYPE error = errors.New("ERROR INVALID EVENT TYPE")
 
 //-------------基本的forward处理
 type BaseForwardHandler struct {

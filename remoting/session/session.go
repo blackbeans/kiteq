@@ -145,6 +145,11 @@ func (self *Session) WritePacket() {
 	}
 }
 
+//当前连接是否关闭
+func (self *Session) Closed() bool {
+	return self.isClose
+}
+
 func (self *Session) Close() error {
 	self.isClose = true
 	self.conn.Close()

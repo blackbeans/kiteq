@@ -77,9 +77,8 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		var hearbeat protocol.HeartBeat
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
 		if nil == err {
-			//直接通知当前的client对应chan
-			pevent.RemoteClient.Attach(packet.Opaque, &hearbeat)
-			event = &SunkEvent{}
+			hb := &hearbeat
+			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
 		}
 		//消息持久化
 	case protocol.CMD_MESSAGE_STORE_ACK:
