@@ -76,7 +76,7 @@ func TestPublishTopic(t *testing.T) {
 	zkmanager := NewZKManager("localhost:2181")
 	// watcher := NewWatcher(&DefaultWatcher{})
 
-	err := zkmanager.PublishTopic(topics, "p-trade-a", "localhost:2181")
+	err := zkmanager.PublishTopics(topics, "p-trade-a", "localhost:2181")
 	if nil != err {
 		t.Fail()
 		t.Logf("TestPublishTopic|PublishTopic|%t|%s\n", topics, "localhost:2181")
@@ -95,7 +95,7 @@ func TestSubscribeTopic(t *testing.T) {
 	persistentBind := []*Binding{Bind_Direct("s-trade-g", "trade", "trade-succ", -1, true)}
 	tmpBind := []*Binding{Bind_Direct("s-trade-g", "trade-temp", "trade-fail", -1, false)}
 
-	err := zkmanager.SubscribeTopic("s-trade-g", persistentBind)
+	err := zkmanager.PublishBindings("s-trade-g", persistentBind)
 	if nil != err {
 		t.Fail()
 		t.Logf("TestSubscribeTopic|SubscribeTopic|%s|%t\n", err, persistentBind)
@@ -104,7 +104,7 @@ func TestSubscribeTopic(t *testing.T) {
 
 	t.Logf("TestSubscribeTopic|SubscribeTopic|P|SUCC|%t\n", persistentBind)
 
-	err = zkmanager.SubscribeTopic("s-trade-g", tmpBind)
+	err = zkmanager.PublishBindings("s-trade-g", tmpBind)
 	if nil != err {
 		t.Fail()
 		t.Logf("TestSubscribeTopic|SubscribeTopic|%t|%s\n", err, tmpBind)

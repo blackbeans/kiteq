@@ -2,7 +2,6 @@ package server
 
 import (
 	rclient "kiteq/remoting/client"
-	"kiteq/remoting/session"
 	"kiteq/stat"
 	"log"
 	"net"
@@ -70,21 +69,12 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 		} else {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
-			//session处理,应该有个session管理器
-			rempteSession := session.NewSession(conn, self.flowControl)
-			self.handleSession(rempteSession)
+			//创建remotingClient对象
+			remoteClient := rclient.NewRemotingClient(conn, self.packetDispatcher)
+			remoteClient.Start()
 		}
 	}
 	return nil
-}
-
-//处理session
-func (self *RemotingServer) handleSession(session *session.Session) {
-	//根据不同的cmdtype 走不同的packetDispatcheror
-	//读取合法的包
-	remoteClient := rclient.NewRemotingClient(session, self.packetDispatcher)
-	remoteClient.Start()
-
 }
 
 func (self *RemotingServer) Shutdown() {

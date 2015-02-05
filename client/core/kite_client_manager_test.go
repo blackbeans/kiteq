@@ -22,7 +22,7 @@ func buildStringMessage() *protocol.StringMessage {
 		MessageType: proto.String("pay-succ"),
 		ExpiredTime: proto.Int64(13700000000),
 		GroupId:     proto.String("go-kite-test"),
-		Commited:    proto.Bool(true)}
+		Commit:      proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
@@ -38,14 +38,13 @@ func messageId() string {
 
 func TestNewManager(t *testing.T) {
 	// 创建客户端
-	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456")
-	manager.AddListener(&listener.MockListener{})
+	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456", &listener.MockListener{})
 	// 设置发送类型
-	if err := manager.SetPubs([]string{"trade"}); err != nil {
+	if err := manager.SetPublishTopics([]string{"trade"}); err != nil {
 		log.Fatal(err)
 	}
 	// 设置接收类型
-	if err := manager.SetSubs(
+	if err := manager.SetBindings(
 		[]*binding.Binding{
 			binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 		},

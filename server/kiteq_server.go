@@ -14,10 +14,16 @@ import (
 type KiteQServer struct {
 	local          string
 	topics         []string
+	reconnManager  *client.ReconnectManager
 	clientManager  *client.ClientManager
 	exchanger      *binding.BindExchanger
 	remotingServer *server.RemotingServer
 	pipeline       *pipe.DefaultPipeline
+}
+
+//握手包
+func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool, error) {
+	return false, nil
 }
 
 func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQServer {
@@ -28,7 +34,10 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 		kitedb = store.NewKiteMysql(mysql)
 	}
 
-	clientManager := client.NewClientManager()
+	//重连管理器
+	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
+
+	clientManager := client.NewClientManager(reconnManager)
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger(zkhost)
 
@@ -47,6 +56,7 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	return &KiteQServer{
 		local:         local,
 		topics:        topics,
+		reconnManager: reconnManager,
 		clientManager: clientManager,
 		exchanger:     exchanger,
 		pipeline:      pipeline}
@@ -77,6 +87,8 @@ func (self *KiteQServer) Start() {
 	} else {
 		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
 	}
+
+	self.reconnManager.Start()
 
 }
 

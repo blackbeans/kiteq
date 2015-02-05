@@ -16,7 +16,7 @@ func TestSubscribeBindings(t *testing.T) {
 	bindings := []*Binding{Bind_Direct("s-trade-001", "trade", "trade-succ-200", -1, true),
 		Bind_Regx("s-trade-001", "feed", "feed-geo-*", -1, true)}
 
-	err := zkmanager.SubscribeTopic("s-trade-001", bindings)
+	err := zkmanager.PublishBindings("s-trade-001", bindings)
 	if nil != err {
 		t.Logf("SubscribeTopic|FAIL|%s|%s\n", err, "s-trade-001")
 		return

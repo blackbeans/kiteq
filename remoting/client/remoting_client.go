@@ -2,20 +2,24 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"kiteq/protocol"
 	"kiteq/remoting/session"
-	// "log"
+	"log"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-var MAX_WATER_MARK int = 100000
+const (
+	MAX_WATER_MARK int = 100000
+)
 
 //网络层的client
 type RemotingClient struct {
 	id               int32
-	isClose          bool
+	remoteAddr       *net.TCPAddr
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet []byte) //包处理函数
@@ -23,23 +27,26 @@ type RemotingClient struct {
 	holder           map[int32]chan interface{}
 }
 
-func NewRemotingClient(remoteSession *session.Session,
+func NewRemotingClient(conn *net.TCPConn,
 	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingClient {
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
-		isClose:          false,
+		id:               0,
+		heartbeat:        0,
+		remoteAddr:       conn.RemoteAddr().(*net.TCPAddr),
 		packetDispatcher: packetDispatcher,
-		remoteSession:    remoteSession,
+		remoteSession:    session.NewSession(conn),
 		holder:           make(map[int32]chan interface{})}
 
 	return remotingClient
 }
 
 func (self *RemotingClient) RemoteAddr() string {
-	return self.remoteSession.RemotingAddr()
+	return fmt.Sprintf("%s:%d", self.remoteAddr.IP, self.remoteAddr.Port)
 }
 
+//启动当前的client
 func (self *RemotingClient) Start() {
 
 	//开启写操作
@@ -50,19 +57,40 @@ func (self *RemotingClient) Start() {
 
 	//启动读取
 	go self.remoteSession.ReadPacket()
+
+	log.Printf("RemotingClient|Start|SUCC|%s\n", self.RemoteAddr())
 }
 
-func (self *RemotingClient) IsClosed() bool {
-	return self.remoteSession.Closed()
+//重连
+func (self *RemotingClient) reconnect() (bool, error) {
+	conn, err := net.DialTCP("tcp4", nil, self.remoteAddr)
+	if nil != err {
+		log.Printf("RemotingClient|RECONNECT|%s|FAIL|%s\n", self.RemoteAddr(), err)
+		return false, err
+	}
+
+	if nil != err {
+		return false, err
+	}
+
+	self.remoteSession = session.NewSession(conn)
+	if nil != err {
+		log.Printf("RemotingClient|RECONNECT|FAIL|%s\n", err)
+		return false, err
+	}
+	//再次启动remoteClient
+	self.Start()
+	return true, nil
 }
 
+//包分发
 func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 	//50个读协程
 	for i := 0; i < 50; i++ {
 		go func() {
 			//解析包
-			for !self.isClose {
+			for !self.remoteSession.Closed() {
 				select {
 				//1.读取数据包
 				case packet := <-session.ReadChannel:
@@ -160,10 +188,14 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	case resp = <-packet.Get():
 		return resp, nil
 	}
+
+}
+
+func (self *RemotingClient) IsClosed() bool {
+	return self.remoteSession.Closed()
 }
 
 func (self *RemotingClient) Shutdown() {
-	self.isClose = true
 	self.remoteSession.Close()
 	self.remoteSession = nil
 }

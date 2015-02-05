@@ -10,17 +10,19 @@ import (
 	rclient "kiteq/remoting/client"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 const MAX_CLIENT_CONN = 10
 
 type KiteClientManager struct {
-	groupId       string
-	secretKey     string
+	ga            *rclient.GroupAuth
 	topics        []string
 	binds         []*binding.Binding //订阅的关系
+	reconnManager *rclient.ReconnectManager
 	clientManager *rclient.ClientManager
 	kiteClients   map[string] /*topic*/ []*kiteClient //topic对应的kiteclient
 	zkManager     *binding.ZKManager
@@ -30,21 +32,24 @@ type KiteClientManager struct {
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
+	//重连管理器
+	reconnManager := rclient.NewReconnectManager(true, 2*time.Second, 100, handshake)
+
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()
-	clientm := rclient.NewClientManager()
+	clientm := rclient.NewClientManager(reconnManager)
 	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
 	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat"))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
 	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	return &KiteClientManager{
-		groupId:       groupId,
-		secretKey:     secretKey,
+		ga:            rclient.NewGroupAuth(secretKey, groupId),
 		kiteClients:   make(map[string][]*kiteClient, 10),
 		pipeline:      pipeline,
 		zkManager:     binding.NewZKManager(zkAddr),
-		clientManager: clientm}
+		clientManager: clientm,
+		reconnManager: reconnManager}
 
 }
 
@@ -70,7 +75,7 @@ outter:
 	hostname, _ := os.Hostname()
 
 	//推送本机到
-	err := self.zkManager.PublishTopics(tmpTopics, self.groupId, hostname)
+	err := self.zkManager.PublishTopics(tmpTopics, self.ga.GroupId, hostname)
 	if nil != err {
 		log.Fatalf("KiteClientManager|PublishTopics|FAIL|%s|%s\n", err, tmpTopics)
 	} else {
@@ -90,49 +95,72 @@ outter:
 
 	if len(self.binds) > 0 {
 		//订阅关系推送，并拉取QServer
-		err = self.zkManager.PublishBindings(self.groupId, self.binds)
+		err = self.zkManager.PublishBindings(self.ga.GroupId, self.binds)
 		if nil != err {
 			log.Fatalf("KiteClientManager|PublishBindings|FAIL|%s|%s\n", err, self.binds)
 		}
 
 	}
+
+	self.reconnManager.Start()
 }
 
 //当触发QServer地址发生变更
 func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-outter:
+
+	//重建一下topic下的kiteclient
+	clients := make([]*kiteClient, 0, 10)
 	for _, host := range hosts {
-		//创建连接
-		clients, ok := self.kiteClients[topic]
-		if !ok {
-			clients = make([]*kiteClient, 0, 5)
-		} else {
-			//判断当前topic下是否对应有ip:port的连接
-			for _, c := range clients {
-				//如果当前里面存在这样的hostport
-				if c.remote == host {
-					continue outter
-				}
+		//如果能查到remoteClient 则直接复用
+		remoteClient := self.clientManager.FindRemoteClient(host)
+		if nil == remoteClient {
+			//这里就新建一个remote客户端连接
+			conn, err := dial(host)
+			if nil != err {
+				log.Printf("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
+				continue
 			}
+			remoteClient = rclient.NewRemotingClient(conn,
+				func(remoteClient *rclient.RemotingClient, packet []byte) {
+					event := pipe.NewPacketEvent(remoteClient, packet)
+					err := self.pipeline.FireWork(event)
+					if nil != err {
+						log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+					}
+				})
+			remoteClient.Start()
+			auth, err := handshake(self.ga, remoteClient)
+			if !auth || nil != err {
+				continue
+			}
+			self.clientManager.Auth(self.ga, remoteClient)
 		}
 
-		//这里就新建一个客户端连接
-		kiteClient := newKitClient(self.groupId, self.secretKey, host,
-			func(remoteClient *rclient.RemotingClient, packet []byte) {
-				event := pipe.NewPacketEvent(remoteClient, packet)
-				err := self.pipeline.FireWork(event)
-				if nil != err {
-					log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
-				}
-			})
-
-		self.kiteClients[topic] = append(clients, kiteClient)
-		self.clientManager.Add(self.groupId, kiteClient.remoteClient)
+		//创建kiteClient
+		kiteClient := newKitClient(self.ga.GroupId, remoteClient)
+		clients = append(clients, kiteClient)
 		log.Printf("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
-
 	}
+	self.kiteClients[topic] = clients
+}
+
+//创建物理连接
+func dial(hostport string) (*net.TCPConn, error) {
+	//连接
+	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", hostport)
+	if nil != err_r {
+		log.Printf("KiteClientManager|RECONNECT|RESOLVE ADDR |FAIL|remote:%s\n", err_r)
+		return nil, err_r
+	}
+	conn, err := net.DialTCP("tcp4", nil, remoteAddr)
+	if nil != err {
+		log.Printf("KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 func (self *KiteClientManager) EventNotify(path string, eventType binding.ZkEvent, binds []*binding.Binding) {
@@ -151,7 +179,7 @@ func (self *KiteClientManager) SetPublishTopics(topics []string) {
 
 func (self *KiteClientManager) SetBindings(bindings []*binding.Binding) {
 	for _, b := range bindings {
-		b.GroupId = self.groupId
+		b.GroupId = self.ga.GroupId
 	}
 	self.binds = bindings
 }
@@ -188,7 +216,7 @@ func (self *KiteClientManager) Destory() {
 	for _, cs := range self.kiteClients {
 		for _, c := range cs {
 			c.close()
-			log.Printf("KiteClientManager|%s|Closed\n", c.remote)
+			log.Printf("KiteClientManager|%s|Closed\n", c.remoteClient.RemoteAddr())
 		}
 	}
 }

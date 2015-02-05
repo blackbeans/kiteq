@@ -4,25 +4,20 @@ import (
 	"bufio"
 	"bytes"
 	"kiteq/protocol"
-	"kiteq/stat"
 	"log"
 	"net"
 	"time"
 )
 
 type Session struct {
-	GroupId      string
 	conn         *net.TCPConn //tcp的session
-	remoteAddr   string       //远端地址
-	heartbeat    int64        //心跳包的时间
-	ReadChannel  chan []byte  //request的channel
-	WriteChannel chan []byte  //response的channel
+	remoteAddr   string
+	ReadChannel  chan []byte //request的channel
+	WriteChannel chan []byte //response的channel
 	isClose      bool
-	flowControl  *stat.FlowControl //流量统计
 }
 
-func NewSession(conn *net.TCPConn,
-	flowControl *stat.FlowControl) *Session {
+func NewSession(conn *net.TCPConn) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
@@ -30,27 +25,16 @@ func NewSession(conn *net.TCPConn,
 
 	session := &Session{
 		conn:         conn,
-		heartbeat:    0,
 		ReadChannel:  make(chan []byte, 500),
 		WriteChannel: make(chan []byte, 500),
 		isClose:      false,
-		remoteAddr:   conn.RemoteAddr().String(),
-		flowControl:  flowControl}
+		remoteAddr:   conn.RemoteAddr().String()}
 
 	return session
 }
 
 func (self *Session) RemotingAddr() string {
 	return self.remoteAddr
-}
-
-//设置本次心跳检测的时间
-func (self *Session) SetHeartBeat(duration int64) {
-	self.heartbeat = duration
-}
-
-func (self *Session) GetHeartBeat() int64 {
-	return self.heartbeat
 }
 
 //读取
@@ -106,8 +90,6 @@ func (self *Session) ReadPacket() {
 			//重置buffer
 			buff.Reset()
 
-			self.flowControl.ReadFlow.Incr(1)
-
 		}
 	}
 }
@@ -133,8 +115,6 @@ func (self *Session) WritePacket() {
 							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 						}
 					}()
-
-					self.flowControl.WriteFlow.Incr(1)
 
 					//100ms读超时
 				case <-time.After(100 * time.Millisecond):

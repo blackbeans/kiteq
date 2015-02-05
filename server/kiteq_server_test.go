@@ -7,6 +7,7 @@ import (
 	"kiteq/client/listener"
 	"kiteq/protocol"
 	"kiteq/store"
+	"log"
 	"testing"
 	"time"
 )
@@ -57,6 +58,7 @@ func init() {
 
 	kiteQServer = NewKiteQServer("localhost:13800", "localhost:2181", []string{"trade"}, "")
 	kiteQServer.Start()
+	log.Println("KiteQServer START....")
 
 	time.Sleep(5 * time.Second)
 	kiteClient = client.NewKiteQClient("localhost:2181", "ps-trade-a", "123456", &listener.MockListener{})

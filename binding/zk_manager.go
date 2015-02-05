@@ -227,6 +227,12 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]string, error) {
 
 	path := KITEQ_SERVER + "/" + topic
+
+	exist, _, _ := self.session.Exists(path, nwatcher.zkwatcher)
+	if !exist {
+		return []string{}, nil
+	}
+
 	//获取topic下的所有qserver
 	children, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
@@ -243,6 +249,12 @@ func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]st
 func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Binding, error) {
 
 	path := KITEQ_SUB + "/" + topic
+
+	exist, _, _ := self.session.Exists(path, nwatcher.zkwatcher)
+	if !exist {
+		return []*Binding{}, nil
+	}
+
 	//获取topic下的所有qserver
 	groupIds, _, err := self.session.Children(path, nwatcher.zkwatcher)
 	if nil != err {
