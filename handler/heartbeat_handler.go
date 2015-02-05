@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
-	"log"
+	// "log"
 )
 
 type HeartbeatHandler struct {
@@ -42,7 +42,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 	//发起一个网络请求
 	remoteEvent := NewRemotingEvent(packet, []string{hevent.RemoteClient.RemoteAddr()})
 
-	log.Printf("HeartbeatHandler|%s|Process|Recieve|Ping|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	// log.Printf("HeartbeatHandler|%s|Process|Recieve|Ping|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	ctx.SendForward(remoteEvent)
 	return nil
 }

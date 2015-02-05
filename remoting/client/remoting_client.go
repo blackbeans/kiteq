@@ -90,7 +90,8 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	for i := 0; i < 50; i++ {
 		go func() {
 			//解析包
-			for !self.remoteSession.Closed() {
+			for nil != self.remoteSession &&
+				!self.remoteSession.Closed() {
 				select {
 				//1.读取数据包
 				case packet := <-session.ReadChannel:
@@ -106,14 +107,15 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 }
 
 //同步发起ping的命令
-func (self *RemotingClient) Ping(heartbeat *protocol.Packet) error {
-	pong, err := self.WriteAndGet(heartbeat, 300*time.Millisecond)
+func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Duration) error {
+	pong, err := self.WriteAndGet(heartbeat, timeout)
 	if nil != err {
 		return err
 	}
 	version, ok := pong.(int64)
 	if !ok {
-		return errors.New("ERROR PONG TYPE !")
+
+		return errors.New(fmt.Sprintf("ERROR PONG TYPE !|%t", pong))
 	}
 	self.updateHeartBeat(version)
 	return nil
@@ -126,7 +128,6 @@ func (self *RemotingClient) updateHeartBeat(version int64) {
 }
 
 func (self *RemotingClient) Pong(opaque int32, version int64) {
-	self.Attach(opaque, version)
 	self.updateHeartBeat(version)
 }
 
@@ -183,7 +184,7 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	select {
 	case <-time.After(timeout):
 		//删除掉当前holder
-		delete(self.holder, tid)
+
 		return nil, TIMEOUT_ERROR
 	case resp = <-packet.Get():
 		return resp, nil
@@ -197,5 +198,4 @@ func (self *RemotingClient) IsClosed() bool {
 
 func (self *RemotingClient) Shutdown() {
 	self.remoteSession.Close()
-	self.remoteSession = nil
 }

@@ -88,7 +88,7 @@ func (self *KiteQServer) Start() {
 		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
 	}
 
-	self.reconnManager.Start()
+	// self.reconnManager.Start()
 
 }
 
