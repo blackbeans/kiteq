@@ -36,17 +36,29 @@ func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
 	return data
 }
 
-func MarshalTxACKPacket(messageId string, txstatus TxStatus, feedback string) []byte {
+func MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
 	data, _ := MarshalPbMessage(&TxACKPacket{
-		MessageId: proto.String(messageId),
-		Status:    proto.Int32(int32(txstatus)),
-		Feedback:  proto.String(feedback)})
+		MessageId:   proto.String(header.GetMessageId()),
+		Topic:       proto.String(header.GetTopic()),
+		MessageType: proto.String(header.GetMessageType()),
+		Status:      proto.Int32(int32(txstatus)),
+		Feedback:    proto.String(feedback)})
 	return data
 }
 
 func MarshalHeartbeatPacket(version int64) []byte {
 	data, _ := MarshalPbMessage(&HeartBeat{
 		Version: proto.Int64(version)})
+	return data
+}
+
+func MarshalDeliverAckPacket(header *Header, status bool) []byte {
+	data, _ := MarshalPbMessage(&DeliverAck{
+		MessageId:   proto.String(header.GetMessageId()),
+		Topic:       proto.String(header.GetTopic()),
+		MessageType: proto.String(header.GetMessageType()),
+		GroupId:     proto.String(header.GetGroupId()),
+		Status:      proto.Bool(status)})
 	return data
 }
 

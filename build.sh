@@ -8,8 +8,9 @@ go get github.com/BurntSushi/toml
 protoc --go_out=. ./protocol/*.proto
 
 go build kiteq/stat
-go build kiteq/binding
 go build kiteq/protocol
+go build kiteq/binding
+
 go build kiteq/store
 go build kiteq/pipe
 go build kiteq/handler
@@ -23,8 +24,8 @@ go build kiteq/client
 
 #########
 go install kiteq/stat
-go install kiteq/binding
 go install kiteq/protocol
+go install kiteq/binding
 go install kiteq/store
 go install kiteq/pipe
 go install kiteq/handler

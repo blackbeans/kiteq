@@ -60,7 +60,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 		go func() {
 			remoteEvent := NewRemotingEvent(self.tXAck(
-				pevent.entity.Header.GetMessageId()), []string{pevent.remoteClient.RemoteAddr()})
+				pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
 		}()
 	} else {
@@ -83,9 +83,9 @@ func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ boo
 
 //发送事务ack信息
 func (self PersistentHandler) tXAck(
-	messageid string) *protocol.Packet {
+	header *protocol.Header) *protocol.Packet {
 
-	txack := protocol.MarshalTxACKPacket(messageid, protocol.TX_UNKNOWN, "Server Check")
+	txack := protocol.MarshalTxACKPacket(header, protocol.TX_UNKNOWN, "Server Check")
 	//响应包
 	return protocol.NewPacket(protocol.CMD_TX_ACK, txack)
 }

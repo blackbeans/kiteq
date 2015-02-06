@@ -78,4 +78,5 @@ type IKiteStore interface {
 	Commit(messageId string) bool
 	Rollback(messageId string) bool
 	UpdateEntity(entity *MessageEntity) bool
+	Delete(messageId string) bool
 }

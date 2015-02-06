@@ -69,7 +69,19 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
 		// log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
-		self.listener.OnMessage(acceptEvent.Msg.(*protocol.StringMessage))
+
+		strMsg := acceptEvent.Msg.(*protocol.StringMessage)
+
+		succ := self.listener.OnMessage(acceptEvent.Msg.(*protocol.StringMessage))
+
+		dpacket := protocol.MarshalDeliverAckPacket(strMsg.GetHeader(), succ)
+
+		respPacket := protocol.NewRespPacket(acceptEvent.Opaque, protocol.CMD_DELIVER_ACK, dpacket)
+
+		remotingEvent := NewRemotingEvent(respPacket, []string{acceptEvent.RemoteClient.RemoteAddr()})
+
+		ctx.SendForward(remotingEvent)
+
 	default:
 		return INVALID_MSG_TYPE_ERROR
 	}

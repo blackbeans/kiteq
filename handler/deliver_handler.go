@@ -60,7 +60,6 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	wpacket := protocol.NewPacket(protocol.CMD_STRING_MESSAGE, data)
 	//创建投递事件
 	revent := NewRemotingEvent(wpacket, nil, pevent.DeliverGroups...)
-
 	//向后转发
 	ctx.SendForward(revent)
 

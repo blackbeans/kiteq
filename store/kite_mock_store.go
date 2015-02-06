@@ -19,6 +19,10 @@ func (self *MockKiteStore) Save(entity *MessageEntity) bool {
 func (self *MockKiteStore) Commit(messageId string) bool {
 	return true
 }
+
+func (self *MockKiteStore) Delete(messageId string) bool {
+	return true
+}
 func (self *MockKiteStore) Rollback(messageId string) bool {
 	return true
 }

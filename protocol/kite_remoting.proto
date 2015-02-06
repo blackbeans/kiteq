@@ -26,16 +26,21 @@ message MessageStoreAck{
 
 
 //消息接收packet
-message DeliveryAck{
+message DeliverAck{
     required string messageId =1;//消息id
-    required string groupId = 2; //消息处理  
+    required string topic = 2;
+    required string messageType = 3;
+    required string groupId = 4; //消息处理  
+    required bool status =  5 [default = true];//处理状态
 }
 
 //事务确认数据包
 message TxACKPacket{    
      required string messageId = 1; //消息Id
-     required int32 status = 2 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
-     required string feedback = 3; //回馈
+     required string topic =2;
+     required string messageType = 3;
+     required int32 status = 4 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
+     required string feedback = 5; //回馈
 }
 
 

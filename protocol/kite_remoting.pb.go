@@ -13,7 +13,7 @@ It has these top-level messages:
 	ConnMeta
 	ConnAuthAck
 	MessageStoreAck
-	DeliveryAck
+	DeliverAck
 	TxACKPacket
 	Header
 	BytesMessage
@@ -133,35 +133,63 @@ func (m *MessageStoreAck) GetFeedback() string {
 }
 
 // 消息接收packet
-type DeliveryAck struct {
+type DeliverAck struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
-	GroupId          *string `protobuf:"bytes,2,req,name=groupId" json:"groupId,omitempty"`
+	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
+	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
+	GroupId          *string `protobuf:"bytes,4,req,name=groupId" json:"groupId,omitempty"`
+	Status           *bool   `protobuf:"varint,5,req,name=status,def=1" json:"status,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *DeliveryAck) Reset()         { *m = DeliveryAck{} }
-func (m *DeliveryAck) String() string { return proto.CompactTextString(m) }
-func (*DeliveryAck) ProtoMessage()    {}
+func (m *DeliverAck) Reset()         { *m = DeliverAck{} }
+func (m *DeliverAck) String() string { return proto.CompactTextString(m) }
+func (*DeliverAck) ProtoMessage()    {}
 
-func (m *DeliveryAck) GetMessageId() string {
+const Default_DeliverAck_Status bool = true
+
+func (m *DeliverAck) GetMessageId() string {
 	if m != nil && m.MessageId != nil {
 		return *m.MessageId
 	}
 	return ""
 }
 
-func (m *DeliveryAck) GetGroupId() string {
+func (m *DeliverAck) GetTopic() string {
+	if m != nil && m.Topic != nil {
+		return *m.Topic
+	}
+	return ""
+}
+
+func (m *DeliverAck) GetMessageType() string {
+	if m != nil && m.MessageType != nil {
+		return *m.MessageType
+	}
+	return ""
+}
+
+func (m *DeliverAck) GetGroupId() string {
 	if m != nil && m.GroupId != nil {
 		return *m.GroupId
 	}
 	return ""
 }
 
+func (m *DeliverAck) GetStatus() bool {
+	if m != nil && m.Status != nil {
+		return *m.Status
+	}
+	return Default_DeliverAck_Status
+}
+
 // 事务确认数据包
 type TxACKPacket struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
-	Status           *int32  `protobuf:"varint,2,req,name=status,def=0" json:"status,omitempty"`
-	Feedback         *string `protobuf:"bytes,3,req,name=feedback" json:"feedback,omitempty"`
+	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
+	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
+	Status           *int32  `protobuf:"varint,4,req,name=status,def=0" json:"status,omitempty"`
+	Feedback         *string `protobuf:"bytes,5,req,name=feedback" json:"feedback,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -174,6 +202,20 @@ const Default_TxACKPacket_Status int32 = 0
 func (m *TxACKPacket) GetMessageId() string {
 	if m != nil && m.MessageId != nil {
 		return *m.MessageId
+	}
+	return ""
+}
+
+func (m *TxACKPacket) GetTopic() string {
+	if m != nil && m.Topic != nil {
+		return *m.Topic
+	}
+	return ""
+}
+
+func (m *TxACKPacket) GetMessageType() string {
+	if m != nil && m.MessageType != nil {
+		return *m.MessageType
 	}
 	return ""
 }

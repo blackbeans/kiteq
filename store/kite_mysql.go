@@ -111,8 +111,8 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 	return true
 }
 
-func (self *KiteMysqlStore) Rollback(messageId string) bool {
-	stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commit=? where messageId=?")
+func (self *KiteMysqlStore) Delete(messageId string) bool {
+	stmt, err := self.db.Prepare("DELETE FROM `kite_msg` WHERE where messageId=? ")
 	if err != nil {
 		log.Println(err)
 		return false
@@ -123,6 +123,10 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 		return false
 	}
 	return true
+}
+
+func (self *KiteMysqlStore) Rollback(messageId string) bool {
+	return self.Delete(messageId)
 }
 
 func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {

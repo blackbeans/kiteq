@@ -40,6 +40,8 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
+	//先判断当前消息是否ttl和expiredTime是够过期
+
 	binds := self.exchanger.FindBinds(pevent.Topic, pevent.MessageType, func(b *binding.Binding) bool {
 		//过滤掉已经投递成功的分组
 		return false
@@ -56,7 +58,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//如果没有可用的分组则直接跳过
 	if len(groupIds) <= 0 {
-		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s,%s\n", pevent.Topic, pevent.MessageType)
+		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s|%s,%s\n", pevent.Topic, pevent.MessageType)
 		return nil
 	}
 

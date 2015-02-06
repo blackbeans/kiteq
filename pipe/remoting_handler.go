@@ -41,9 +41,10 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
 
 	//发送数据
-	self.invokeGroup(revent)
+	futures := self.invokeGroup(revent)
 	//创建投递结果事件
-
+	fe := NewRemoteFutureEvent(revent, futures)
+	ctx.SendForward(fe)
 	return nil
 }
 

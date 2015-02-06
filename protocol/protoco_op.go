@@ -8,7 +8,7 @@ const (
 	CMD_CONN_AUTH = uint8(0x03) //权限验证cmd
 	//消息持久化cmd
 	CMD_MESSAGE_STORE_ACK = uint8(0x04) //持久化确认
-	CMD_DELIVERY_ACK      = uint8(0x05) //投递确认
+	CMD_DELIVER_ACK       = uint8(0x05) //投递确认
 	CMD_TX_ACK            = uint8(0x06) //事务确认
 
 	//事务处理失败与否

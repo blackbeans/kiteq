@@ -44,13 +44,25 @@ func (self *TxAckHandler) Process(ctx *DefaultPipelineContext, event IEvent) err
 	if pevent.txPacket.GetStatus() == int32(protocol.TX_COMMIT) {
 		succ := self.kitestore.Commit(pevent.txPacket.GetMessageId())
 		log.Printf("TxAckHandler|%s|Process|Commit|%s|%s\n", self.GetName(), pevent.txPacket.GetMessageId(), succ)
+
+		if succ {
+			//发起投递事件
+			//启动异步协程处理分发逻辑
+			deliver := &DeliverEvent{}
+			deliver.MessageId = pevent.txPacket.GetMessageId()
+			deliver.Topic = pevent.txPacket.GetTopic()
+			deliver.MessageType = pevent.txPacket.GetMessageType()
+			ctx.SendForward(deliver)
+
+		}
+
 	} else if pevent.txPacket.GetStatus() == int32(protocol.TX_ROLLBACK) {
 		succ := self.kitestore.Rollback(pevent.txPacket.GetMessageId())
 		log.Printf("TxAckHandler|%s|Process|Rollback|%s|%s|%s\n", self.GetName(), pevent.txPacket.GetMessageId(), pevent.txPacket.GetFeedback(), succ)
 	} else {
 		//UNKNOWN其他的不处理
-	}
 
+	}
 	ctx.SendForward(&SunkEvent{})
 	return nil
 }

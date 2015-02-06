@@ -82,9 +82,13 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
 		}
 		//投递结果确认
-	case protocol.CMD_DELIVERY_ACK:
-		var delAck protocol.DeliveryAck
+	case protocol.CMD_DELIVER_ACK:
+		var delAck protocol.DeliverAck
 		err = protocol.UnmarshalPbMessage(packet.Data, &delAck)
+		if nil == err {
+			//收到响应直接
+			pevent.RemoteClient.Attach(packet.Opaque, &delAck)
+		}
 
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket

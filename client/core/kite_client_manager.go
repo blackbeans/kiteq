@@ -33,7 +33,7 @@ type KiteClientManager struct {
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
 	//重连管理器
-	reconnManager := rclient.NewReconnectManager(true, 2*time.Second, 100, handshake)
+	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
 
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()

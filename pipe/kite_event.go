@@ -76,6 +76,19 @@ func NewRemotingEvent(packet *protocol.Packet, targetHost []string, groupIds ...
 	return revent
 }
 
+//网络回调事件
+type RemoteFutureEvent struct {
+	*RemotingEvent
+	Futures map[string] /*groupid*/ chan interface{} //网络结果回调
+}
+
+//网络回调事件
+func NewRemoteFutureEvent(remoteEvent *RemotingEvent, futures map[string]chan interface{}) *RemoteFutureEvent {
+	fe := &RemoteFutureEvent{Futures: futures}
+	fe.RemotingEvent = remoteEvent
+	return fe
+}
+
 //到头的事件
 type SunkEvent struct {
 	IForwardEvent

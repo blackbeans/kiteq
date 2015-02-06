@@ -26,6 +26,11 @@ func (self *defaultStore) Save(entity *store.MessageEntity) bool {
 func (self *defaultStore) Commit(messageId string) bool {
 	return true
 }
+
+func (self *defaultStore) Delete(messageId string) bool {
+	return true
+}
+
 func (self *defaultStore) Rollback(messageId string) bool {
 	return true
 }
