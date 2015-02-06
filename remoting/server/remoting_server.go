@@ -19,6 +19,7 @@ type RemotingServer struct {
 }
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
+	flowControl *stat.FlowControl,
 	packetDispatcher func(remoteClient *rclient.RemotingClient, packet []byte)) *RemotingServer {
 
 	//设置为8个并发
@@ -30,7 +31,7 @@ func NewRemotionServer(hostport string, keepalive time.Duration,
 		stopChan:         make(chan bool, 1),
 		packetDispatcher: packetDispatcher,
 		isShutdown:       false,
-		flowControl:      stat.NewFlowControl(hostport)}
+		flowControl:      flowControl}
 	return server
 }
 

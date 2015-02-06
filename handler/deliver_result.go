@@ -39,12 +39,12 @@ func (self *DeliverResultHandler) cast(event IEvent) (val *RemoteFutureEvent, ok
 
 func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("DeliverResultHandler|Process|%s|%t\n", self.GetName(), event)
-
 	fevent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
+
+	// log.Printf("DeliverResultHandler|Process|%s|%t\n", self.GetName(), fevent.Futures)
 
 	succGroup := make([]string, 0, 5)
 	failGroup := make([]string, 0, 5)

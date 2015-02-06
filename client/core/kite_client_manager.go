@@ -8,6 +8,7 @@ import (
 	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
+	"kiteq/stat"
 	"log"
 	"math/rand"
 	"net"
@@ -24,6 +25,7 @@ type KiteClientManager struct {
 	binds         []*binding.Binding //订阅的关系
 	reconnManager *rclient.ReconnectManager
 	clientManager *rclient.ClientManager
+	flowControl   *stat.FlowControl
 	kiteClients   map[string] /*topic*/ []*kiteClient //topic对应的kiteclient
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
@@ -35,13 +37,15 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	//重连管理器
 	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
 
+	//流量
+	flowControl := stat.NewFlowControl("kiteclient-" + groupId)
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()
 	clientm := rclient.NewClientManager(reconnManager)
-	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
+	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet", flowControl))
 	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat", 2*time.Second, 1*time.Second, clientm))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
-	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
+	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm, flowControl))
 
 	return &KiteClientManager{
 		ga:            rclient.NewGroupAuth(secretKey, groupId),
@@ -49,7 +53,8 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		pipeline:      pipeline,
 		zkManager:     binding.NewZKManager(zkAddr),
 		clientManager: clientm,
-		reconnManager: reconnManager}
+		reconnManager: reconnManager,
+		flowControl:   flowControl}
 
 }
 
@@ -101,7 +106,7 @@ outter:
 		}
 
 	}
-
+	self.flowControl.Start()
 	self.reconnManager.Start()
 }
 
@@ -124,6 +129,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 			}
 			remoteClient = rclient.NewRemotingClient(conn,
 				func(remoteClient *rclient.RemotingClient, packet []byte) {
+					self.flowControl.DispatcherFlow.Incr(1)
 					event := pipe.NewPacketEvent(remoteClient, packet)
 					err := self.pipeline.FireWork(event)
 					if nil != err {

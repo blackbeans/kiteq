@@ -58,8 +58,10 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//如果没有可用的分组则直接跳过
 	if len(groupIds) <= 0 {
-		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s|%s,%s\n", pevent.Topic, pevent.MessageType)
+		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s|%ss\n", pevent.Topic, pevent.MessageType)
 		return nil
+	} else {
+		// log.Printf("DeliverPreHandler|Process|GROUPIDS TO DELIVERY |%s|%s,%s\n", pevent.Topic, pevent.MessageType, groupIds)
 	}
 
 	//过滤掉已经投递成功分组id

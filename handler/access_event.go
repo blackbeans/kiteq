@@ -46,7 +46,7 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	// 权限验证通过 保存到clientmanager
-	self.clientManager.Auth(client.NewGroupAuth(aevent.GroupId, aevent.SecretKey), aevent.remoteClient)
+	self.clientManager.Auth(client.NewGroupAuth(aevent.SecretKey, aevent.GroupId), aevent.remoteClient)
 
 	log.Printf("AccessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.GroupId, aevent.SecretKey, aevent.remoteClient.RemoteAddr())
 

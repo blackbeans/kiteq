@@ -2,6 +2,7 @@ package pipe
 
 import (
 	"kiteq/remoting/client"
+	"kiteq/stat"
 	"log"
 	"math/rand"
 )
@@ -11,12 +12,14 @@ import (
 type RemotingHandler struct {
 	BaseForwardHandler
 	clientManager *client.ClientManager
+	flowControl   *stat.FlowControl
 }
 
-func NewRemotingHandler(name string, clientManager *client.ClientManager) *RemotingHandler {
+func NewRemotingHandler(name string, clientManager *client.ClientManager, flowControl *stat.FlowControl) *RemotingHandler {
 	remtingHandler := &RemotingHandler{}
 	remtingHandler.BaseForwardHandler = NewBaseForwardHandler(name, remtingHandler)
 	remtingHandler.clientManager = clientManager
+	remtingHandler.flowControl = flowControl
 	return remtingHandler
 
 }
@@ -62,6 +65,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			if nil != rclient {
 				//写到响应的channel中
 				futures[host] = rclient.Write(event.Packet)
+				self.flowControl.WriteFlow.Incr(1)
 			} else {
 				//记为失败的下次需要重新发送
 				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s|%s\n", self.GetName(), host, event.Packet)
@@ -79,6 +83,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 		for gid, c := range clients {
 			idx := rand.Intn(len(c))
 			futures[gid] = c[idx].Write(event.Packet)
+			self.flowControl.WriteFlow.Incr(1)
 		}
 	}
 

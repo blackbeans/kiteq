@@ -5,7 +5,7 @@ import (
 	"kiteq/client/listener"
 	. "kiteq/pipe"
 	"kiteq/protocol"
-	// "log"
+	_ "log"
 )
 
 //--------------------如下为具体的处理Handler

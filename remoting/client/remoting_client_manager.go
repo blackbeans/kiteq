@@ -1,7 +1,7 @@
 package client
 
 import (
-	// "log"
+	_ "log"
 	"sync"
 )
 
@@ -105,14 +105,13 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 
 			//如果当前client处于非关闭状态并且没有过滤则入选
 			if !filter(gid) {
-				// log.Println("find a client", client.groupId)
 				gclient = append(gclient, c)
 			}
 
 		}
 		clients[gid] = gclient
 	}
-	// log.Println("Find clients result ", clients)
+	// log.Printf("Find clients result |%s|%s\n", clients, self.groupClients)
 	return clients
 }
 
