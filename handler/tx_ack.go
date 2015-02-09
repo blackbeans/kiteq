@@ -26,8 +26,8 @@ func (self *TxAckHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *TxAckHandler) cast(event IEvent) (val *TxAckEvent, ok bool) {
-	val, ok = event.(*TxAckEvent)
+func (self *TxAckHandler) cast(event IEvent) (val *txAckEvent, ok bool) {
+	val, ok = event.(*txAckEvent)
 	return
 }
 
@@ -48,10 +48,10 @@ func (self *TxAckHandler) Process(ctx *DefaultPipelineContext, event IEvent) err
 		if succ {
 			//发起投递事件
 			//启动异步协程处理分发逻辑
-			deliver := &DeliverEvent{}
-			deliver.MessageId = pevent.txPacket.GetMessageId()
-			deliver.Topic = pevent.txPacket.GetTopic()
-			deliver.MessageType = pevent.txPacket.GetMessageType()
+			deliver := &deliverEvent{}
+			deliver.messageId = pevent.txPacket.GetMessageId()
+			deliver.topic = pevent.txPacket.GetTopic()
+			deliver.messageType = pevent.txPacket.GetMessageType()
 			ctx.SendForward(deliver)
 
 		}

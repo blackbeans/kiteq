@@ -7,10 +7,10 @@ import (
 
 //群组授权信息
 type GroupAuth struct {
-	SecretKey, GroupId string
+	GroupId, SecretKey string
 }
 
-func NewGroupAuth(secretKey, groupId string) *GroupAuth {
+func NewGroupAuth(groupId, secretKey string) *GroupAuth {
 	return &GroupAuth{SecretKey: secretKey, GroupId: groupId}
 }
 

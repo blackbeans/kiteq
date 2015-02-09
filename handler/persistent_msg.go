@@ -29,8 +29,8 @@ func (self *PersistentHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *PersistentHandler) cast(event IEvent) (val *PersistentEvent, ok bool) {
-	val, ok = event.(*PersistentEvent)
+func (self *PersistentHandler) cast(event IEvent) (val *persistentEvent, ok bool) {
+	val, ok = event.(*persistentEvent)
 	return
 }
 
@@ -48,11 +48,11 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	if succ && pevent.entity.Header.GetCommit() {
 		//启动异步协程处理分发逻辑
 		go func() {
-			deliver := &DeliverEvent{}
-			deliver.MessageId = pevent.entity.Header.GetMessageId()
-			deliver.Topic = pevent.entity.Header.GetTopic()
-			deliver.MessageType = pevent.entity.Header.GetMessageType()
-			deliver.ExpiredTime = pevent.entity.Header.GetExpiredTime()
+			deliver := &deliverEvent{
+				messageId:   pevent.entity.Header.GetMessageId(),
+				topic:       pevent.entity.Header.GetTopic(),
+				messageType: pevent.entity.Header.GetMessageType(),
+			}
 			ctx.SendForward(deliver)
 
 		}()

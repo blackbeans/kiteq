@@ -238,15 +238,19 @@ type Header struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
 	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
 	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
-	ExpiredTime      *int64  `protobuf:"varint,4,req,name=expiredTime" json:"expiredTime,omitempty"`
-	GroupId          *string `protobuf:"bytes,5,req,name=groupId" json:"groupId,omitempty"`
-	Commit           *bool   `protobuf:"varint,6,req,name=commit" json:"commit,omitempty"`
+	ExpiredTime      *int64  `protobuf:"varint,4,req,name=expiredTime,def=-1" json:"expiredTime,omitempty"`
+	DeliveryLimit    *int32  `protobuf:"varint,5,req,name=deliveryLimit,def=-1" json:"deliveryLimit,omitempty"`
+	GroupId          *string `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
+	Commit           *bool   `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
 func (m *Header) Reset()         { *m = Header{} }
 func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
+
+const Default_Header_ExpiredTime int64 = -1
+const Default_Header_DeliveryLimit int32 = -1
 
 func (m *Header) GetMessageId() string {
 	if m != nil && m.MessageId != nil {
@@ -273,7 +277,14 @@ func (m *Header) GetExpiredTime() int64 {
 	if m != nil && m.ExpiredTime != nil {
 		return *m.ExpiredTime
 	}
-	return 0
+	return Default_Header_ExpiredTime
+}
+
+func (m *Header) GetDeliveryLimit() int32 {
+	if m != nil && m.DeliveryLimit != nil {
+		return *m.DeliveryLimit
+	}
+	return Default_Header_DeliveryLimit
 }
 
 func (m *Header) GetGroupId() string {

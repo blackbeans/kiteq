@@ -24,8 +24,8 @@ func (self *AcceptHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *AcceptHandler) cast(event IEvent) (val *AcceptEvent, ok bool) {
-	val, ok = event.(*AcceptEvent)
+func (self *AcceptHandler) cast(event IEvent) (val *acceptEvent, ok bool) {
+	val, ok = event.(*acceptEvent)
 	return
 }
 
@@ -40,18 +40,18 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 	//这里处理一下acceptEvent,做一下校验
 	var msg *store.MessageEntity
-	switch acceptEvent.MsgType {
+	switch acceptEvent.msgType {
 	case protocol.CMD_BYTES_MESSAGE:
-		msg = store.NewBytesMessageEntity(acceptEvent.Msg.(*protocol.BytesMessage))
+		msg = store.NewBytesMessageEntity(acceptEvent.msg.(*protocol.BytesMessage))
 	case protocol.CMD_STRING_MESSAGE:
-		msg = store.NewStringMessageEntity(acceptEvent.Msg.(*protocol.StringMessage))
+		msg = store.NewStringMessageEntity(acceptEvent.msg.(*protocol.StringMessage))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, acceptEvent.Msg)
+		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, acceptEvent.msg)
 	}
 
 	if nil != msg {
-		pevent := NewPersistentEvent(msg, acceptEvent.RemoteClient, acceptEvent.Opaque)
+		pevent := newPersistentEvent(msg, acceptEvent.remoteClient, acceptEvent.opaque)
 		ctx.SendForward(pevent)
 		return nil
 	}

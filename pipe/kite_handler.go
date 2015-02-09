@@ -73,3 +73,42 @@ func (self *BaseForwardHandler) HandleForward(ctx *DefaultPipelineContext, event
 func (self *BaseForwardHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
 	return self.processor.Process(ctx, event)
 }
+
+//-------------基本的backward处理
+type BaseBackwardHandler struct {
+	IBackwardHandler
+	processor IEventProcessor //类型判断的实现
+	name      string
+}
+
+func NewBaseBackwardHandler(name string, processor IEventProcessor) BaseBackwardHandler {
+	return BaseBackwardHandler{
+		name:      name,
+		processor: processor}
+}
+
+func (self *BaseBackwardHandler) GetName() string {
+	return self.name
+}
+
+//检查是否可以处理改event
+func (self *BaseBackwardHandler) AcceptEvent(event IEvent) bool {
+	//是否可以处理当前按的event，再去判断具体的可处理事件类型
+	_, ok := event.(IBackwardEvent)
+	return ok
+}
+
+func (self *BaseBackwardHandler) HandleBackward(ctx *DefaultPipelineContext, event IBackwardEvent) error {
+
+	//处理逻辑成功则向后传递
+	if !self.processor.TypeAssert(event) {
+		ctx.SendBackward(event)
+		return nil
+	} else {
+		return self.processor.Process(ctx, event)
+	}
+}
+
+func (self *BaseBackwardHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
+	return self.processor.Process(ctx, event)
+}

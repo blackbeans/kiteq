@@ -12,56 +12,31 @@ import (
 	"time"
 )
 
-type defaultStore struct {
-}
-
-func (self *defaultStore) Query(messageId string) *store.MessageEntity {
-	entity := store.NewStringMessageEntity(buildStringMessage(messageId))
-	return entity
-
-}
-func (self *defaultStore) Save(entity *store.MessageEntity) bool {
-	return true
-}
-func (self *defaultStore) Commit(messageId string) bool {
-	return true
-}
-
-func (self *defaultStore) Delete(messageId string) bool {
-	return true
-}
-
-func (self *defaultStore) Rollback(messageId string) bool {
-	return true
-}
-func (self *defaultStore) UpdateEntity(entity *store.MessageEntity) bool {
-	return true
-}
-
 func buildStringMessage(id string) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:   proto.String("1234567_" + id),
-		Topic:       proto.String("trade"),
-		MessageType: proto.String("pay-succ"),
-		ExpiredTime: proto.Int64(time.Now().Unix()),
-		GroupId:     proto.String("go-kite-test"),
-		Commit:      proto.Bool(true)}
+		MessageId:     proto.String("1234567_" + id),
+		Topic:         proto.String("trade"),
+		MessageType:   proto.String("pay-succ"),
+		ExpiredTime:   proto.Int64(time.Now().Unix()),
+		DeliveryLimit: proto.Int32(-1),
+		GroupId:       proto.String("go-kite-test"),
+		Commit:        proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
 }
 
 //初始化存储
-var kitestore = &defaultStore{}
+var kitestore = &store.MockKiteStore{}
 var ch = make(chan bool, 1)
 var kiteClient *client.KiteQClient
 var kiteQServer *KiteQServer
 
 func init() {
 
-	kiteQServer = NewKiteQServer("localhost:13800", "localhost:2181", []string{"trade"}, "")
+	kiteQServer = NewKiteQServer("localhost:13800", "localhost:2181", []string{"trade"}, "mock")
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 

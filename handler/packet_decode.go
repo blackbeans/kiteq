@@ -76,7 +76,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		err = protocol.UnmarshalPbMessage(packet.Data, &connMeta)
 		if nil == err {
 			meta := &connMeta
-			event = NewAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Opaque)
+			event = newAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Opaque)
 		}
 
 	//心跳
@@ -100,7 +100,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		var txAck protocol.TxACKPacket
 		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
 		if nil == err {
-			event = NewTxAckEvent(&txAck, packet.Opaque)
+			event = newTxAckEvent(&txAck, packet.Opaque)
 		}
 
 	//发送的是bytesmessage
@@ -108,14 +108,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		var msg protocol.BytesMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_STRING_MESSAGE:
 		var msg protocol.StringMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = NewAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}
 	}
 

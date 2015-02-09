@@ -30,7 +30,7 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 
 func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQServer {
 	var kitedb store.IKiteStore
-	if mysql == "" {
+	if mysql == "mock" {
 		kitedb = &store.MockKiteStore{}
 	} else {
 		kitedb = store.NewKiteMysql(mysql)
@@ -52,10 +52,11 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", exchanger))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kitedb))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb))
 
 	return &KiteQServer{
 		local:         local,

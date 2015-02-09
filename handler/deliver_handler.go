@@ -1,25 +1,20 @@
 package handler
 
 import (
-	"github.com/golang/protobuf/proto"
 	. "kiteq/pipe"
-	"kiteq/protocol"
-	"kiteq/store"
-	"log"
+	_ "log"
 )
 
 //----------------投递的handler
 type DeliverHandler struct {
 	BaseForwardHandler
-	kitestore store.IKiteStore
 }
 
 //------创建deliverpre
-func NewDeliverHandler(name string, kitestore store.IKiteStore) *DeliverHandler {
+func NewDeliverHandler(name string) *DeliverHandler {
 
 	phandler := &DeliverHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
-	phandler.kitestore = kitestore
 	return phandler
 }
 
@@ -28,8 +23,8 @@ func (self *DeliverHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *DeliverHandler) cast(event IEvent) (val *DeliverEvent, ok bool) {
-	val, ok = event.(*DeliverEvent)
+func (self *DeliverHandler) cast(event IEvent) (val *deliverEvent, ok bool) {
+	val, ok = event.(*deliverEvent)
 	return
 }
 
@@ -42,27 +37,28 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	//获取投递的消息数据
-
-	//发起一个请求包
-
-	entity := self.kitestore.Query(pevent.MessageId)
-	// @todo 判断类型创建string或者byte message
-	message := &protocol.StringMessage{}
-	message.Header = entity.Header
-	message.Body = proto.String(string(entity.GetBody()))
-	data, err := proto.Marshal(message)
-	if nil != err {
-		log.Printf("DeliverHandler|Process|Query Message|FAIL|%s|%s\n", err, pevent.MessageId)
-		return err
+	//没有投递分组直接投递结果
+	if len(pevent.deliverGroups) <= 0 {
+		//直接显示投递成功
+		resultEvent := newDeliverResultEvent(pevent, make(map[string]chan interface{}, 0))
+		ctx.SendForward(resultEvent)
+		return nil
 	}
 
-	wpacket := protocol.NewPacket(protocol.CMD_STRING_MESSAGE, data)
+	//减少事件的ttl及消息投递的次数
+	pevent.ttl--
+	pevent.deliverCount++
 	//创建投递事件
-	revent := NewRemotingEvent(wpacket, nil, pevent.DeliverGroups...)
-	//向后转发
-	ctx.SendForward(revent)
+	revent := NewRemotingEvent(pevent.packet, nil, pevent.deliverGroups...)
+	//发起网络请求
+	go func() {
+		//向后转发
+		ctx.SendForward(revent)
+	}()
 
+	//创建一个投递结果
+	resultEvent := newDeliverResultEvent(pevent, revent.Wait())
+	ctx.SendForward(resultEvent)
 	return nil
 
 }

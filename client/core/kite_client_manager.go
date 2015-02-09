@@ -48,7 +48,7 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm, flowControl))
 
 	return &KiteClientManager{
-		ga:            rclient.NewGroupAuth(secretKey, groupId),
+		ga:            rclient.NewGroupAuth(groupId, secretKey),
 		kiteClients:   make(map[string][]*kiteClient, 10),
 		pipeline:      pipeline,
 		zkManager:     binding.NewZKManager(zkAddr),
@@ -198,6 +198,7 @@ func (self *KiteClientManager) SendStringMessage(msg *protocol.StringMessage) er
 		log.Println("KiteClientManager|SendStringMessage|FAIL|NO Remote Client|%s\n", msg)
 		return errors.New("NO KITE CLIENT !")
 	}
+
 	c := clients[rand.Intn(len(clients))]
 
 	return c.sendStringMessage(msg)

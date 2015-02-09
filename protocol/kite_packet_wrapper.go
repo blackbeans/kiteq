@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"github.com/golang/protobuf/proto"
+	"log"
 )
 
 func UnmarshalPbMessage(data []byte, msg proto.Message) error {
@@ -10,6 +11,30 @@ func UnmarshalPbMessage(data []byte, msg proto.Message) error {
 
 func MarshalPbMessage(message proto.Message) ([]byte, error) {
 	return proto.Marshal(message)
+}
+
+func MarshalMessage(header *Header, msgType uint8, body []byte) []byte {
+	switch msgType {
+	case CMD_BYTES_MESSAGE:
+		message := &BytesMessage{}
+		message.Header = header
+		message.Body = body
+		data, err := proto.Marshal(message)
+		if nil != err {
+			log.Printf("MarshalMessage|%s|%d|%s\n", header, msgType, err)
+		}
+		return data
+	case CMD_STRING_MESSAGE:
+		message := &StringMessage{}
+		message.Header = header
+		message.Body = proto.String(string(body))
+		data, err := proto.Marshal(message)
+		if nil != err {
+			log.Printf("MarshalMessage|%s|%d|%s\n", header, msgType, err)
+		}
+		return data
+	}
+	return nil
 }
 
 func MarshalConnMeta(groupId, secretKey string) []byte {

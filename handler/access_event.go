@@ -26,14 +26,14 @@ func (self *AccessHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *AccessHandler) cast(event IEvent) (val *AccessEvent, ok bool) {
-	val, ok = event.(*AccessEvent)
+func (self *AccessHandler) cast(event IEvent) (val *accessEvent, ok bool) {
+	val, ok = event.(*accessEvent)
 	return
 }
 
 func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("AccessEvent|Process|%s|%t\n", self.GetName(), event)
+	// log.Printf("accessEvent|Process|%s|%t\n", self.GetName(), event)
 
 	aevent, ok := self.cast(event)
 	if !ok {
@@ -42,13 +42,13 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	//做权限校验.............
 	if false {
-		log.Printf("AccessEvent|Process|INVALID AUTH|%s|%s\n", aevent.GroupId, aevent.SecretKey)
+		log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
 	}
 
 	// 权限验证通过 保存到clientmanager
-	self.clientManager.Auth(client.NewGroupAuth(aevent.SecretKey, aevent.GroupId), aevent.remoteClient)
+	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
 
-	log.Printf("AccessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.GroupId, aevent.SecretKey, aevent.remoteClient.RemoteAddr())
+	log.Printf("accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
 
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包

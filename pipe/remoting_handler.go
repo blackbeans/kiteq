@@ -45,7 +45,11 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 
 	//发送数据
 	futures := self.invokeGroup(revent)
-	//创建投递结果事件
+	//写入future的响应
+	revent.futures <- futures
+	close(revent.futures)
+
+	//创建创建网络写出结果
 	fe := NewRemoteFutureEvent(revent, futures)
 	ctx.SendForward(fe)
 	return nil
@@ -57,6 +61,8 @@ func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 
 func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan interface{} {
 
+	//特别的失败分组，为了减少chan的创建数
+	failGroup := make(chan interface{}, 1)
 	futures := make(map[string]chan interface{}, 10)
 	if len(event.TargetHost) > 0 {
 		//特定机器
@@ -87,11 +93,21 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 		}
 	}
 
-	return futures
-}
+	//统计哪些不在线的host
+	for _, h := range event.TargetHost {
+		_, ok := futures[h]
+		if !ok {
+			futures[h] = failGroup
+		}
+	}
 
-//都低结果
-type deliverResult struct {
-	groupId string
-	err     error
+	//统计哪些不在线的分组
+	for _, g := range event.GroupIds {
+		_, ok := futures[g]
+		if !ok {
+			futures[g] = failGroup
+		}
+	}
+
+	return futures
 }
