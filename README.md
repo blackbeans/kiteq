@@ -35,6 +35,18 @@ kiteq
     Regx(正则式订阅):  Topic级别下，对MessageType进行正则匹配方式订阅消息
     Fanout(广播式订阅): Topic级别下，订阅所有的MessageType的消息
 
+#####  两阶段提交：
+    因为引入了异步投递方案，所以在有些场景下需要本地执行某个事务成功的时候，本条消息才可以被订阅方消费。
+    例如：
+        用户购买会员支付成功成功需要修改本地用户账户Mysql的余额、并且告知会员系统为用户的会员期限延长。
+        这个时候就会碰到、必须在保证mysql操作成功的情况下，会员系统才可以接收到会员延期的消息。
+    
+    对于以上的问题，KiteQ的处理和ali的Notify系统一样，
+        1. 发送一个UnCommit的消息到KiteQ ,KiteQ 不会对Uncommite的消息做投递操作
+        2. KiteQ定期对UnCommit的消息向Producer发送TxAck的询问
+        3. 直到Producer明确告诉Commit或者Rollback该消息
+        4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
+
 
 
 
