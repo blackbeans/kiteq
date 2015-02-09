@@ -80,7 +80,6 @@ func main() {
 				}
 			}
 			wg.Done()
-
 		}()
 	}
 
