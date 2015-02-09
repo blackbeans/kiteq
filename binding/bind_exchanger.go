@@ -163,7 +163,7 @@ func (self *BindExchanger) ChildWatcher(path string, childNode []string) {
 		}
 
 		self.lock.Lock()
-		self.lock.Unlock()
+		defer self.lock.Unlock()
 
 		groupIds, ok := self.exchanger[topic]
 		if !ok {
