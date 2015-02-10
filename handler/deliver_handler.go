@@ -54,9 +54,11 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	//发起网络请求
 	go ctx.SendForward(revent)
 
-	//创建一个投递结果
-	resultEvent := newDeliverResultEvent(pevent, revent.Wait())
-	ctx.SendForward(resultEvent)
+	go func() {
+		//创建一个投递结果
+		resultEvent := newDeliverResultEvent(pevent, revent.Wait())
+		ctx.SendForward(resultEvent)
+	}()
 	return nil
 
 }

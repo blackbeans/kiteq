@@ -64,12 +64,15 @@ func init() {
 }
 
 func BenchmarkRemotingServer(t *testing.B) {
-	for i := 0; i < t.N; i++ {
-		err := kiteClient.SendStringMessage(buildStringMessage("1"))
-		if nil != err {
-			t.Logf("SEND MESSAGE |FAIL|%s\n", err)
+	t.SetParallelism(4)
+	t.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			err := kiteClient.SendStringMessage(buildStringMessage("1"))
+			if nil != err {
+				t.Logf("SEND MESSAGE |FAIL|%s\n", err)
+			}
 		}
-	}
+	})
 }
 
 func TestRemotingServer(t *testing.T) {
