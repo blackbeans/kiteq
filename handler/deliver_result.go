@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/store"
-	"log"
+	// "log"
 	"time"
 )
 
@@ -48,10 +48,10 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	//则全部投递成功
 	if len(fevent.failGroups) <= 0 {
 		self.store.Delete(fevent.messageId)
-		log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
+		// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
 	} else {
 		//需要将失败的分组重新投递
-		log.Printf("DeliverResultHandler|%s|Process|GROUP SEND |FAIL|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
+		// log.Printf("DeliverResultHandler|%s|Process|GROUP SEND |FAIL|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
 
 		//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 		if fevent.expiredTime >= time.Now().Unix() || fevent.deliverLimit >= fevent.deliverCount {
@@ -59,8 +59,9 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 		} else if fevent.deliverEvent.ttl > 0 {
 			//再次发起重投策略
-			// fevent.deliverEvent.deliverGroups = fevent.failGroups
-			// ctx.SendBackward(fevent.deliverEvent)
+			fevent.deliverEvent.packet.ResetOpaque()
+			go ctx.SendBackward(fevent.deliverEvent)
+
 		} else {
 			//只能等后续的recover线程去处理
 		}

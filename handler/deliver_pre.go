@@ -5,7 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	"log"
+	// "log"
 )
 
 //----------------持久化的handler
@@ -69,7 +69,7 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent) {
 		return false
 	})
 
-	groupIds := make([]string, 0, len(binds))
+	groupIds := make([]string, 0, 10)
 	//按groupid归并
 outter:
 	for _, bind := range binds {
@@ -81,12 +81,12 @@ outter:
 		groupIds = append(groupIds, bind.GroupId)
 	}
 
-	//如果没有可用的分组则直接跳过
-	if len(groupIds) <= 0 {
-		log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s|%s|%s|%s\n", pevent.messageId, pevent.topic, pevent.messageType, binds)
-	} else {
-		log.Printf("DeliverPreHandler|Process|GROUPIDS TO DELIVERY |%s|%s|%s,%s\n", pevent.messageId, pevent.topic, pevent.messageType, groupIds)
-	}
+	// //如果没有可用的分组则直接跳过
+	// if len(groupIds) <= 0 {
+	// 	log.Printf("DeliverPreHandler|Process|NO GROUPID TO DELIVERY |%s|%s|%s|%s\n", pevent.messageId, pevent.topic, pevent.messageType, binds)
+	// } else {
+	// 	log.Printf("DeliverPreHandler|Process|GROUPIDS TO DELIVERY |%s|%s|%s,%s\n", pevent.messageId, pevent.topic, pevent.messageType, groupIds)
+	// }
 
 	pevent.deliverGroups = groupIds
 }

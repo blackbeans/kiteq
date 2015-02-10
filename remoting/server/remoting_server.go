@@ -1,7 +1,7 @@
 package server
 
 import (
-	rclient "kiteq/remoting/client"
+	. "kiteq/remoting/client"
 	"kiteq/stat"
 	"log"
 	"net"
@@ -14,13 +14,13 @@ type RemotingServer struct {
 	keepalive        time.Duration
 	stopChan         chan bool
 	isShutdown       bool
-	packetDispatcher func(remoteClient *rclient.RemotingClient, packet []byte)
+	packetDispatcher func(remoteClient *RemotingClient, packet []byte)
 	flowControl      *stat.FlowControl
 }
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
 	flowControl *stat.FlowControl,
-	packetDispatcher func(remoteClient *rclient.RemotingClient, packet []byte)) *RemotingServer {
+	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingServer {
 
 	//设置为8个并发
 	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
@@ -71,7 +71,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 
 			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
-			remoteClient := rclient.NewRemotingClient(conn, self.packetDispatcher)
+			remoteClient := NewRemotingClient(conn, self.packetDispatcher)
 			remoteClient.Start()
 		}
 	}

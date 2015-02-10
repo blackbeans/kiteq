@@ -176,7 +176,8 @@ func (self *KiteClientManager) EventNotify(path string, eventType binding.ZkEven
 
 func (self *KiteClientManager) ChildWatcher(path string, childNode []string) {
 	// @todo关闭或者新增相应的pub/sub connections
-	log.Println("KITE CLIENT MANAGER|ZK CHILDWATCHER|PATH|%s|CHILDREN|%s\n", path, childNode)
+	// log.Println("KITE CLIENT MANAGER|ZK CHILDWATCHER|PATH|%s|CHILDREN|%s\n", path, childNode)
+
 }
 
 func (self *KiteClientManager) SetPublishTopics(topics []string) {

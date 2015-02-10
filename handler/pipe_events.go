@@ -93,7 +93,6 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 	re.futures = futures
 	re.succGroups = make([]string, 0, 5)
 	re.failGroups = make([]string, 0, 5)
-	re.ttl = 3 //默认该事件只有三次的生命周期
 	return re
 }
 

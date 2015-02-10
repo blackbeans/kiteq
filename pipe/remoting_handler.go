@@ -87,6 +87,9 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 
 		//发送组内的随机选择一个
 		for gid, c := range clients {
+			if len(c) <= 0 {
+				continue
+			}
 			idx := rand.Intn(len(c))
 			futures[gid] = c[idx].Write(event.Packet)
 			self.flowControl.WriteFlow.Incr(1)

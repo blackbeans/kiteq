@@ -4,7 +4,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"kiteq/binding"
 	"kiteq/client"
-	"kiteq/client/listener"
+	// "kiteq/client/listener"
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
@@ -34,6 +34,20 @@ var ch = make(chan bool, 1)
 var kiteClient *client.KiteQClient
 var kiteQServer *KiteQServer
 
+type defualtListener struct {
+}
+
+func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
+	// log.Println("MockListener|OnMessage", *msg.Header, *msg.Body)
+	return true
+}
+
+func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxResponse) error {
+	// log.Println("MockListener|OnMessageCheck", messageId)
+	tx.Commit()
+	return nil
+}
+
 func init() {
 
 	kiteQServer = NewKiteQServer("localhost:13800", "localhost:2181", []string{"trade"}, "mock")
@@ -41,7 +55,7 @@ func init() {
 	log.Println("KiteQServer START....")
 
 	time.Sleep(5 * time.Second)
-	kiteClient = client.NewKiteQClient("localhost:2181", "ps-trade-a", "123456", &listener.MockListener{})
+	kiteClient = client.NewKiteQClient("localhost:2181", "ps-trade-a", "123456", &defualtListener{})
 	kiteClient.SetBindings([]*binding.Binding{
 		binding.Bind_Direct("ps-trade-a", "trade", "pay-succ", 1000, true),
 	})

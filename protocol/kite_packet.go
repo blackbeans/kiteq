@@ -29,6 +29,12 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	return p
 }
 
+//重置Opaque
+func (self *Packet) ResetOpaque() {
+	self.Opaque = -1
+	self.future = make(chan interface{}, 1)
+}
+
 func (self *Packet) Get() chan interface{} {
 	return self.future
 }

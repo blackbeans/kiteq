@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/store"
-	"log"
+	// "log"
 )
 
 //-------投递结果记录的handler
@@ -37,7 +37,7 @@ func (self *ResultRecordHandler) Process(ctx *DefaultPipelineContext, event IEve
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	log.Printf("ResultRecordHandler|Process|%s|%t\n", self.GetName(), fevent)
+	// log.Printf("ResultRecordHandler|Process|%s|%t\n", self.GetName(), fevent)
 	ctx.SendForward(fevent)
 	return nil
 

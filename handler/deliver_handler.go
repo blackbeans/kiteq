@@ -7,14 +7,15 @@ import (
 
 //----------------投递的handler
 type DeliverHandler struct {
-	BaseForwardHandler
+	BaseDoubleSidedHandler
 }
 
 //------创建deliverpre
 func NewDeliverHandler(name string) *DeliverHandler {
 
 	phandler := &DeliverHandler{}
-	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
+	phandler.BaseDoubleSidedHandler = NewBaseDoubleSidedHandler(name, phandler)
+
 	return phandler
 }
 
@@ -51,10 +52,7 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	//创建投递事件
 	revent := NewRemotingEvent(pevent.packet, nil, pevent.deliverGroups...)
 	//发起网络请求
-	go func() {
-		//向后转发
-		ctx.SendForward(revent)
-	}()
+	go ctx.SendForward(revent)
 
 	//创建一个投递结果
 	resultEvent := newDeliverResultEvent(pevent, revent.Wait())

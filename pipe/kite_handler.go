@@ -112,3 +112,55 @@ func (self *BaseBackwardHandler) HandleBackward(ctx *DefaultPipelineContext, eve
 func (self *BaseBackwardHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
 	return self.processor.Process(ctx, event)
 }
+
+//----------------DoubleSided
+type BaseDoubleSidedHandler struct {
+	IBackwardHandler
+	IForwardHandler
+	processor IEventProcessor //类型判断的实现
+	name      string
+}
+
+func NewBaseDoubleSidedHandler(name string, processor IEventProcessor) BaseDoubleSidedHandler {
+	return BaseDoubleSidedHandler{
+		name:      name,
+		processor: processor}
+}
+
+func (self *BaseDoubleSidedHandler) GetName() string {
+	return self.name
+}
+
+//检查是否可以处理改event
+func (self *BaseDoubleSidedHandler) AcceptEvent(event IEvent) bool {
+	//是否可以处理当前按的event，再去判断具体的可处理事件类型
+	_, bok := event.(IBackwardEvent)
+	_, fok := event.(IForwardEvent)
+	return bok && fok
+}
+
+func (self *BaseDoubleSidedHandler) HandleBackward(ctx *DefaultPipelineContext, event IBackwardEvent) error {
+
+	//处理逻辑成功则向后传递
+	if !self.processor.TypeAssert(event) {
+		ctx.SendBackward(event)
+		return nil
+	} else {
+		return self.processor.Process(ctx, event)
+	}
+}
+
+func (self *BaseDoubleSidedHandler) HandleForward(ctx *DefaultPipelineContext, event IForwardEvent) error {
+
+	//处理逻辑成功则向后传递
+	if !self.processor.TypeAssert(event) {
+		ctx.SendForward(event)
+		return nil
+	} else {
+		return self.processor.Process(ctx, event)
+	}
+}
+
+func (self *BaseDoubleSidedHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
+	return self.processor.Process(ctx, event)
+}
