@@ -70,7 +70,10 @@ func (self *BaseForwardHandler) HandleForward(ctx *DefaultPipelineContext, event
 	} else {
 		now := time.Now().Unix()
 		err := self.processor.Process(ctx, event)
-		log.Printf("DefaultPipelineContext|%s|cost:%d\n", self.GetName(), time.Now().Unix()-now)
+		cost := time.Now().Unix() - now
+		if cost > 100 {
+			log.Printf("BaseForwardHandler|%s|cost:%d\n", self.GetName(), cost)
+		}
 		return err
 	}
 }
@@ -114,7 +117,7 @@ func (self *BaseBackwardHandler) HandleBackward(ctx *DefaultPipelineContext, eve
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("DefaultPipelineContext|%s|cost:%d\n", self.GetName(), cost)
+			log.Printf("BaseBackwardHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 
 		return err
@@ -163,7 +166,7 @@ func (self *BaseDoubleSidedHandler) HandleBackward(ctx *DefaultPipelineContext, 
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("DefaultPipelineContext|%s|cost:%d\n", self.GetName(), cost)
+			log.Printf("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 
 		return err
@@ -181,7 +184,7 @@ func (self *BaseDoubleSidedHandler) HandleForward(ctx *DefaultPipelineContext, e
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("DefaultPipelineContext|%s|cost:%d\n", self.GetName(), cost)
+			log.Printf("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 		return err
 	}
