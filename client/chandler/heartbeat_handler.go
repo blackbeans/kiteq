@@ -2,9 +2,9 @@ package chandler
 
 import (
 	. "kiteq/pipe"
-	"kiteq/protocol"
+	// "kiteq/protocol"
 	rcclient "kiteq/remoting/client"
-	"log"
+	// "log"
 	"time"
 )
 
@@ -29,38 +29,38 @@ func NewHeartbeatHandler(name string, heartbeatPeriod time.Duration,
 
 func (self *HeartbeatHandler) keepAlive() {
 
-	for {
-		select {
-		case <-time.After(self.heartbeatPeriod):
-			//心跳检测
-			func() {
-				id := time.Now().Unix()
-				clients := self.clientMangager.ClientsClone()
-				packet := protocol.MarshalHeartbeatPacket(id)
-				for h, c := range clients {
-					i := 0
-					for ; i < 3; i++ {
-						hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
-						err := c.Ping(hp, self.heartbeatTimeout)
-						//如果有错误则需要记录
-						if nil != err {
-							log.Printf("HeartbeatHandler|KeepAlive|%s|%s|%d\n", err, h, id)
-							continue
-						} else {
-							// log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|tryCount:%d\n", h, id, i)
-							break
-						}
-					}
+	// for {
+	// 	select {
+	// 	case <-time.After(self.heartbeatPeriod):
+	// 		//心跳检测
+	// 		func() {
+	// 			id := time.Now().Unix()
+	// 			clients := self.clientMangager.ClientsClone()
+	// 			packet := protocol.MarshalHeartbeatPacket(id)
+	// 			for h, c := range clients {
+	// 				i := 0
+	// 				for ; i < 3; i++ {
+	// 					hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
+	// 					err := c.Ping(hp, self.heartbeatTimeout)
+	// 					//如果有错误则需要记录
+	// 					if nil != err {
+	// 						log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|%s|%d\n", err, h, id)
+	// 						continue
+	// 					} else {
+	// 						log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|tryCount:%d\n", h, id, i)
+	// 						break
+	// 					}
+	// 				}
 
-					if i >= 3 {
-						//说明连接有问题需要重连
-						c.Shutdown()
-						self.clientMangager.SubmitReconnect(c)
-					}
-				}
-			}()
-		}
-	}
+	// 				if i >= 3 {
+	// 					//说明连接有问题需要重连
+	// 					c.Shutdown()
+	// 					self.clientMangager.SubmitReconnect(c)
+	// 				}
+	// 			}
+	// 		}()
+	// 	}
+	// }
 
 }
 
