@@ -134,7 +134,7 @@ func (self *BindExchanger) EventNotify(path string, eventType ZkEvent, binds []*
 		//获取topic
 		topic := split[3]
 		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) < 0 {
+		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
 			log.Printf("BindExchanger|EventNotify|REFUSE SUB PATH |%s|%t\n", path, binds)
 			return
 		}

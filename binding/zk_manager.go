@@ -340,8 +340,9 @@ func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
 					nwatcher.watcher.ChildWatcher(path, childnodes)
 				}
 			}
+			log.Printf("ZKManager|addWatch|%s|%s\n", path, change)
+
 		}
-		log.Printf("ZKManager|addWatch|FAIL|out of wacher range ! [%s]\n", path)
 	}()
 }
 
