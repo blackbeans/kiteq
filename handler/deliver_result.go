@@ -59,8 +59,8 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 		} else if fevent.deliverEvent.ttl > 0 {
 			//再次发起重投策略
-			fevent.deliverEvent.packet.ResetOpaque()
-			go ctx.SendBackward(fevent.deliverEvent)
+			// fevent.deliverEvent.packet.ResetOpaque()
+			// ctx.SendBackward(fevent.deliverEvent)
 
 		} else {
 			//只能等后续的recover线程去处理

@@ -59,9 +59,28 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	ga, ok := self.groupAuth[c.RemoteAddr()]
 	if ok {
-		self.reconnectManager.submit(newReconnectTasK(c, ga))
+		//如果重连则提交重连任务
+		if self.reconnectManager.allowReconnect {
+			self.reconnectManager.submit(newReconnectTasK(c, ga))
+		} else {
+			//不需要重连的直接删除掉连接
+			delete(self.groupAuth, c.RemoteAddr())
+			delete(self.allClients, c.RemoteAddr())
+			clients, ok := self.groupClients[ga.GroupId]
+			if ok {
+				for i, cli := range clients {
+					if cli.RemoteAddr() == c.RemoteAddr() {
+						c.Shutdown()
+						clients = append(clients[:i], clients[i+1:]...)
+						break
+					}
+				}
+			}
+		}
 	}
 }
 
