@@ -39,7 +39,7 @@ type defualtListener struct {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
-	log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
+	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
 	return true
 }
 
@@ -55,7 +55,6 @@ func init() {
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 
-	time.Sleep(5 * time.Second)
 	kiteClient = client.NewKiteQClient("localhost:2181", "ps-trade-a", "123456", &defualtListener{})
 	kiteClient.SetTopics([]string{"trade"})
 	kiteClient.Start()

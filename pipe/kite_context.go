@@ -137,6 +137,7 @@ func (self *DefaultPipelineContext) SendBackward(event IBackwardEvent) {
 		self.pipeline.eventSunk(event)
 
 	} else {
+
 		err := actualCtx.pipeline.handleBackward(actualCtx, event)
 		if nil != err {
 			self.pipeline.errorCaught(event, err)
