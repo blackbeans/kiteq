@@ -25,8 +25,8 @@ func NewSession(conn *net.TCPConn) *Session {
 
 	session := &Session{
 		conn:         conn,
-		ReadChannel:  make(chan []byte, 500),
-		WriteChannel: make(chan []byte, 500),
+		ReadChannel:  make(chan []byte, 2000),
+		WriteChannel: make(chan []byte, 2000),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String()}
 

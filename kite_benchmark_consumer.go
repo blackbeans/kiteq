@@ -4,15 +4,42 @@ import (
 	"flag"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"kiteq/binding"
 	"kiteq/client"
-	"kiteq/client/listener"
 	"kiteq/protocol"
 	"os"
 	"os/signal"
-	"sync"
 	"sync/atomic"
 	"time"
 )
+
+type defualtListener struct {
+	count int32
+	lc    int32
+}
+
+func (self *defualtListener) monitor() {
+	for {
+		tmp := self.count
+		ftmp := self.lc
+
+		time.Sleep(1 * time.Second)
+		fmt.Printf("tps:%d/%d\n", (tmp - ftmp))
+		self.lc = ftmp
+	}
+}
+
+func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
+	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
+	atomic.AddInt32(&self.count, 1)
+	return true
+}
+
+func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxResponse) error {
+	// log.Println("defualtListener|OnMessageCheck", messageId)
+	tx.Commit()
+	return nil
+}
 
 func buildStringMessage() *protocol.StringMessage {
 	//创建消息
@@ -38,50 +65,17 @@ func messageId() string {
 }
 
 func main() {
-
-	c := flag.Int("c", 10, "-c=10")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 
-	kite := client.NewKiteQClient(*zkhost, "ps-mts-test", "123456", &listener.MockListener{})
+	lis := &defualtListener{}
+	go lis.monitor()
 
-	count := int32(0)
-	lc := int32(0)
-
-	fc := int32(0)
-	flc := int32(0)
-
-	go func() {
-		for {
-
-			tmp := count
-			ftmp := fc
-
-			time.Sleep(1 * time.Second)
-			fmt.Printf("tps:%d/%d\n", (tmp - lc), (ftmp - flc))
-			lc = tmp
-			flc = ftmp
-		}
-	}()
-
-	wg := &sync.WaitGroup{}
-
-	stop := false
-	for i := 0; i < *c; i++ {
-		go func() {
-			wg.Add(1)
-			for !stop {
-				err := kite.SendStringMessage(buildStringMessage())
-				if nil != err {
-					fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
-					atomic.AddInt32(&fc, 1)
-				} else {
-					atomic.AddInt32(&count, 1)
-				}
-			}
-			wg.Done()
-		}()
-	}
+	kite := client.NewKiteQClient(*zkhost, "s-mts-test", "123456", lis)
+	kite.SetBindings([]*binding.Binding{
+		binding.Bind_Direct("s-mts-test", "trade", "pay-succ", 1000, true),
+	})
+	kite.Start()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Kill)
@@ -89,9 +83,8 @@ func main() {
 	select {
 	//kill掉的server
 	case <-ch:
-		stop = true
+
 	}
 
-	wg.Wait()
 	kite.Destory()
 }
