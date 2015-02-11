@@ -71,6 +71,7 @@ func (self *HeartbeatHandler) TypeAssert(event IEvent) bool {
 
 func (self *HeartbeatHandler) cast(event IEvent) (val *HeartbeatEvent, ok bool) {
 	val, ok = event.(*HeartbeatEvent)
+
 	return
 }
 

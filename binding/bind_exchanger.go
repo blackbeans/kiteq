@@ -157,7 +157,7 @@ func (self *BindExchanger) ChildWatcher(path string, childNode []string) {
 		//获取topic
 		topic := split[3]
 		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) < 0 {
+		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
 			log.Printf("BindExchanger|ChildWatcher|REFUSE SUB PATH |%s|%t\n", path, childNode)
 			return
 		}

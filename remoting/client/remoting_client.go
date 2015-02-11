@@ -6,6 +6,7 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/session"
 	"log"
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -30,13 +31,14 @@ type RemotingClient struct {
 func NewRemotingClient(conn *net.TCPConn,
 	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingClient {
 
+	remoteSession := session.NewSession(conn)
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
 		id:               0,
 		heartbeat:        0,
 		remoteAddr:       conn.RemoteAddr().(*net.TCPAddr),
 		packetDispatcher: packetDispatcher,
-		remoteSession:    session.NewSession(conn),
+		remoteSession:    remoteSession,
 		holder:           make(map[int32]chan interface{})}
 
 	return remotingClient
@@ -87,14 +89,15 @@ func (self *RemotingClient) reconnect() (bool, error) {
 func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 	//50个读协程
-	for i := 0; i < 50; i++ {
-		go func() {
+	for i := 0; i < 100; i++ {
+		ch := session.ReadChannel[i]
+		go func(ch chan []byte) {
 			//解析包
 			for nil != self.remoteSession &&
 				!self.remoteSession.Closed() {
 				select {
 				//1.读取数据包
-				case packet := <-session.ReadChannel:
+				case packet := <-ch:
 					//2.处理一下包
 					go self.packetDispatcher(self, packet)
 					//100ms读超时
@@ -102,7 +105,7 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 				}
 
 			}
-		}()
+		}(ch)
 	}
 }
 
@@ -161,7 +164,8 @@ func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 	self.holder[tid] = packet.Get()
 	self.lock.Unlock()
 
-	self.remoteSession.WriteChannel <- packet.Marshal()
+	idx := rand.Intn(len(self.remoteSession.WriteChannel))
+	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
 	return packet.Get()
 }
 
@@ -177,7 +181,8 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	self.holder[tid] = packet.Get()
 	self.lock.Unlock()
 
-	self.remoteSession.WriteChannel <- packet.Marshal()
+	idx := rand.Intn(len(self.remoteSession.WriteChannel))
+	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
 
 	var resp interface{}
 	//

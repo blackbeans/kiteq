@@ -71,7 +71,7 @@ func (self *BaseForwardHandler) HandleForward(ctx *DefaultPipelineContext, event
 }
 
 func (self *BaseForwardHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
-	return self.processor.Process(ctx, event)
+	return self.HandleForward(ctx, event)
 }
 
 //-------------基本的backward处理
@@ -110,7 +110,7 @@ func (self *BaseBackwardHandler) HandleBackward(ctx *DefaultPipelineContext, eve
 }
 
 func (self *BaseBackwardHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
-	return self.processor.Process(ctx, event)
+	return self.HandleBackward(ctx, event)
 }
 
 //----------------DoubleSided
@@ -162,5 +162,14 @@ func (self *BaseDoubleSidedHandler) HandleForward(ctx *DefaultPipelineContext, e
 }
 
 func (self *BaseDoubleSidedHandler) HandleEvent(ctx *DefaultPipelineContext, event IEvent) error {
-	return self.processor.Process(ctx, event)
+	fe, ok := event.(IForwardEvent)
+	if ok {
+		return self.HandleForward(ctx, fe)
+	} else {
+		be, ok := event.(IBackwardEvent)
+		if ok {
+			return self.HandleBackward(ctx, be)
+		}
+	}
+	return errors.New("ILLEGAL EVENT TYPE ")
 }

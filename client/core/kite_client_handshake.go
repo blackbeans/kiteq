@@ -21,10 +21,10 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 			return false, errors.New("Unmatches Handshake Ack Type! ")
 		} else {
 			if authAck.GetStatus() {
-				log.Printf("KiteQServer|handShake|SUCC|%s\n", authAck.GetFeedback())
+				log.Printf("KiteQServer|handShake|SUCC|%s|%s\n", ga.GroupId, authAck.GetFeedback())
 				return true, nil
 			} else {
-				log.Printf("KiteQServer|handShake|FAIL|%s\n", authAck.GetFeedback())
+				log.Printf("KiteQServer|handShake|FAIL|%s|%s\n", ga.GroupId, authAck.GetFeedback())
 				return false, errors.New("Auth FAIL![" + authAck.GetFeedback() + "]")
 			}
 		}

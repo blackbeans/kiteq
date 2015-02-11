@@ -3,50 +3,68 @@ package core
 import (
 	"errors"
 	"fmt"
+	"kiteq/pipe"
 	"kiteq/protocol"
-	rcient "kiteq/remoting/client"
 	// "log"
 	"time"
 )
 
 type kiteClient struct {
-	groupId      string
-	remoteClient *rcient.RemotingClient
+	hostport string
+	pipeline *pipe.DefaultPipeline
 }
 
-func newKitClient(groupId string, remoteClient *rcient.RemotingClient) *kiteClient {
+func newKitClient(hostport string, pipeline *pipe.DefaultPipeline) *kiteClient {
 
 	client := &kiteClient{
-		groupId:      groupId,
-		remoteClient: remoteClient}
+		hostport: hostport,
+		pipeline: pipeline}
 
 	return client
 }
 
-func (self *kiteClient) sendStringMessage(message *protocol.StringMessage) error {
-	data, err := protocol.MarshalPbMessage(message)
-	if nil != err {
-		return err
+func (self *kiteClient) sendMessage(message interface{}) error {
+
+	bm, bok := message.(*protocol.BytesMessage)
+	if bok {
+		data, err := protocol.MarshalPbMessage(bm)
+		if nil != err {
+			return err
+		}
+		return self.innerSendMessage(protocol.CMD_BYTES_MESSAGE, data)
+	} else {
+		sm, mok := message.(*protocol.StringMessage)
+		if mok {
+			data, err := protocol.MarshalPbMessage(sm)
+			if nil != err {
+				return err
+			}
+			return self.innerSendMessage(protocol.CMD_STRING_MESSAGE, data)
+		} else {
+			return errors.New("INALID MESSAGE !")
+		}
 	}
-	return self.innerSendMessage(protocol.CMD_STRING_MESSAGE, data)
 }
 
-func (self *kiteClient) sendBytesMessage(message *protocol.BytesMessage) error {
-	data, err := protocol.MarshalPbMessage(message)
-	if nil != err {
-		return err
-	}
-
-	return self.innerSendMessage(protocol.CMD_BYTES_MESSAGE, data)
-}
+var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
 func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
-	msgpacket := protocol.NewPacket(cmdType, packet)
 
-	resp, err := self.remoteClient.WriteAndGet(msgpacket, 200*time.Millisecond)
+	msgpacket := protocol.NewPacket(cmdType, packet)
+	remoteEvent := pipe.NewRemotingEvent(msgpacket, []string{self.hostport})
+	err := self.pipeline.FireWork(remoteEvent)
 	if nil != err {
 		return err
-	} else {
+	}
+
+	var resp interface{}
+	//
+	select {
+	case <-time.After(200 * time.Millisecond):
+		//删除掉当前holder
+		return TIMEOUT_ERROR
+	case resp = <-msgpacket.Get():
+
 		storeAck, ok := resp.(*protocol.MessageStoreAck)
 		if !ok || !storeAck.GetStatus() {
 			return errors.New(fmt.Sprintf("kiteClient|SendMessage|FAIL|%s\n", resp))
@@ -55,12 +73,4 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
 			return nil
 		}
 	}
-}
-
-func (self *kiteClient) closed() bool {
-	return self.remoteClient.IsClosed()
-}
-
-func (self *kiteClient) close() {
-	self.remoteClient.Shutdown()
 }
