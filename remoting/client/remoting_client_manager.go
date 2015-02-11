@@ -1,7 +1,7 @@
 package client
 
 import (
-	_ "log"
+	// "log"
 	"sync"
 )
 

@@ -30,6 +30,7 @@ func (self *PacketHandler) TypeAssert(event IEvent) bool {
 
 func (self *PacketHandler) cast(event IEvent) (val *PacketEvent, ok bool) {
 	val, ok = event.(*PacketEvent)
+
 	return
 }
 

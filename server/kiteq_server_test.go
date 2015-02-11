@@ -1,13 +1,14 @@
 package server
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"kiteq/binding"
 	"kiteq/client"
-	// "kiteq/client/listener"
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
+	"os"
 	"testing"
 	"time"
 )
@@ -16,7 +17,7 @@ func buildStringMessage(id string) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:     proto.String("1234567_" + id),
+		MessageId:     proto.String(messageId() + id),
 		Topic:         proto.String("trade"),
 		MessageType:   proto.String("pay-succ"),
 		ExpiredTime:   proto.Int64(time.Now().Unix()),
@@ -28,18 +29,33 @@ func buildStringMessage(id string) *protocol.StringMessage {
 	return entity
 }
 
+var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
+
+func messageId() string {
+	b := make([]byte, 16)
+	f.Read(b)
+	return fmt.Sprintf("%x", b)
+}
+
 //初始化存储
 var kitestore = &store.MockKiteStore{}
 var ch = make(chan bool, 1)
 var kiteClient *client.KiteQClient
 var consumer *client.KiteQClient
 var kiteQServer *KiteQServer
+var c int32 = 0
+var lc int32 = 0
 
 type defualtListener struct {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
+<<<<<<< HEAD
 	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
+=======
+	// log.Printf("defualtListener|OnMessage|%s|%s", msg.Header.GetMessageId(), *msg.Body)
+	c++
+>>>>>>> redeliver
 	return true
 }
 
@@ -64,6 +80,14 @@ func init() {
 		binding.Bind_Direct("ps-trade-a", "trade", "pay-succ", 1000, true),
 	})
 	consumer.Start()
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			log.Printf("%s\n", (c - lc))
+			lc = c
+		}
+	}()
 }
 
 func BenchmarkRemotingServer(t *testing.B) {

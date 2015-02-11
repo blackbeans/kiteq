@@ -30,11 +30,11 @@ func (self *KiteQClient) SetBindings(bindings []*binding.Binding) {
 }
 
 func (self *KiteQClient) SendStringMessage(msg *protocol.StringMessage) error {
-	return self.kclientManager.SendStringMessage(msg)
+	return self.kclientManager.SendMessage(msg.GetHeader().GetTopic(), msg)
 }
 
 func (self *KiteQClient) SendBytesMessage(msg *protocol.BytesMessage) error {
-	return self.kclientManager.SendBytesMessage(msg)
+	return self.kclientManager.SendMessage(msg.GetHeader().GetTopic(), msg)
 }
 
 func (self *KiteQClient) Destory() {

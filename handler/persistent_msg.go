@@ -36,12 +36,11 @@ func (self *PersistentHandler) cast(event IEvent) (val *persistentEvent, ok bool
 
 func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
-
 	pevent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
+	// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
 
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)

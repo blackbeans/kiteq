@@ -6,7 +6,6 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
-	_ "log"
 )
 
 //接受消息事件
@@ -46,6 +45,7 @@ func (self *AcceptHandler) TypeAssert(event IEvent) bool {
 
 func (self *AcceptHandler) cast(event IEvent) (val *acceptEvent, ok bool) {
 	val, ok = event.(*acceptEvent)
+
 	return
 }
 
