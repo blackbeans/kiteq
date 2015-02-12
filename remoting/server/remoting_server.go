@@ -5,7 +5,7 @@ import (
 	"kiteq/stat"
 	"log"
 	"net"
-	"runtime"
+	// "runtime"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func NewRemotionServer(hostport string, keepalive time.Duration,
 	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingServer {
 
 	//设置为8个并发
-	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
+	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
 
 	server := &RemotingServer{
 		hostport:         hostport,

@@ -50,12 +50,7 @@ type defualtListener struct {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
-<<<<<<< HEAD
-	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
-=======
-	// log.Printf("defualtListener|OnMessage|%s|%s", msg.Header.GetMessageId(), *msg.Body)
-	c++
->>>>>>> redeliver
+
 	return true
 }
 

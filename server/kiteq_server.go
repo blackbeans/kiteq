@@ -54,9 +54,10 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
+	pipeline.RegisteHandler("remote-result", handler.NewRemoteResultHandler("remote-result"))
+	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
 	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb))
-	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 
 	return &KiteQServer{
 		local:         local,

@@ -24,7 +24,7 @@ func (self *defualtListener) monitor() {
 		ftmp := self.lc
 
 		time.Sleep(1 * time.Second)
-		fmt.Printf("tps:%d/%d\n", (tmp - ftmp))
+		fmt.Printf("tps:%d\n", (tmp - ftmp))
 		self.lc = ftmp
 	}
 }

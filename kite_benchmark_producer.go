@@ -58,7 +58,7 @@ func main() {
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 
-	kite := client.NewKiteQClient(*zkhost, "p-mts-test", "123456", &defualtListener{})
+	kite := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
 	kite.SetTopics([]string{"trade"})
 	kite.Start()
 

@@ -62,7 +62,7 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	return nil
 }
 
-//对于响应事件
+var sunkEvent = &SunkEvent{}
 
 //对于请求事件
 func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Packet) (IEvent, error) {
@@ -94,6 +94,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		if nil == err {
 			//收到响应直接
 			pevent.RemoteClient.Attach(packet.Opaque, &delAck)
+			event = sunkEvent
 		}
 
 	case protocol.CMD_TX_ACK:

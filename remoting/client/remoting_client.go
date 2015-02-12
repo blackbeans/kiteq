@@ -6,7 +6,6 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/session"
 	"log"
-	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -89,24 +88,19 @@ func (self *RemotingClient) reconnect() (bool, error) {
 func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 	//50个读协程
-	for i := 0; i < 100; i++ {
-		ch := session.ReadChannel[i]
-		go func(ch chan []byte) {
-			//解析包
-			for nil != self.remoteSession &&
-				!self.remoteSession.Closed() {
-				select {
-				//1.读取数据包
-				case packet := <-ch:
-					//2.处理一下包
-					go self.packetDispatcher(self, packet)
-					//100ms读超时
-				case <-time.After(100 * time.Millisecond):
-				}
-
-			}
-		}(ch)
+	//解析包
+	for nil != self.remoteSession &&
+		!self.remoteSession.Closed() {
+		select {
+		//1.读取数据包
+		case packet := <-self.remoteSession.ReadChannel:
+			//2.处理一下包
+			go self.packetDispatcher(self, packet)
+			//100ms读超时
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
+
 }
 
 //同步发起ping的命令
@@ -164,8 +158,7 @@ func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 	self.holder[tid] = packet.Get()
 	self.lock.Unlock()
 
-	idx := rand.Intn(len(self.remoteSession.WriteChannel))
-	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
+	self.remoteSession.WriteChannel <- packet.Marshal()
 	return packet.Get()
 }
 
@@ -181,8 +174,7 @@ func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	self.holder[tid] = packet.Get()
 	self.lock.Unlock()
 
-	idx := rand.Intn(len(self.remoteSession.WriteChannel))
-	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
+	self.remoteSession.WriteChannel <- packet.Marshal()
 
 	var resp interface{}
 	//

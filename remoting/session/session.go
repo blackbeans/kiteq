@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"kiteq/protocol"
 	"log"
-	"math/rand"
 	"net"
 	"time"
 )
@@ -13,8 +12,8 @@ import (
 type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
-	ReadChannel  []chan []byte //request的channel
-	WriteChannel []chan []byte //response的channel
+	ReadChannel  chan []byte //request的channel
+	WriteChannel chan []byte //response的channel
 	isClose      bool
 }
 
@@ -26,15 +25,11 @@ func NewSession(conn *net.TCPConn) *Session {
 
 	session := &Session{
 		conn:         conn,
-		ReadChannel:  make([]chan []byte, 0, 100),
-		WriteChannel: make([]chan []byte, 0, 100),
+		ReadChannel:  make(chan []byte, 1000),
+		WriteChannel: make(chan []byte, 1000),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String()}
 
-	for i := 0; i < 100; i++ {
-		session.ReadChannel = append(session.ReadChannel, make(chan []byte, 500))
-		session.WriteChannel = append(session.WriteChannel, make(chan []byte, 500))
-	}
 	return session
 }
 
@@ -92,9 +87,7 @@ func (self *Session) ReadPacket() {
 			copy(packet, buff.Bytes())
 
 			//写入缓冲
-			// self.ReadChannel <- packet
-			idx := rand.Intn(len(self.ReadChannel))
-			self.ReadChannel[idx] <- packet
+			self.ReadChannel <- packet
 			//重置buffer
 			buff.Reset()
 
@@ -106,31 +99,25 @@ func (self *Session) ReadPacket() {
 func (self *Session) WritePacket() {
 
 	//分为100个协程处理写
-	for i := 0; i < 100; i++ {
-		ch := self.WriteChannel[i]
-		go func(ch chan []byte) {
-			for !self.isClose {
-
-				select {
-				//1.读取数据包
-				case packet := <-ch:
-					//2.处理一下包
-					//并发去写
-					go func() {
-						length, err := self.conn.Write(packet)
-						if nil != err || length != len(packet) {
-							log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
-						} else {
-							// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
-						}
-					}()
-
-					//100ms读超时
-				case <-time.After(100 * time.Millisecond):
+	ch := self.WriteChannel
+	for !self.isClose {
+		select {
+		//1.读取数据包
+		case packet := <-ch:
+			//2.处理一下包
+			//并发去写
+			go func() {
+				length, err := self.conn.Write(packet)
+				if nil != err || length != len(packet) {
+					log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
+				} else {
+					// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 				}
+			}()
 
-			}
-		}(ch)
+			//100ms读超时
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 }
 
