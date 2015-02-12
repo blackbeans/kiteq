@@ -65,7 +65,14 @@ func (self *DefaultPipeline) getPreContextByHandlerName(name string) *DefaultPip
 }
 
 func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
-	ctx := &DefaultPipelineContext{handler: handler}
+	_, canHandleForward := handler.(IForwardHandler)
+	_, canHandleBackward := handler.(IBackwardHandler)
+
+	ctx := &DefaultPipelineContext{handler: handler,
+		canHandleForward:  canHandleForward,
+		canHandleBackward: canHandleBackward}
+
+	log.Printf("DefaultPipeline|RegisteHandler|%s|%s|%s\n", name, canHandleForward, canHandleBackward)
 	ctx.pipeline = self
 	currctx := self.eventHandler.PushBack(ctx)
 	self.hashEventHandler[name] = currctx
@@ -97,8 +104,10 @@ func (self *DefaultPipeline) errorCaught(event IEvent, err error) error {
 
 //------------------------当前Pipeline的上下文
 type DefaultPipelineContext struct {
-	handler  IHandler         //当前上下文的handler
-	pipeline *DefaultPipeline //默认的pipeline
+	handler           IHandler         //当前上下文的handler
+	pipeline          *DefaultPipeline //默认的pipeline
+	canHandleForward  bool             //能处理向前的
+	canHandleBackward bool             //能处理向后的
 }
 
 //向后投递
@@ -121,10 +130,11 @@ func (self *DefaultPipelineContext) SendForward(event IForwardEvent) {
 func (self *DefaultPipelineContext) getForwardContext(ctx *DefaultPipelineContext, event IForwardEvent) *DefaultPipelineContext {
 	nextCtx := ctx.pipeline.getNextContextByHandlerName(ctx.handler.GetName())
 	for nil != nextCtx {
-		if nextCtx.handler.AcceptEvent(event) {
+		if nextCtx.canHandleForward &&
+			nextCtx.handler.AcceptEvent(event) {
 			return nextCtx
 		} else {
-			nextCtx = ctx.pipeline.getNextContextByHandlerName(ctx.handler.GetName())
+			nextCtx = ctx.pipeline.getNextContextByHandlerName(nextCtx.handler.GetName())
 		}
 	}
 	return nil
@@ -135,9 +145,7 @@ func (self *DefaultPipelineContext) SendBackward(event IBackwardEvent) {
 	if nil == actualCtx {
 		//已经没有处理的handler 找默认的handler处理即可
 		self.pipeline.eventSunk(event)
-
 	} else {
-
 		err := actualCtx.pipeline.handleBackward(actualCtx, event)
 		if nil != err {
 			self.pipeline.errorCaught(event, err)
@@ -149,11 +157,13 @@ func (self *DefaultPipelineContext) SendBackward(event IBackwardEvent) {
 func (self *DefaultPipelineContext) getBackwardContext(ctx *DefaultPipelineContext, event IBackwardEvent) *DefaultPipelineContext {
 	preCtx := ctx.pipeline.getPreContextByHandlerName(ctx.handler.GetName())
 	for nil != preCtx {
-		if preCtx.handler.AcceptEvent(event) {
+		if preCtx.canHandleBackward &&
+			preCtx.handler.AcceptEvent(event) {
 			return preCtx
 		} else {
-			preCtx = ctx.pipeline.getPreContextByHandlerName(ctx.handler.GetName())
+			preCtx = ctx.pipeline.getPreContextByHandlerName(preCtx.handler.GetName())
 		}
 	}
+
 	return nil
 }

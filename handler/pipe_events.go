@@ -98,20 +98,38 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 
 //等待响应
 func (self *deliverResultEvent) wait(timeout time.Duration) {
-	//统计回调结果
-	for g, f := range self.futures {
-		select {
-		case resp := <-f:
-			ack := resp.(*protocol.DeliverAck)
-			//投递成功
-			if ack.GetStatus() {
-				self.succGroups = append(self.succGroups, ack.GetGroupId())
-			} else {
-				self.failGroups = append(self.failGroups, ack.GetGroupId())
+
+	if timeout <= 0 {
+		//统计回调结果
+		for g, f := range self.futures {
+			select {
+			case resp := <-f:
+				ack := resp.(*protocol.DeliverAck)
+				//投递成功
+				if ack.GetStatus() {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
+				} else {
+					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				}
+			case <-time.After(timeout):
+				//等待结果超时
+				self.failGroups = append(self.failGroups, g)
 			}
-		case <-time.After(timeout):
-			//等待结果超时
-			self.failGroups = append(self.failGroups, g)
+		}
+	} else {
+		//统计回调结果
+		for _, f := range self.futures {
+			select {
+			case resp := <-f:
+				ack := resp.(*protocol.DeliverAck)
+				//投递成功
+				if ack.GetStatus() {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
+				} else {
+					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				}
+			}
 		}
 	}
+
 }
