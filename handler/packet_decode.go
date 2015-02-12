@@ -58,6 +58,7 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	if nil != err {
 		return err
 	}
+
 	ctx.SendForward(cevent)
 	return nil
 }

@@ -10,7 +10,6 @@ protoc --go_out=. ./protocol/*.proto
 go build kiteq/stat
 go build kiteq/protocol
 go build kiteq/binding
-
 go build kiteq/store
 go build kiteq/pipe
 go build kiteq/handler

@@ -51,7 +51,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 				messageId:   pevent.entity.Header.GetMessageId(),
 				topic:       pevent.entity.Header.GetTopic(),
 				messageType: pevent.entity.Header.GetMessageType(),
-				ttl:         2}
+				ttl:         3}
 			ctx.SendForward(deliver)
 
 		}()

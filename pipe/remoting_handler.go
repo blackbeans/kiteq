@@ -70,9 +70,9 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			rclient := self.clientManager.FindRemoteClient(host)
 			if nil != rclient {
 				//写到响应的channel中
-				event.Packet.ResetOpaque()
 				futures[host] = rclient.Write(event.Packet)
 				self.flowControl.WriteFlow.Incr(1)
+				// event.Packet.ResetOpaque()
 
 			} else {
 				//记为失败的下次需要重新发送
@@ -92,10 +92,10 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			if len(c) <= 0 {
 				continue
 			}
-			event.Packet.ResetOpaque()
 			idx := rand.Intn(len(c))
 			futures[gid] = c[idx].Write(event.Packet)
 			self.flowControl.WriteFlow.Incr(1)
+			// event.Packet.ResetOpaque()
 
 		}
 	}

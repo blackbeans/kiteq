@@ -102,21 +102,22 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	for !self.isClose {
 		select {
+		//100ms读超时
+		case <-time.After(100 * time.Millisecond):
 		//1.读取数据包
 		case packet := <-ch:
 			//2.处理一下包
 			//并发去写
 			go func() {
 				length, err := self.conn.Write(packet)
-				if nil != err || length != len(packet) {
+				if nil != err {
 					log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
+					self.Closed()
 				} else {
 					// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 				}
 			}()
 
-			//100ms读超时
-		case <-time.After(100 * time.Millisecond):
 		}
 	}
 }
@@ -129,5 +130,7 @@ func (self *Session) Closed() bool {
 func (self *Session) Close() error {
 	self.isClose = true
 	self.conn.Close()
+	close(self.WriteChannel)
+	close(self.ReadChannel)
 	return nil
 }

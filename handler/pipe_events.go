@@ -99,10 +99,13 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 //等待响应
 func (self *deliverResultEvent) wait(timeout time.Duration) {
 
-	if timeout <= 0 {
+	if timeout > 0 {
 		//统计回调结果
 		for g, f := range self.futures {
 			select {
+			case <-time.After(timeout):
+				//等待结果超时
+				self.failGroups = append(self.failGroups, g)
 			case resp := <-f:
 				ack := resp.(*protocol.DeliverAck)
 				//投递成功
@@ -111,9 +114,7 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 				} else {
 					self.failGroups = append(self.failGroups, ack.GetGroupId())
 				}
-			case <-time.After(timeout):
-				//等待结果超时
-				self.failGroups = append(self.failGroups, g)
+
 			}
 		}
 	} else {

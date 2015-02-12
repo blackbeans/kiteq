@@ -72,7 +72,7 @@ func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
 		canHandleForward:  canHandleForward,
 		canHandleBackward: canHandleBackward}
 
-	log.Printf("DefaultPipeline|RegisteHandler|%s|%s|%s\n", name, canHandleForward, canHandleBackward)
+	// log.Printf("DefaultPipeline|RegisteHandler|%s|%s|%s\n", name, canHandleForward, canHandleBackward)
 	ctx.pipeline = self
 	currctx := self.eventHandler.PushBack(ctx)
 	self.hashEventHandler[name] = currctx
@@ -118,6 +118,7 @@ func (self *DefaultPipelineContext) SendForward(event IForwardEvent) {
 		self.pipeline.eventSunk(event)
 
 	} else {
+
 		err := actualCtx.pipeline.handleForward(actualCtx, event)
 		//如果处理失败了则需要直接走exception的handler
 		if nil != err {
@@ -136,6 +137,7 @@ func (self *DefaultPipelineContext) getForwardContext(ctx *DefaultPipelineContex
 		} else {
 			nextCtx = ctx.pipeline.getNextContextByHandlerName(nextCtx.handler.GetName())
 		}
+
 	}
 	return nil
 }

@@ -81,6 +81,8 @@ func (self *KiteQServer) Start() {
 			err := self.pipeline.FireWork(event)
 			if nil != err {
 				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			} else {
+				// log.Printf("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
 		})
 
