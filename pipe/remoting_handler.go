@@ -34,6 +34,8 @@ func (self *RemotingHandler) cast(event IEvent) (val *RemotingEvent, ok bool) {
 	return
 }
 
+var EMPTY_FUTURE = make(map[string]chan interface{}, 0)
+
 func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
 	revent, ok := self.cast(event)
@@ -42,9 +44,14 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	}
 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
-
-	//发送数据
-	futures := self.invokeGroup(revent)
+	var futures map[string]chan interface{}
+	if len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
+		log.Printf("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
+		futures = EMPTY_FUTURE
+	} else {
+		//发送数据
+		futures = self.invokeGroup(revent)
+	}
 	//写入future的响应
 	revent.futures <- futures
 	close(revent.futures)
@@ -72,7 +79,6 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 				//写到响应的channel中
 				futures[host] = rclient.Write(event.Packet)
 				self.flowControl.WriteFlow.Incr(1)
-				// event.Packet.ResetOpaque()
 
 			} else {
 				//记为失败的下次需要重新发送
@@ -95,8 +101,6 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			idx := rand.Intn(len(c))
 			futures[gid] = c[idx].Write(event.Packet)
 			self.flowControl.WriteFlow.Incr(1)
-			// event.Packet.ResetOpaque()
-
 		}
 	}
 

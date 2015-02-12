@@ -9,7 +9,6 @@ import (
 
 //请求的packet
 type Packet struct {
-	future  chan interface{}
 	Opaque  int32
 	CmdType uint8 //类型
 	Data    []byte
@@ -19,28 +18,13 @@ func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
 		Opaque:  -1,
 		CmdType: cmdtype,
-		Data:    data,
-		future:  make(chan interface{}, 1)}
+		Data:    data}
 }
 
 func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	p := NewPacket(cmdtype, data)
 	p.Opaque = opaque
 	return p
-}
-
-//重置Opaque
-func (self *Packet) ResetOpaque() {
-	self.Opaque = -1
-	self.future = make(chan interface{}, 1)
-}
-
-func (self *Packet) Get() chan interface{} {
-	return self.future
-}
-
-func (self *Packet) Attach(resp interface{}) {
-	self.future <- resp
 }
 
 func (self *Packet) Marshal() []byte {

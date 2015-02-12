@@ -31,18 +31,6 @@ func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 		reconnectManager: reconnectManager}
 }
 
-func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	clone := make(map[string]*RemotingClient, len(self.allClients))
-	for k, v := range self.allClients {
-		clone[k] = v
-	}
-
-	return clone
-}
-
 func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -59,8 +47,7 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+
 	ga, ok := self.groupAuth[c.RemoteAddr()]
 	if ok {
 		//如果重连则提交重连任务

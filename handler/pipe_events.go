@@ -107,12 +107,11 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 				//等待结果超时
 				self.failGroups = append(self.failGroups, g)
 			case resp := <-f:
-				ack := resp.(*protocol.DeliverAck)
-				//投递成功
-				if ack.GetStatus() {
-					self.succGroups = append(self.succGroups, ack.GetGroupId())
-				} else {
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
 					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				} else {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
 				}
 
 			}
@@ -122,12 +121,11 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 		for _, f := range self.futures {
 			select {
 			case resp := <-f:
-				ack := resp.(*protocol.DeliverAck)
-				//投递成功
-				if ack.GetStatus() {
-					self.succGroups = append(self.succGroups, ack.GetGroupId())
-				} else {
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
 					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				} else {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
 				}
 			}
 		}

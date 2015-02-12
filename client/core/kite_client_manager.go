@@ -93,6 +93,10 @@ outter:
 		self.onQServerChanged(topic, hosts)
 	}
 
+	if len(self.kiteClients) <= 0 {
+		log.Fatalf("KiteClientManager|Start|NO VALID KITESERVER|%s\n", self.topics)
+	}
+
 	if len(self.binds) > 0 {
 		//订阅关系推送，并拉取QServer
 		err = self.zkManager.PublishBindings(self.ga.GroupId, self.binds)

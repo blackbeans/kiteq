@@ -51,7 +51,7 @@ func (self *Session) ReadPacket() {
 		if nil != err {
 			buff.Reset()
 			self.Close()
-			log.Printf("Session|ReadPacket|\\r|FAIL|CLOSE SESSION|%s\n", err)
+			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			return
 		}
 
@@ -66,7 +66,7 @@ func (self *Session) ReadPacket() {
 		//读取下一个字节
 		delim, err := br.ReadByte()
 		if nil != err {
-			log.Printf("Session|ReadPacket|\\n|FAIL|CLOSE SESSION|%s\n", err)
+			log.Printf("Session|ReadPacket|%s|\\n|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
 		}
@@ -74,7 +74,7 @@ func (self *Session) ReadPacket() {
 		//写入，如果数据太大直接有ErrTooLarge则关闭session退出
 		err = buff.WriteByte(delim)
 		if nil != err {
-			log.Printf("Session|ReadPacket|WRITE|TOO LARGE|CLOSE SESSION|%s\n", err)
+			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
 		}
@@ -111,7 +111,7 @@ func (self *Session) WritePacket() {
 			go func() {
 				length, err := self.conn.Write(packet)
 				if nil != err {
-					log.Printf("Session|WritePacket|FAIL|%s|%d/%d|%t\n", err, length, len(packet), packet)
+					log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d|%t\n", self.remoteAddr, err, length, len(packet), packet)
 					self.Closed()
 				} else {
 					// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
@@ -120,6 +120,7 @@ func (self *Session) WritePacket() {
 
 		}
 	}
+
 }
 
 //当前连接是否关闭
@@ -128,9 +129,12 @@ func (self *Session) Closed() bool {
 }
 
 func (self *Session) Close() error {
-	self.isClose = true
-	self.conn.Close()
-	close(self.WriteChannel)
-	close(self.ReadChannel)
+
+	if !self.isClose {
+		self.isClose = true
+		self.conn.Close()
+		close(self.WriteChannel)
+		close(self.ReadChannel)
+	}
 	return nil
 }

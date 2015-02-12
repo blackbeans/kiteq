@@ -57,7 +57,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 			//只是记录一下本次发送记录不发起重投策略
 
 		} else if fevent.deliverEvent.ttl > 0 {
-			fevent.deliverEvent.packet.ResetOpaque()
 			fevent.deliverGroups = fevent.failGroups
 			//再次发起重投策略
 			ctx.SendBackward(fevent.deliverEvent)
