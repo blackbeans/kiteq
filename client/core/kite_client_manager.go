@@ -30,7 +30,7 @@ type KiteClientManager struct {
 	kiteClients   map[string] /*topic*/ []*kiteClient //topic对应的kiteclient
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
-	lock          sync.Mutex
+	lock          sync.RWMutex
 }
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
@@ -213,8 +213,8 @@ func (self *KiteClientManager) SetBindings(bindings []*binding.Binding) {
 }
 
 func (self *KiteClientManager) SendMessage(topic string, msg interface{}) error {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	clients, ok := self.kiteClients[topic]
 	if !ok {
 		log.Println("KiteClientManager|SendMessage|FAIL|NO Remote Client|%s\n", msg)

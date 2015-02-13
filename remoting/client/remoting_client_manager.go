@@ -20,10 +20,11 @@ type ClientManager struct {
 	groupAuth        map[string] /*host:port*/ *GroupAuth
 	groupClients     map[string] /*groupId*/ []*RemotingClient
 	allClients       map[string] /*host:port*/ *RemotingClient
-	lock             sync.Mutex
+	lock             sync.RWMutex
 }
 
 func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
+
 	return &ClientManager{
 		groupAuth:        make(map[string]*GroupAuth, 10),
 		groupClients:     make(map[string][]*RemotingClient, 50),
@@ -44,6 +45,17 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 	self.allClients[remoteClient.RemoteAddr()] = remoteClient
 	self.groupAuth[remoteClient.RemoteAddr()] = auth
 	return true
+}
+
+func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+
+	clone := make(map[string]*RemotingClient, len(self.allClients))
+	for k, v := range self.allClients {
+		clone[k] = v
+	}
+	return clone
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
@@ -72,8 +84,8 @@ func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
 
 //查找remotingclient
 func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
 	if !ok || rclient.IsClosed() {
@@ -86,8 +98,8 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 
 //查找匹配的groupids
 func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string) bool) map[string][]*RemotingClient {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	clients := make(map[string][]*RemotingClient, 10)
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {

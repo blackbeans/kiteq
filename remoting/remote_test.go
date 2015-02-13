@@ -62,9 +62,10 @@ func init() {
 
 func BenchmarkRemoteClient(t *testing.B) {
 	t.SetParallelism(4)
+
 	t.RunParallel(func(pb *testing.PB) {
+		p := protocol.NewPacket(1, []byte("echo"))
 		for pb.Next() {
-			p := protocol.NewPacket(1, []byte("echo"))
 			for i := 0; i < t.N; i++ {
 				tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupId string) bool {
 					return false
@@ -76,7 +77,6 @@ func BenchmarkRemoteClient(t *testing.B) {
 				} else {
 					// log.Printf("WAIT RESPONSE SUCC|%s\n", string(resp.([]byte)))
 				}
-				p.ResetOpaque()
 			}
 		}
 

@@ -11,7 +11,7 @@ import (
 type BindExchanger struct {
 	exchanger map[string] /*topic*/ map[string] /*groupId*/ []*Binding //保存的订阅关系
 	topics    []string                                                 //当前服务器可投递的topic类型
-	lock      sync.Mutex
+	lock      sync.RWMutex
 	zkmanager *ZKManager
 }
 
@@ -63,8 +63,8 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 
 //根据topic和messageType 类型获取订阅关系
 func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *Binding) bool) []*Binding {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	groups, ok := self.exchanger[topic]
 	if !ok {
 		return []*Binding{}
