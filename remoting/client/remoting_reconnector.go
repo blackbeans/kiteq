@@ -98,11 +98,9 @@ func (self *ReconnectManager) Start() {
 
 //提交重连任务
 func (self *ReconnectManager) submit(task *reconnectTask) {
-
 	if !self.allowReconnect {
 		return
 	}
-
 	_, ok := self.timers[task.remoteClient.RemoteAddr()]
 	if ok {
 		return

@@ -97,7 +97,7 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 		!self.remoteSession.Closed() {
 		select {
 		//100ms读超时
-		case <-time.After(100 * time.Millisecond):
+		// case <-time.After(100 * time.Millisecond):
 		//1.读取数据包
 		case packet := <-self.remoteSession.ReadChannel:
 			//2.处理一下包

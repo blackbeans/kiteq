@@ -47,7 +47,6 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
-
 	ga, ok := self.groupAuth[c.RemoteAddr()]
 	if ok {
 		//如果重连则提交重连任务
@@ -89,7 +88,6 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string) bool) map[string][]*RemotingClient {
 	self.lock.Lock()
 	defer self.lock.Unlock()
-
 	clients := make(map[string][]*RemotingClient, 10)
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {

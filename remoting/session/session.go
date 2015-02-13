@@ -103,7 +103,7 @@ func (self *Session) WritePacket() {
 	for !self.isClose {
 		select {
 		//100ms读超时
-		case <-time.After(100 * time.Millisecond):
+		// case <-time.After(100 * time.Millisecond):
 		//1.读取数据包
 		case packet := <-ch:
 			//2.处理一下包
