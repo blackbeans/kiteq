@@ -1,17 +1,19 @@
 package client
 
 import (
-	// "log"
+	"log"
 	"sync"
+	"time"
 )
 
 //群组授权信息
 type GroupAuth struct {
 	GroupId, SecretKey string
+	authtime           int64
 }
 
 func NewGroupAuth(groupId, secretKey string) *GroupAuth {
-	return &GroupAuth{SecretKey: secretKey, GroupId: groupId}
+	return &GroupAuth{SecretKey: secretKey, GroupId: groupId, authtime: time.Now().Unix()}
 }
 
 //远程client管理器
@@ -30,6 +32,14 @@ func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 		groupClients:     make(map[string][]*RemotingClient, 50),
 		allClients:       make(map[string]*RemotingClient, 100),
 		reconnectManager: reconnectManager}
+}
+
+//验证是否授权
+func (self *ClientManager) Validate(remoteClient *RemotingClient) bool {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	_, auth := self.groupAuth[remoteClient.RemoteAddr()]
+	return auth
 }
 
 func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) bool {
@@ -58,26 +68,48 @@ func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
 	return clone
 }
 
+func (self *ClientManager) DeleteClients(hostports ...string) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	for _, hostport := range hostports {
+		self.reconnectFailHook(hostport)
+	}
+}
+
+func (self *ClientManager) reconnectFailHook(hostport string) {
+	_, ok := self.groupAuth[hostport]
+	if ok {
+		delete(self.groupAuth, hostport)
+		clients, ok := self.groupClients[hostport]
+		if ok {
+			for i, c := range clients {
+				//如果是当前链接
+				if c.RemoteAddr() == hostport {
+					c.Shutdown()
+					self.groupClients[hostport] = append(clients[:i], clients[i+1:]...)
+					break
+				}
+			}
+			delete(self.allClients, hostport)
+			log.Printf("ClientManager|reconnectFailHook|Remove Client|%s\n", hostport)
+		}
+	}
+}
+
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
 	ga, ok := self.groupAuth[c.RemoteAddr()]
 	if ok {
 		//如果重连则提交重连任务
 		if self.reconnectManager.allowReconnect {
-			self.reconnectManager.submit(newReconnectTasK(c, ga))
+			self.reconnectManager.submit(newReconnectTasK(c, ga, func(addr string) {
+				//重连任务失败完成后的hook,直接移除该机器
+				self.lock.Lock()
+				defer self.lock.Unlock()
+				self.reconnectFailHook(addr)
+			}))
 		} else {
 			//不需要重连的直接删除掉连接
-			delete(self.groupAuth, c.RemoteAddr())
-			delete(self.allClients, c.RemoteAddr())
-			clients, ok := self.groupClients[ga.GroupId]
-			if ok {
-				for i, cli := range clients {
-					if cli.RemoteAddr() == c.RemoteAddr() {
-						c.Shutdown()
-						clients = append(clients[:i], clients[i+1:]...)
-						break
-					}
-				}
-			}
+			self.reconnectFailHook(c.RemoteAddr())
 		}
 	}
 }
@@ -88,16 +120,14 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
-	if !ok || rclient.IsClosed() {
-		return nil
-	} else {
-
+	if ok && rclient.IsClosed() {
+		self.SubmitReconnect(rclient)
 	}
 	return rclient
 }
 
 //查找匹配的groupids
-func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string) bool) map[string][]*RemotingClient {
+func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string, rc *RemotingClient) bool) map[string][]*RemotingClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	clients := make(map[string][]*RemotingClient, 10)
@@ -118,9 +148,8 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 				self.SubmitReconnect(c)
 				continue
 			}
-
 			//如果当前client处于非关闭状态并且没有过滤则入选
-			if !filter(gid) {
+			if !filter(gid, c) {
 				gclient = append(gclient, c)
 			}
 

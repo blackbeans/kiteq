@@ -85,24 +85,22 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Pa
 		var hearbeat protocol.HeartBeat
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
 		if nil == err {
-			hb := &hearbeat
-			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
+			event = newAcceptEvent(protocol.CMD_HEARTBEAT, &hearbeat, pevent.RemoteClient, packet.Opaque)
 		}
 		//投递结果确认
 	case protocol.CMD_DELIVER_ACK:
 		var delAck protocol.DeliverAck
 		err = protocol.UnmarshalPbMessage(packet.Data, &delAck)
+
 		if nil == err {
-			//收到响应直接
-			pevent.RemoteClient.Attach(packet.Opaque, &delAck)
-			event = sunkEvent
+			event = newAcceptEvent(protocol.CMD_DELIVER_ACK, &delAck, pevent.RemoteClient, packet.Opaque)
 		}
 
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket
 		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
 		if nil == err {
-			event = newTxAckEvent(&txAck, packet.Opaque)
+			event = newTxAckEvent(&txAck, packet.Opaque, pevent.RemoteClient)
 		}
 
 	//发送的是bytesmessage

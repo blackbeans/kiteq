@@ -8,48 +8,71 @@ import (
 	"time"
 )
 
-type accessEvent struct {
+type iauth interface {
 	IForwardEvent
+	getClient() *rclient.RemotingClient
+}
+
+type accessEvent struct {
+	iauth
 	groupId      string
 	secretKey    string
-	remoteClient *rclient.RemotingClient
 	opaque       int32
+	remoteClient *rclient.RemotingClient
+}
+
+func (self *accessEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
 }
 
 func newAccessEvent(groupId, secretKey string, remoteClient *rclient.RemotingClient, opaque int32) *accessEvent {
-	return &accessEvent{
+	access := &accessEvent{
 		groupId:      groupId,
 		secretKey:    secretKey,
-		remoteClient: remoteClient,
-		opaque:       opaque}
+		opaque:       opaque,
+		remoteClient: remoteClient}
+	return access
 }
 
 //接受消息事件
 type acceptEvent struct {
-	IForwardEvent
+	iauth
 	msgType      uint8
 	msg          interface{} //attach的数据message
-	remoteClient *rclient.RemotingClient
 	opaque       int32
+	remoteClient *rclient.RemotingClient
+}
+
+func (self *acceptEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
 }
 
 func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *rclient.RemotingClient, opaque int32) *acceptEvent {
-	return &acceptEvent{
+	ae := &acceptEvent{
 		msgType:      msgType,
 		msg:          msg,
 		opaque:       opaque,
 		remoteClient: remoteClient}
+	return ae
 }
 
 type txAckEvent struct {
-	IForwardEvent
-	txPacket *protocol.TxACKPacket
-	opaque   int32
+	iauth
+	txPacket     *protocol.TxACKPacket
+	opaque       int32
+	remoteClient *rclient.RemotingClient
 }
 
-func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32) *txAckEvent {
-	return &txAckEvent{txPacket: txPacket, opaque: opaque}
+func (self *txAckEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
+}
 
+func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *rclient.RemotingClient) *txAckEvent {
+	tx := &txAckEvent{
+		txPacket:     txPacket,
+		opaque:       opaque,
+		remoteClient: remoteClient}
+	return tx
 }
 
 //消息持久化操作

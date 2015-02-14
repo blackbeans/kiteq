@@ -19,6 +19,7 @@ const (
 //网络层的client
 type RemotingClient struct {
 	id               int32
+	localAddr        *net.TCPAddr
 	remoteAddr       *net.TCPAddr
 	heartbeat        int64
 	remoteSession    *session.Session
@@ -35,6 +36,7 @@ func NewRemotingClient(conn *net.TCPConn,
 	remotingClient := &RemotingClient{
 		id:               0,
 		heartbeat:        0,
+		localAddr:        conn.LocalAddr().(*net.TCPAddr),
 		remoteAddr:       conn.RemoteAddr().(*net.TCPAddr),
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
@@ -45,6 +47,10 @@ func NewRemotingClient(conn *net.TCPConn,
 
 func (self *RemotingClient) RemoteAddr() string {
 	return fmt.Sprintf("%s:%d", self.remoteAddr.IP, self.remoteAddr.Port)
+}
+
+func (self *RemotingClient) LocalAddr() string {
+	return fmt.Sprintf("%s:%d", self.localAddr.IP, self.localAddr.Port)
 }
 
 //启动当前的client
@@ -64,7 +70,7 @@ func (self *RemotingClient) Start() {
 	//启动读取
 	go self.remoteSession.ReadPacket()
 
-	log.Printf("RemotingClient|Start|SUCC|%s\n", self.RemoteAddr())
+	log.Printf("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
 }
 
 //重连

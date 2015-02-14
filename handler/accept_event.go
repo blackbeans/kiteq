@@ -34,24 +34,34 @@ var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 	// log.Printf("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
-	acceptEvent, ok := self.cast(event)
+	ae, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
-	//这里处理一下acceptEvent,做一下校验
+	//这里处理一下ae,做一下校验
 	var msg *store.MessageEntity
-	switch acceptEvent.msgType {
+	switch ae.msgType {
+	case protocol.CMD_DELIVER_ACK:
+		//收到投递结果直接attach响应
+		ae.remoteClient.Attach(ae.opaque, ae.msg)
+		return nil
+	case protocol.CMD_HEARTBEAT:
+		hb := ae.msg.(*protocol.HeartBeat)
+		event = NewHeartbeatEvent(ae.remoteClient, ae.opaque, hb.GetVersion())
+		ctx.SendForward(event)
+		return nil
+
 	case protocol.CMD_BYTES_MESSAGE:
-		msg = store.NewBytesMessageEntity(acceptEvent.msg.(*protocol.BytesMessage))
+		msg = store.NewBytesMessageEntity(ae.msg.(*protocol.BytesMessage))
 	case protocol.CMD_STRING_MESSAGE:
-		msg = store.NewStringMessageEntity(acceptEvent.msg.(*protocol.StringMessage))
+		msg = store.NewStringMessageEntity(ae.msg.(*protocol.StringMessage))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, acceptEvent.msg)
+		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
 	if nil != msg {
-		pevent := newPersistentEvent(msg, acceptEvent.remoteClient, acceptEvent.opaque)
+		pevent := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
 		ctx.SendForward(pevent)
 		return nil
 	}

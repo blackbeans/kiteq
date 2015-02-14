@@ -130,7 +130,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 		self.addWatch(spath)
 
 		//注册当前节点
-		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)
+		path, err := self.registePath(qpath, hostport, zk.CreatePersistent, nil)
 		if nil != err {
 			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
 			return err
@@ -146,7 +146,7 @@ func (self *ZKManager) PublishTopics(topics []string, groupId string, hostport s
 
 	for _, topic := range topics {
 		pubPath := KITEQ_PUB + "/" + topic + "/" + groupId
-		path, err := self.registePath(pubPath, hostport, zk.CreateEphemeral, nil)
+		path, err := self.registePath(pubPath, hostport, zk.CreatePersistent, nil)
 		if nil != err {
 			log.Printf("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, pubPath, hostport)
 			return err

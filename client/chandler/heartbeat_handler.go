@@ -39,19 +39,24 @@ func (self *HeartbeatHandler) keepAlive() {
 				packet := protocol.MarshalHeartbeatPacket(id)
 				for h, c := range clients {
 					i := 0
-					for ; i < 3; i++ {
-						hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
-						err := c.Ping(hp, time.Duration(self.heartbeatTimeout.Nanoseconds()*int64(i+1)))
-						//如果有错误则需要记录
-						if nil != err {
-							log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|%s|%d\n", err, h, id)
-							continue
-						} else {
-							// log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|tryCount:%d\n", h, id, i)
-							break
+					//关闭的时候发起重连
+					if c.IsClosed() {
+						i = 3
+					} else {
+						for ; i < 3; i++ {
+							hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
+							err := c.Ping(hp, time.Duration(int64(self.heartbeatTimeout)*int64(i+1)))
+							//如果有错误则需要记录
+							if nil != err {
+								log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|%s|%d\n", err, h, id)
+								continue
+							} else {
+								log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|tryCount:%d\n", h, id, i)
+								break
+							}
 						}
-					}
 
+					}
 					if i >= 3 {
 						//说明连接有问题需要重连
 						c.Shutdown()
@@ -72,7 +77,6 @@ func (self *HeartbeatHandler) TypeAssert(event IEvent) bool {
 
 func (self *HeartbeatHandler) cast(event IEvent) (val *HeartbeatEvent, ok bool) {
 	val, ok = event.(*HeartbeatEvent)
-
 	return
 }
 
@@ -85,7 +89,5 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 
 	// log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	hevent.RemoteClient.Attach(hevent.Opaque, hevent.Version)
-
-	ctx.SendForward(event)
 	return nil
 }

@@ -75,7 +75,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 		//特定机器
 		for _, host := range event.TargetHost {
 			rclient := self.clientManager.FindRemoteClient(host)
-			if nil != rclient {
+			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
 				futures[host] = rclient.Write(event.Packet)
 				self.flowControl.WriteFlow.Incr(1)
@@ -88,8 +88,11 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 	}
 
 	if len(event.GroupIds) > 0 {
-		clients := self.clientManager.FindRemoteClients(event.GroupIds, func(groupId string) bool {
+		clients := self.clientManager.FindRemoteClients(event.GroupIds, func(groupId string, rc *client.RemotingClient) bool {
 			//过滤条件进行
+			if rc.IsClosed() {
+				return true
+			}
 			return false
 		})
 

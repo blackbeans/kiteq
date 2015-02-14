@@ -151,12 +151,6 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	if len(hosts) <= 0 {
-		delete(self.kiteClients, topic)
-		log.Printf("KiteClientManager|onQServerChanged|CLEAR TOPIC|%s\n", topic)
-		return
-	}
-
 	//重建一下topic下的kiteclient
 	clients := make([]*kiteClient, 0, 10)
 	for _, host := range hosts {
@@ -170,9 +164,9 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				continue
 			}
 			remoteClient = rclient.NewRemotingClient(conn,
-				func(remoteClient *rclient.RemotingClient, packet []byte) {
+				func(rc *rclient.RemotingClient, packet []byte) {
 					self.flowControl.DispatcherFlow.Incr(1)
-					event := pipe.NewPacketEvent(remoteClient, packet)
+					event := pipe.NewPacketEvent(rc, packet)
 					err := self.pipeline.FireWork(event)
 					if nil != err {
 						log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
@@ -193,7 +187,27 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 		clients = append(clients, kiteClient)
 		log.Printf("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
 	}
+
+	//替换掉线的server
+	old, ok := self.kiteClients[topic]
 	self.kiteClients[topic] = clients
+	if ok {
+
+		del := make([]string, 0, 2)
+	outter:
+		for _, o := range old {
+			for _, c := range clients {
+				if c.hostport == o.hostport {
+					continue outter
+				}
+				del = append(del, c.hostport)
+			}
+		}
+
+		if len(del) > 0 {
+			self.clientManager.DeleteClients(del...)
+		}
+	}
 }
 
 func (self *KiteClientManager) DataChange(path string, binds []*binding.Binding) {

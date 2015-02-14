@@ -51,6 +51,7 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline := pipe.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet", flowControl))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
+	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
