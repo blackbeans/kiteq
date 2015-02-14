@@ -168,7 +168,7 @@ func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 	self.holder[tid] = future
 	self.lock.Unlock()
 
-	self.remoteSession.WriteChannel <- packet.Marshal()
+	self.remoteSession.Write(packet.Marshal())
 	return future
 }
 

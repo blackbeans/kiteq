@@ -58,7 +58,7 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 
 	//创建创建网络写出结果
 	fe := NewRemoteFutureEvent(revent, futures)
-	ctx.SendForward(fe)
+	ctx.SendBackward(fe)
 	return nil
 }
 

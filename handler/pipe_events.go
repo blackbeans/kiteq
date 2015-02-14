@@ -68,7 +68,6 @@ func newPersistentEvent(entity *store.MessageEntity, remoteClient *rclient.Remot
 //投递事件
 type deliverEvent struct {
 	IForwardEvent
-	ttl           int32 //ttl
 	messageId     string
 	topic         string
 	messageType   string
@@ -82,6 +81,7 @@ type deliverEvent struct {
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
+	IBackwardEvent
 	futures    map[string]chan interface{}
 	failGroups []string
 	succGroups []string

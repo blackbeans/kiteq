@@ -40,6 +40,11 @@ func (self *Session) RemotingAddr() string {
 //读取
 func (self *Session) ReadPacket() {
 
+	defer func() {
+		if err := recover(); nil != err {
+			log.Printf("Session|ReadPacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
+		}
+	}()
 	br := bufio.NewReader(self.conn)
 	//缓存本次包的数据
 	packetBuff := make([]byte, 0, 1024)
@@ -95,10 +100,19 @@ func (self *Session) ReadPacket() {
 	}
 }
 
+//写出数据
+func (self *Session) Write(packet []byte) {
+	defer func() {
+		if err := recover(); nil != err {
+			log.Printf("Session|WritePacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
+		}
+	}()
+	self.WriteChannel <- packet
+}
+
 //写入响应
 func (self *Session) WritePacket() {
 
-	//分为100个协程处理写
 	ch := self.WriteChannel
 	for !self.isClose {
 		select {

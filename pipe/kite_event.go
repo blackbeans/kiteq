@@ -73,6 +73,7 @@ func (self *RemotingEvent) Wait() map[string]chan interface{} {
 
 //网络回调事件
 type RemoteFutureEvent struct {
+	IBackwardEvent
 	*RemotingEvent
 	Futures map[string] /*groupid*/ chan interface{} //网络结果回调
 }
