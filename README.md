@@ -29,8 +29,6 @@ kiteq
 
 #### 架构图
   ![image](./doc/arch.png)
-
-
 ##### 概念：
     
     * Binding:订阅关系，描述订阅某种消息类型的数据结构
@@ -38,6 +36,11 @@ kiteq
     * Producer : 消息的发送方
     * Topic: 消息的主题比如 Trade则为消息主题，一般可以定义为某种业务类型
     * MessageType: 第二级别的消息类型，比如Trade下存在支付成功的pay-succ-200的消息类型
+
+#### Zookeeper数据结构
+        KiteServer : /kiteq/server/${topic}/ip:port
+        Producer   : /kiteq/pub/${topic}/${groupId}/ip:port
+        Consumer   : /kiteq/sub/${topic}/${groupId}-bind/#$data(bind)
 
 ##### 流程：
     1. KiteQ启动会将自己可以接受和投递的Topics列表给到zookeeper
@@ -63,6 +66,59 @@ kiteq
         2. KiteQ定期对UnCommit的消息向Producer发送TxAck的询问
         3. 直到Producer明确告诉Commit或者Rollback该消息
         4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
+
+#####  QuickStart
+    1.编译：sh build.sh 
+    2.安装装Zookeeper:省略
+    启动KiteQ:
+        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -mysql="mock" -topics=trade,feed -zkhost=localhost:2181
+        -bind  //绑定本地IP:Port
+        -pport //pprof的Http端口
+        -mysql //mysql存储的链接地址 或 mock 启动mock模式
+        -topics //本机可以处理的topics列表逗号分隔
+        -zkhost //zk的地址
+
+    启动客户端：
+        对于KiteQClient需要实现消息监听器，我们定义了如下的接口：
+        type IListener interface {
+            //接受投递消息的回调
+            OnMessage(msg *protocol.StringMessage) bool
+            //接收事务回调
+            // 除非明确提交成功、其余都为不成功
+            // 有异常或者返回值为false均为不提交
+            OnMessageCheck(messageId string, tx *protocol.TxResponse) error
+        }
+
+    启动Producer :
+        producer := client.NewKiteQClient(${zkhost}, ${groupId}, ${password}, &defualtListener{})
+        producer.SetTopics([]string{"trade"})
+        producer.Start()
+        //构建消息
+        msg := &protocol.StringMessage{}
+        msg.Header = &protocol.Header{
+            MessageId:     proto.String(store.MessageId()),
+            Topic:         proto.String("trade"),
+            MessageType:   proto.String("pay-succ"),
+            ExpiredTime:   proto.Int64(time.Now().Unix()),
+            DeliveryLimit: proto.Int32(-1),
+            GroupId:       proto.String("go-kite-test"),
+            Commit:        proto.Bool(true)}
+        msg.Body = proto.String("echo")
+        //发送消息
+        producer.SendStringMessage(msg)
+
+    启动Consumer:
+        consumer:= client.NewKiteQClient(${zkhost}, ${groupId}, ${password}, &defualtListener{})
+        consumer.SetBindings([]*binding.Binding{
+            binding.Bind_Direct("s-mts-test", "trade", "pay-succ", 1000, true),
+        })
+        consumer.Start()
+
+    就可以完成发布和订阅消息的功能了.....
+
+
+
+
 
 
 

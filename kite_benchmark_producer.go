@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"kiteq/client"
 	"kiteq/protocol"
+	"kiteq/store"
 	"log"
 	"os"
 	"os/signal"
@@ -32,7 +33,7 @@ func buildStringMessage() *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:     proto.String(messageId()),
+		MessageId:     proto.String(store.MessageId()),
 		Topic:         proto.String("trade"),
 		MessageType:   proto.String("pay-succ"),
 		ExpiredTime:   proto.Int64(time.Now().Unix()),
@@ -42,14 +43,6 @@ func buildStringMessage() *protocol.StringMessage {
 	entity.Body = proto.String("echo")
 
 	return entity
-}
-
-var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
-
-func messageId() string {
-	b := make([]byte, 16)
-	f.Read(b)
-	return fmt.Sprintf("%x", b)
 }
 
 func main() {
