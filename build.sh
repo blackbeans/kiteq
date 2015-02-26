@@ -4,6 +4,7 @@ go get github.com/golang/protobuf/{proto,protoc-gen-go}
 go get github.com/go-sql-driver/mysql
 go get github.com/blackbeans/zk
 go get github.com/BurntSushi/toml
+go get github.com/sutoo/gorp
 
 protoc --go_out=. ./protocol/*.proto
 
