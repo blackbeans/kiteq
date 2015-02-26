@@ -11,15 +11,18 @@ import (
 type BindExchanger struct {
 	exchanger map[string] /*topic*/ map[string] /*groupId*/ []*Binding //保存的订阅关系
 	topics    []string                                                 //当前服务器可投递的topic类型
-	lock      sync.Mutex
+	lock      sync.RWMutex
 	zkmanager *ZKManager
 }
 
 func NewBindExchanger(zkhost string) *BindExchanger {
-	return &BindExchanger{
+
+	ex := &BindExchanger{
 		exchanger: make(map[string]map[string][]*Binding, 100),
-		topics:    make([]string, 0, 50),
-		zkmanager: NewZKManager(zkhost)}
+		topics:    make([]string, 0, 50)}
+	zkmanager := NewZKManager(zkhost, ex)
+	ex.zkmanager = zkmanager
+	return ex
 }
 
 //推送Qserver到配置中心
@@ -40,68 +43,28 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 //监听topics的对应的订阅关系的变更
 func (self *BindExchanger) subscribeBinds(topics []string) bool {
 	for _, topic := range topics {
-		binds, err := self.zkmanager.GetBindAndWatch(topic, NewWatcher(self))
+		binds, err := self.zkmanager.GetBindAndWatch(topic)
 		if nil != err {
 			log.Printf("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
 			return false
 		} else {
-			self.onBindChanged(topic, binds)
-			log.Printf("BindExchanger|SubscribeBinds|SUCC|%s\n", binds)
+			self.lock.Lock()
+			defer self.lock.Unlock()
+			for groupId, bs := range binds {
+				gid := strings.TrimSuffix(groupId, "-bind")
+				self.onBindChanged(topic, gid, bs)
+				log.Printf("BindExchanger|SubscribeBinds|SUCC|%s\n", binds)
+			}
 		}
 	}
 
 	return true
 }
 
-//订阅关系改变
-func (self *BindExchanger) onBindChanged(topic string, newbinds []*Binding) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	v, ok := self.exchanger[topic]
-	if !ok {
-		v = make(map[string][]*Binding, 10)
-		self.exchanger[topic] = v
-	}
-
-outter:
-	for _, bind := range newbinds {
-		binds, ok := v[bind.GroupId]
-		//还没有该组的订阅关系则直接创建
-		if !ok {
-			binds = make([]*Binding, 0, 10)
-		} else {
-			//如果已经存在则直接进行排重
-			for _, b := range binds {
-				if b.conflict(bind) {
-					//如果相等则直接略过
-					log.Printf("BindExchanger|SubscribeBinds|CONFLICT BIND|%s|%s\n", b, bind)
-					continue outter
-				}
-				//否则后面根据情况添加
-			}
-		}
-
-		//如果已经满了直接扩大
-		if len(binds) >= cap(binds) {
-			newbind := make([]*Binding, 0, cap(binds)+10)
-			//copy data
-			copy(newbind, binds)
-			binds = newbind
-		}
-
-		//放入到映射关系里
-		binds = append(binds, bind)
-
-		//翻入订阅关系
-		v[bind.GroupId] = binds
-	}
-
-}
-
 //根据topic和messageType 类型获取订阅关系
 func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *Binding) bool) []*Binding {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	groups, ok := self.exchanger[topic]
 	if !ok {
 		return []*Binding{}
@@ -121,81 +84,94 @@ func (self *BindExchanger) FindBinds(topic string, messageType string, filter fu
 	return validBinds
 }
 
-func (self *BindExchanger) EventNotify(path string, eventType ZkEvent, binds []*Binding) {
-	log.Printf("BindExchanger|EventNotify|Recieve Notify|%s|%s\n", path, binds)
+func (self *BindExchanger) DataChange(path string, binds []*Binding) {
+
 	//订阅关系变更才处理
-	if eventType == Changed && strings.HasPrefix(path, KITEQ_SUB) {
+	if strings.HasPrefix(path, KITEQ_SUB) {
+
 		split := strings.Split(path, "/")
-		if len(split) < 5 {
-			//不合法的订阅璐姐
-			log.Printf("BindExchanger|EventNotify|INVALID SUB DATA|PATH |%s\n", path)
+		//如果不是bind级别的变更则忽略
+		if len(split) < 5 || strings.LastIndex(split[4], "-bind") <= 0 {
 			return
 		}
+
 		//获取topic
 		topic := split[3]
-		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-			log.Printf("BindExchanger|EventNotify|REFUSE SUB PATH |%s|%t\n", path, binds)
-			return
-		}
+		groupId := split[4]
+		self.lock.Lock()
+		defer self.lock.Unlock()
 		//开始处理变化的订阅关系
-		self.onBindChanged(topic, binds)
+		self.onBindChanged(topic, groupId, binds)
+
+	} else {
+		log.Printf("BindExchanger|DataChange|非SUB节点变更|%s\n", path)
 	}
+
 }
 
 //订阅关系topic下的group发生变更
-func (self *BindExchanger) ChildWatcher(path string, childNode []string) {
+func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode []string) {
+
 	//如果是订阅关系变更则处理
 	if strings.HasPrefix(path, KITEQ_SUB) {
 		//获取topic
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
 			//不合法的订阅璐姐
-			log.Printf("BindExchanger|ChildWatcher|INVALID SUB PATH |%s|%t\n", path, childNode)
+			log.Printf("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
 			return
 		}
 		//获取topic
 		topic := split[3]
-		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-			log.Printf("BindExchanger|ChildWatcher|REFUSE SUB PATH |%s|%t\n", path, childNode)
-			return
-		}
 
 		self.lock.Lock()
 		defer self.lock.Unlock()
-
-		groupIds, ok := self.exchanger[topic]
-		if !ok {
-			groupIds = make(map[string] /*groupId*/ []*Binding, 20)
-			self.exchanger[topic] = groupIds
-		}
-
 		//如果topic下无订阅分组节点，直接删除该topic
 		if len(childNode) <= 0 {
-			delete(self.exchanger, topic)
+			self.onBindChanged(topic, "", nil)
+			log.Printf("BindExchanger|NodeChange|无子节点|%s|%s\n", path, childNode)
 			return
 		}
 
-		//重新拷贝赋值
-		copyMap := make(map[string] /*groupId*/ []*Binding, len(groupIds))
-		//对当前的topic的分组进行重新设置
-		for _, child := range childNode {
-			groupId := strings.TrimSuffix(child, "-bind")
-			if !ok {
-				//新增的订阅关系
-				groupIds[groupId] = make([]*Binding, 0, 5)
+		// //对当前的topic的分组进行重新设置
+		switch eventType {
+		case Created, Child:
+
+			bm, err := self.zkmanager.GetBindAndWatch(topic)
+			if nil != err {
+				log.Printf("BindExchanger|NodeChange|获取订阅关系失败|%s|%s\n", path, childNode)
 			}
-			//直接拷贝赋值
-			copyMap[groupId] = groupIds[groupId]
+
+			for groupId, bs := range bm {
+				self.onBindChanged(topic, groupId, bs)
+			}
 		}
 
-		//直接替换到当前topic中的订阅关系
-		self.exchanger[topic] = copyMap
-
 	} else {
-		//其他都不处理，因为服务端只有对订阅关系节点的处理
+		log.Printf("BindExchanger|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
 	}
+}
+
+//订阅关系改变
+func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Binding) {
+
+	if len(groupId) <= 0 {
+		delete(self.exchanger, topic)
+		return
+	}
+
+	//不是当前服务可以处理的topic则直接丢地啊哦
+	if sort.SearchStrings(self.topics, topic) == len(self.topics) {
+		log.Printf("BindExchanger|onBindChanged|UnAccept Bindings|%s|%s|%s\n", topic, self.topics, newbinds)
+		return
+	}
+
+	v, ok := self.exchanger[topic]
+	if !ok {
+		v = make(map[string][]*Binding, 10)
+		self.exchanger[topic] = v
+	}
+	v[groupId] = newbinds
 }
 
 //关闭掉exchanger

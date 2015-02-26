@@ -6,6 +6,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"kiteq/client"
 	"kiteq/protocol"
+	"kiteq/store"
 	"log"
 	"os"
 	"os/signal"
@@ -32,7 +33,7 @@ func buildStringMessage() *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:     proto.String(messageId()),
+		MessageId:     proto.String(store.MessageId()),
 		Topic:         proto.String("trade"),
 		MessageType:   proto.String("pay-succ"),
 		ExpiredTime:   proto.Int64(time.Now().Unix()),
@@ -44,21 +45,13 @@ func buildStringMessage() *protocol.StringMessage {
 	return entity
 }
 
-var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
-
-func messageId() string {
-	b := make([]byte, 16)
-	f.Read(b)
-	return fmt.Sprintf("%x", b)
-}
-
 func main() {
 
 	c := flag.Int("c", 10, "-c=10")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 
-	kite := client.NewKiteQClient(*zkhost, "p-mts-test", "123456", &defualtListener{})
+	kite := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
 	kite.SetTopics([]string{"trade"})
 	kite.Start()
 

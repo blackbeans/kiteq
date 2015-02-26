@@ -32,8 +32,11 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	var kitedb store.IKiteStore
 	if mysql == "mock" {
 		kitedb = &store.MockKiteStore{}
-	} else {
+	} else if len(mysql) > 0 {
 		kitedb = store.NewKiteMysql(mysql)
+	} else {
+		log.Fatalf("KiteQServer|NewKiteQServer|INVALID MYSQL|%s\n", mysql)
+		return nil
 	}
 
 	flowControl := stat.NewFlowControl("KiteQ")
@@ -48,14 +51,17 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline := pipe.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet", flowControl))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
+	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 
 	return &KiteQServer{
@@ -78,6 +84,8 @@ func (self *KiteQServer) Start() {
 			err := self.pipeline.FireWork(event)
 			if nil != err {
 				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+			} else {
+				// log.Printf("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
 		})
 

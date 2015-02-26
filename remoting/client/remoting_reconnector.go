@@ -10,13 +10,15 @@ type reconnectTask struct {
 	remoteClient *RemotingClient
 	retryCount   int
 	ga           *GroupAuth
+	finishHook   func(addr string)
 }
 
-func newReconnectTasK(remoteClient *RemotingClient, ga *GroupAuth) *reconnectTask {
+func newReconnectTasK(remoteClient *RemotingClient, ga *GroupAuth, finishHook func(addr string)) *reconnectTask {
 	return &reconnectTask{
 		remoteClient: remoteClient,
 		ga:           ga,
-		retryCount:   0}
+		retryCount:   0,
+		finishHook:   finishHook}
 }
 
 //先进行初次握手上传连接元数据
@@ -63,12 +65,13 @@ func (self *ReconnectManager) Start() {
 			task := <-self.taskQ
 			addr := task.remoteClient.RemoteAddr()
 			//如果当前重试次数大于最大重试次数则放弃
-			if task.retryCount >= self.maxReconnectTimes {
-				log.Printf("ReconnectManager|OVREFLOW MAX TRYCOUNT|%s\n", addr)
+			if task.retryCount > self.maxReconnectTimes {
+				log.Printf("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d\n", addr, task.retryCount)
 				t, ok := self.timers[addr]
 				if ok {
 					t.Stop()
 					delete(self.timers, addr)
+					task.finishHook(addr)
 				}
 				continue
 			}
@@ -98,11 +101,10 @@ func (self *ReconnectManager) Start() {
 
 //提交重连任务
 func (self *ReconnectManager) submit(task *reconnectTask) {
-
 	if !self.allowReconnect {
 		return
 	}
-
+	//如果已经有该重连任务在执行则忽略
 	_, ok := self.timers[task.remoteClient.RemoteAddr()]
 	if ok {
 		return

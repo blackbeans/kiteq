@@ -8,48 +8,71 @@ import (
 	"time"
 )
 
-type accessEvent struct {
+type iauth interface {
 	IForwardEvent
+	getClient() *rclient.RemotingClient
+}
+
+type accessEvent struct {
+	iauth
 	groupId      string
 	secretKey    string
-	remoteClient *rclient.RemotingClient
 	opaque       int32
+	remoteClient *rclient.RemotingClient
+}
+
+func (self *accessEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
 }
 
 func newAccessEvent(groupId, secretKey string, remoteClient *rclient.RemotingClient, opaque int32) *accessEvent {
-	return &accessEvent{
+	access := &accessEvent{
 		groupId:      groupId,
 		secretKey:    secretKey,
-		remoteClient: remoteClient,
-		opaque:       opaque}
+		opaque:       opaque,
+		remoteClient: remoteClient}
+	return access
 }
 
 //接受消息事件
 type acceptEvent struct {
-	IForwardEvent
+	iauth
 	msgType      uint8
 	msg          interface{} //attach的数据message
-	remoteClient *rclient.RemotingClient
 	opaque       int32
+	remoteClient *rclient.RemotingClient
+}
+
+func (self *acceptEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
 }
 
 func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *rclient.RemotingClient, opaque int32) *acceptEvent {
-	return &acceptEvent{
+	ae := &acceptEvent{
 		msgType:      msgType,
 		msg:          msg,
 		opaque:       opaque,
 		remoteClient: remoteClient}
+	return ae
 }
 
 type txAckEvent struct {
-	IForwardEvent
-	txPacket *protocol.TxACKPacket
-	opaque   int32
+	iauth
+	txPacket     *protocol.TxACKPacket
+	opaque       int32
+	remoteClient *rclient.RemotingClient
 }
 
-func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32) *txAckEvent {
-	return &txAckEvent{txPacket: txPacket, opaque: opaque}
+func (self *txAckEvent) getClient() *rclient.RemotingClient {
+	return self.remoteClient
+}
 
+func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *rclient.RemotingClient) *txAckEvent {
+	tx := &txAckEvent{
+		txPacket:     txPacket,
+		opaque:       opaque,
+		remoteClient: remoteClient}
+	return tx
 }
 
 //消息持久化操作
@@ -68,7 +91,6 @@ func newPersistentEvent(entity *store.MessageEntity, remoteClient *rclient.Remot
 //投递事件
 type deliverEvent struct {
 	IForwardEvent
-	ttl           int32 //ttl
 	messageId     string
 	topic         string
 	messageType   string
@@ -82,6 +104,7 @@ type deliverEvent struct {
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
+	IBackwardEvent
 	futures    map[string]chan interface{}
 	failGroups []string
 	succGroups []string
@@ -98,20 +121,37 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 
 //等待响应
 func (self *deliverResultEvent) wait(timeout time.Duration) {
-	//统计回调结果
-	for g, f := range self.futures {
-		select {
-		case resp := <-f:
-			ack := resp.(*protocol.DeliverAck)
-			//投递成功
-			if ack.GetStatus() {
-				self.succGroups = append(self.succGroups, ack.GetGroupId())
-			} else {
-				self.failGroups = append(self.failGroups, ack.GetGroupId())
+
+	if timeout > 0 {
+		//统计回调结果
+		for g, f := range self.futures {
+			select {
+			case <-time.After(timeout):
+				//等待结果超时
+				self.failGroups = append(self.failGroups, g)
+			case resp := <-f:
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
+					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				} else {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
+				}
+
 			}
-		case <-time.After(timeout):
-			//等待结果超时
-			self.failGroups = append(self.failGroups, g)
+		}
+	} else {
+		//统计回调结果
+		for _, f := range self.futures {
+			select {
+			case resp := <-f:
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
+					self.failGroups = append(self.failGroups, ack.GetGroupId())
+				} else {
+					self.succGroups = append(self.succGroups, ack.GetGroupId())
+				}
+			}
 		}
 	}
+
 }

@@ -41,9 +41,9 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	//做权限校验.............
-	if false {
-		log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
-	}
+	// if false {
+	log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
+	// }
 
 	// 权限验证通过 保存到clientmanager
 	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
@@ -52,7 +52,7 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包
-	packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)
+	packet := protocol.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
 	//向当前连接写入一个存储成功的response
 	remoteEvent := NewRemotingEvent(packet, []string{aevent.remoteClient.RemoteAddr()})
 

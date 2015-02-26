@@ -30,9 +30,6 @@ func (self *DeliverHandler) cast(event IEvent) (val *deliverEvent, ok bool) {
 }
 
 func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-
-	// log.Printf("DeliverHandler|Process|%s|%t\n", self.GetName(), event)
-
 	pevent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
@@ -46,18 +43,13 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 		return nil
 	}
 
-	//减少事件的ttl及消息投递的次数
-	pevent.ttl--
+	//增加消息投递的次数
 	pevent.deliverCount++
 	//创建投递事件
 	revent := NewRemotingEvent(pevent.packet, nil, pevent.deliverGroups...)
+	revent.AttachEvent(pevent)
 	//发起网络请求
-	go ctx.SendForward(revent)
-
-	//创建一个投递结果
-	resultEvent := newDeliverResultEvent(pevent, revent.Wait())
-	ctx.SendForward(resultEvent)
-
+	ctx.SendForward(revent)
 	return nil
 
 }

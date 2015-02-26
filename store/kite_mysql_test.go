@@ -18,7 +18,6 @@ func TestSave(t *testing.T) {
 		Topic:     "test222",
 		Body:      []byte("abc222:w2"),
 	})
-	fmt.Println("testtest")
 
 	ret := kiteMysql.Query("sutao")
 	fmt.Println(ret)

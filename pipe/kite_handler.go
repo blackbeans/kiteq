@@ -152,7 +152,7 @@ func (self *BaseDoubleSidedHandler) AcceptEvent(event IEvent) bool {
 	//是否可以处理当前按的event，再去判断具体的可处理事件类型
 	_, bok := event.(IBackwardEvent)
 	_, fok := event.(IForwardEvent)
-	return bok && fok
+	return bok || fok
 }
 
 func (self *BaseDoubleSidedHandler) HandleBackward(ctx *DefaultPipelineContext, event IBackwardEvent) error {

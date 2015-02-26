@@ -106,31 +106,8 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		return nil
 	}
 	return obj.(*MessageEntity)
-	//ret := MessageEntity{}
-	//self.dbmap.SelectOne(&ret, "select * from "
-	// stmt, err := self.db.Prepare("SELECT msgType,publishGroup,deliverCount,commit,header,body FROM `kite_msg` WHERE `messageId` = ?")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return nil
-	// }
-	// defer stmt.Close()
-	// pk := messageId
 
-	// entity := &MessageEntity{}
-	// var groupId string
-	// err = stmt.QueryRow(pk).Scan(
-	// 	&entity.MsgType,
-	// 	&entity.PublishGroup,
-	// 	&entity.DeliverCount,
-	// 	&entity.Commit,
-	// 	&entity.Header,
-	// 	&entity.Body,
-	// )
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return nil
-	// }
-
+	// 是否需要额外设置头部的状态i?????
 	// //设置一下头部的状态
 	// entity.Header.Commit = proto.Bool(entity.Commit)
 	// return entity
@@ -142,18 +119,6 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 		log.Println(err)
 		return false
 	}
-	// stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,groupId,expiredTime,commit,header,body) VALUES(?, ?, ?, ?, ?, ?, ?)")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
-	// defer stmt.Close()
-	// pk := entity.messageId
-
-	// if _, err := stmt.Exec(pk, entity.Topic, entity.MessageType, entity.Header.GetGroupId(), entity.Header.GetExpiredTime(), entity.Header.GetCommit(), entity.Header, entity.body); err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
 	return true
 }
 
@@ -165,16 +130,6 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 		return false
 	}
 	return true
-	// stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commit=? where messageId=?")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
-	// defer stmt.Close()
-	// if _, err := stmt.Exec(true, messageId); err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
 }
 
 func (self *KiteMysqlStore) Delete(messageId string) bool {
@@ -185,16 +140,6 @@ func (self *KiteMysqlStore) Delete(messageId string) bool {
 		return false
 	}
 
-	// stmt, err := self.db.Prepare("DELETE FROM `kite_msg` WHERE where messageId=? ")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
-	// defer stmt.Close()
-	// if _, err := stmt.Exec(false, messageId); err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
 	return true
 }
 
@@ -209,16 +154,4 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 		return false
 	}
 	return true
-	// stmt, err := self.db.Prepare("UPDATE `kite_msg` set topic=?, messageType=?, expiredTime=?, commit=?, body=? where messageId=?")
-	// if err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
-	// defer stmt.Close()
-	// pk := entity.messageId
-
-	// if _, err := stmt.Exec(entity.topic, entity.messageType, entity.expiredTime, entity.commit, entity.body, pk); err != nil {
-	// 	log.Println(err)
-	// 	return false
-	// }
 }

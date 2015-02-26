@@ -6,7 +6,6 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/session"
 	"log"
-	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -20,6 +19,7 @@ const (
 //网络层的client
 type RemotingClient struct {
 	id               int32
+	localAddr        *net.TCPAddr
 	remoteAddr       *net.TCPAddr
 	heartbeat        int64
 	remoteSession    *session.Session
@@ -36,6 +36,7 @@ func NewRemotingClient(conn *net.TCPConn,
 	remotingClient := &RemotingClient{
 		id:               0,
 		heartbeat:        0,
+		localAddr:        conn.LocalAddr().(*net.TCPAddr),
 		remoteAddr:       conn.RemoteAddr().(*net.TCPAddr),
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
@@ -48,19 +49,28 @@ func (self *RemotingClient) RemoteAddr() string {
 	return fmt.Sprintf("%s:%d", self.remoteAddr.IP, self.remoteAddr.Port)
 }
 
+func (self *RemotingClient) LocalAddr() string {
+	return fmt.Sprintf("%s:%d", self.localAddr.IP, self.localAddr.Port)
+}
+
 //启动当前的client
 func (self *RemotingClient) Start() {
 
-	//开启写操作
-	go self.remoteSession.WritePacket()
+	for i := 0; i < 20; i++ {
+		//开启写操作
+		go self.remoteSession.WritePacket()
+	}
 
 	//开启转发
-	go self.dispatcherPacket(self.remoteSession)
+	for i := 0; i < 50; i++ {
+
+		go self.dispatcherPacket(self.remoteSession)
+	}
 
 	//启动读取
 	go self.remoteSession.ReadPacket()
 
-	log.Printf("RemotingClient|Start|SUCC|%s\n", self.RemoteAddr())
+	log.Printf("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
 }
 
 //重连
@@ -88,25 +98,20 @@ func (self *RemotingClient) reconnect() (bool, error) {
 //包分发
 func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
-	//50个读协程
-	for i := 0; i < 100; i++ {
-		ch := session.ReadChannel[i]
-		go func(ch chan []byte) {
-			//解析包
-			for nil != self.remoteSession &&
-				!self.remoteSession.Closed() {
-				select {
-				//1.读取数据包
-				case packet := <-ch:
-					//2.处理一下包
-					go self.packetDispatcher(self, packet)
-					//100ms读超时
-				case <-time.After(100 * time.Millisecond):
-				}
+	//解析包
+	for nil != self.remoteSession &&
+		!self.remoteSession.Closed() {
+		select {
+		//100ms读超时
+		// case <-time.After(100 * time.Millisecond):
+		//1.读取数据包
+		case packet := <-self.remoteSession.ReadChannel:
+			//2.处理一下包
+			go self.packetDispatcher(self, packet)
 
-			}
-		}(ch)
+		}
 	}
+
 }
 
 //同步发起ping的命令
@@ -134,7 +139,7 @@ func (self *RemotingClient) Pong(opaque int32, version int64) {
 	self.updateHeartBeat(version)
 }
 
-func (self *RemotingClient) fillOpaque(packet *protocol.Packet) int32 {
+func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan interface{}) {
 	tid := packet.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
@@ -142,7 +147,7 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) int32 {
 		packet.Opaque = id
 		tid = id
 	}
-	return tid
+	return tid, make(chan interface{}, 1)
 }
 
 //将结果attach到当前的等待回调chan
@@ -159,14 +164,18 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 
 //只是写出去
 func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
-	tid := self.fillOpaque(packet)
+	tid, future := self.fillOpaque(packet)
 	self.lock.Lock()
-	self.holder[tid] = packet.Get()
+	old, ok := self.holder[tid]
+	if ok {
+		delete(self.holder, tid)
+		close(old)
+	}
+	self.holder[tid] = future
 	self.lock.Unlock()
 
-	idx := rand.Intn(len(self.remoteSession.WriteChannel))
-	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
-	return packet.Get()
+	self.remoteSession.Write(packet.Marshal())
+	return future
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
@@ -175,23 +184,15 @@ var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
 
-	tid := self.fillOpaque(packet)
-
-	self.lock.Lock()
-	self.holder[tid] = packet.Get()
-	self.lock.Unlock()
-
-	idx := rand.Intn(len(self.remoteSession.WriteChannel))
-	self.remoteSession.WriteChannel[idx] <- packet.Marshal()
+	future := self.Write(packet)
 
 	var resp interface{}
 	//
 	select {
 	case <-time.After(timeout):
 		//删除掉当前holder
-
 		return nil, TIMEOUT_ERROR
-	case resp = <-packet.Get():
+	case resp = <-future:
 		return resp, nil
 	}
 

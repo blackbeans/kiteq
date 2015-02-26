@@ -16,7 +16,10 @@ const (
 )
 
 type ZKManager struct {
-	session *zk.Session
+	watcher   IWatcher
+	zkwatcher chan zk.Event
+	session   *zk.Session
+	isClose   bool
 }
 
 type ZkEvent zk.EventType
@@ -30,22 +33,11 @@ const (
 
 //每个watcher
 type IWatcher interface {
-	EventNotify(path string, eventType ZkEvent, binds []*Binding)
-	ChildWatcher(path string, childNode []string)
+	DataChange(path string, binds []*Binding)
+	NodeChange(path string, eventType ZkEvent, children []string)
 }
 
-type Watcher struct {
-	watcher   IWatcher
-	zkwatcher chan zk.Event
-}
-
-//创建一个watcher
-func NewWatcher(watcher IWatcher) *Watcher {
-	zkwatcher := make(chan zk.Event, 10)
-	return &Watcher{watcher: watcher, zkwatcher: zkwatcher}
-}
-
-func NewZKManager(zkhosts string) *ZKManager {
+func NewZKManager(zkhosts string, watcher IWatcher) *ZKManager {
 	if len(zkhosts) <= 0 {
 		log.Println("使用默认zkhosts！|localhost:2181\n")
 		zkhosts = "localhost:2181"
@@ -75,14 +67,69 @@ func NewZKManager(zkhosts string) *ZKManager {
 		}
 	}
 
-	return &ZKManager{session: ss}
+	zkmanager := &ZKManager{session: ss, isClose: false, watcher: watcher, zkwatcher: make(chan zk.Event, 10)}
+	go zkmanager.listenEvent()
+	return zkmanager
+}
+
+//监听数据变更
+func (self *ZKManager) listenEvent() {
+	for !self.isClose {
+		//根据zk的文档 watcher机制是无法保证可靠的，其次需要在每次处理完watcher后要重新注册watcher
+		change := <-self.zkwatcher
+		path := change.Path
+		switch change.Type {
+		case zk.Deleted:
+			self.watcher.NodeChange(path, ZkEvent(change.Type), []string{})
+			log.Printf("ZKManager|Notify|%s|%s\n", path, change)
+		case zk.Created, zk.Child:
+			childnodes, _, err := self.session.Children(path, self.zkwatcher)
+			if nil != err {
+				log.Printf("ZKManager|addWatch|CD|%s|%s|%t\n", err, path, change.Type)
+			} else {
+				self.watcher.NodeChange(path, ZkEvent(change.Type), childnodes)
+				log.Printf("ZKManager|Notify|%s|%s|%s\n", path, change, childnodes)
+			}
+
+		case zk.Changed:
+			split := strings.Split(path, "/")
+			//如果不是bind级别的变更则忽略
+			if len(split) < 5 || strings.LastIndex(split[4], "-bind") <= 0 {
+				self.session.Exists(path, self.zkwatcher)
+				continue
+			}
+			//获取一下数据
+			binds, err := self.getBindData(path, self.zkwatcher)
+			if nil != err {
+				log.Printf("ZKManager|addWatch|Changed|Get DATA|FAIL|%s|%s\n", err, path)
+				//忽略
+				continue
+			}
+			self.watcher.DataChange(path, binds)
+			log.Printf("ZKManager|Notify|%s|%s|%s\n", path, change, binds)
+
+		}
+
+	}
+
 }
 
 //发布topic对应的server
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 
 	for _, topic := range topics {
+
 		qpath := KITEQ_SERVER + "/" + topic
+		spath := KITEQ_SUB + "/" + topic
+		ppath := KITEQ_PUB + "/" + topic
+
+		//创建发送和订阅的根节点
+		self.traverseCreatePath(ppath, nil, zk.CreatePersistent)
+		self.addWatch(ppath)
+		self.traverseCreatePath(spath, nil, zk.CreatePersistent)
+		self.addWatch(spath)
+
+		//注册当前节点
 		path, err := self.registePath(qpath, hostport, zk.CreatePersistent, nil)
 		if nil != err {
 			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
@@ -224,56 +271,50 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 }
 
 //获取QServer并添加watcher
-func (self *ZKManager) GetQServerAndWatch(topic string, nwatcher *Watcher) ([]string, error) {
+func (self *ZKManager) GetQServerAndWatch(topic string) ([]string, error) {
 
 	path := KITEQ_SERVER + "/" + topic
 
-	exist, _, _ := self.session.Exists(path, nwatcher.zkwatcher)
+	exist, _, _ := self.session.Exists(path, self.zkwatcher)
 	if !exist {
 		return []string{}, nil
 	}
-
 	//获取topic下的所有qserver
-	children, _, err := self.session.Children(path, nwatcher.zkwatcher)
+	children, _, err := self.session.Children(path, self.zkwatcher)
 	if nil != err {
 		log.Printf("ZKManager|GetQServerAndWatch|FAIL|%s\n", path)
 		return nil, err
 	}
-
-	//增加监听
-	self.addWatch(path, nwatcher)
 	return children, nil
 }
 
 //获取订阅关系并添加watcher
-func (self *ZKManager) GetBindAndWatch(topic string, nwatcher *Watcher) ([]*Binding, error) {
+func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, error) {
 
 	path := KITEQ_SUB + "/" + topic
 
-	exist, _, _ := self.session.Exists(path, nwatcher.zkwatcher)
+	exist, _, err := self.session.Exists(path, self.zkwatcher)
 	if !exist {
-		return []*Binding{}, nil
+		//不存在订阅关系的时候需要创建该topic和
+		return make(map[string][]*Binding, 0), err
 	}
 
 	//获取topic下的所有qserver
-	groupIds, _, err := self.session.Children(path, nwatcher.zkwatcher)
+	groupIds, _, err := self.session.Children(path, self.zkwatcher)
 	if nil != err {
 		log.Printf("ZKManager|GetBindAndWatch|GroupID|FAIL|%s|%s\n", err, path)
 		return nil, err
 	}
 
-	//加入对订阅topic节点的变化
-	self.addWatch(path, nwatcher)
-
-	hps := make([]*Binding, 0, len(groupIds))
+	hps := make(map[string][]*Binding, len(groupIds))
 	//获取topic对应的所有groupId下的订阅关系
 	for _, groupId := range groupIds {
 		tmppath := path + "/" + groupId
-		binds, err := self.getBindData(tmppath, nwatcher.zkwatcher)
+		binds, err := self.getBindData(tmppath, self.zkwatcher)
 		if nil != err {
 			continue
 		}
-		hps = append(hps, binds...)
+		hps[groupId] = binds
 	}
 
 	return hps, nil
@@ -298,54 +339,11 @@ func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Bin
 	return binding, err
 }
 
-func (self *ZKManager) addWatch(path string, nwatcher *Watcher) {
-
-	//监听数据变更
-	go func() {
-		for {
-			//根据zk的文档 watcher机制是无法保证可靠的，其次需要在每次处理完watcher后要重新注册watcher
-			change := <-nwatcher.zkwatcher
-			switch change.Type {
-			case zk.Created:
-				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.EventNotify(path, Created, nil)
-			case zk.Deleted:
-				self.session.Exists(path, nwatcher.zkwatcher)
-				nwatcher.watcher.EventNotify(path, Deleted, nil)
-
-			case zk.Changed:
-				split := strings.Split(path, "/")
-				//如果不是bind级别的变更则忽略
-				if len(split) < 5 || strings.LastIndex(split[4], "-bind") <= 0 {
-					self.session.Exists(path, nwatcher.zkwatcher)
-					continue
-				}
-
-				//获取一下数据
-				binding, err := self.getBindData(path, nwatcher.zkwatcher)
-				if nil != err {
-					log.Printf("ZKManager|addWatch|Changed|Get DATA|FAIL|%s|%s\n", err, path)
-					//忽略
-					continue
-				}
-				nwatcher.watcher.EventNotify(path, Changed, binding)
-
-			case zk.Child:
-				//子节点发生变更，则获取全新的子节点
-				childnodes, _, err := self.session.Children(path, nwatcher.zkwatcher)
-				if nil != err {
-					log.Printf("ZKManager|addWatch|Child|%s|%s\n", err, path)
-				} else {
-					log.Printf("ZKManager|%s|child's changed| %s\n", path, childnodes)
-					nwatcher.watcher.ChildWatcher(path, childnodes)
-				}
-			}
-			log.Printf("ZKManager|addWatch|%s|%s\n", path, change)
-
-		}
-	}()
+func (self *ZKManager) addWatch(path string) {
+	self.session.Exists(path, self.zkwatcher)
 }
 
 func (self *ZKManager) Close() {
 	self.session.Close()
+	self.isClose = true
 }

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime"
@@ -23,7 +24,7 @@ func main() {
 
 	flag.Parse()
 
-	runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
+	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	host, _, _ := net.SplitHostPort(*bindHost)
 	go func() {

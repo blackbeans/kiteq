@@ -57,13 +57,18 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
 		return err
 	}
 
+	futures := remoteEvent.Wait()
+	fc, ok := futures[self.hostport]
+	if !ok {
+		return errors.New("ILLEGAL STATUS !")
+	}
 	var resp interface{}
 	//
 	select {
 	case <-time.After(200 * time.Millisecond):
 		//删除掉当前holder
 		return TIMEOUT_ERROR
-	case resp = <-msgpacket.Get():
+	case resp = <-fc:
 
 		storeAck, ok := resp.(*protocol.MessageStoreAck)
 		if !ok || !storeAck.GetStatus() {

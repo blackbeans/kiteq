@@ -46,6 +46,7 @@ func NewHeartbeatEvent(remoteClient *rclient.RemotingClient, opaque int32, versi
 
 //远程操作事件
 type RemotingEvent struct {
+	Event      IForwardEvent
 	futures    chan map[string]chan interface{} //所有的回调的future
 	TargetHost []string                         //发送的特定hostport
 	GroupIds   []string                         //本次发送的分组
@@ -61,6 +62,10 @@ func NewRemotingEvent(packet *protocol.Packet, targetHost []string, groupIds ...
 	return revent
 }
 
+func (self *RemotingEvent) AttachEvent(Event IForwardEvent) {
+	self.Event = Event
+}
+
 //等待响应
 func (self *RemotingEvent) Wait() map[string]chan interface{} {
 	return <-self.futures
@@ -68,6 +73,7 @@ func (self *RemotingEvent) Wait() map[string]chan interface{} {
 
 //网络回调事件
 type RemoteFutureEvent struct {
+	IBackwardEvent
 	*RemotingEvent
 	Futures map[string] /*groupid*/ chan interface{} //网络结果回调
 }
