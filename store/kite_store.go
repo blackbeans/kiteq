@@ -23,17 +23,17 @@ type MessageEntity struct {
 	MsgType uint8 `kiteq:"msg_type"` //消息类型
 
 	MessageId       string   `kiteq:"messageId"`
-	Topic           string   `kiteq:"topic"`                   //Topic
-	MessageType     string   `kiteq:"messageType"`             //MessageType
-	PublishGroup    string   `kiteq:"publish_group"`           //发布的groupId
-	Commit          bool     `kiteq:"commit"`                  //是否已提交
-	ExpiredTime     int64    `kiteq:"expiredTime"`             //过期时间
-	DeliverCount    int32    `kiteq:"deliver_count"`           //投递次数
-	KiteServer      string   `kiteq:"kite_server"`             // 当前的处理kiteqserver地址
-	FailGroups      []string `kiteq:"failGroups,omitempty"`    //投递失败的分组tags
-	DeliverGroups   []string `kiteq:"deliverGroups,omitempty"` //投递成功的分组tags
-	NextDeliverTime int64    `kiteq:"next_deliver_time"`       //下一次投递的时间
-
+	Topic           string   `kiteq:"topic"`                //Topic
+	MessageType     string   `kiteq:"messageType"`          //MessageType
+	PublishGroup    string   `kiteq:"publish_group"`        //发布的groupId
+	Commit          bool     `kiteq:"commit"`               //是否已提交
+	ExpiredTime     int64    `kiteq:"expiredTime"`          //过期时间
+	DeliverCount    int32    `kiteq:"deliver_count"`        //投递次数
+	DeliverLimit    int32    `kiteq:"deliver_limit"`        //投递次数上线
+	KiteServer      string   `kiteq:"kite_server"`          // 当前的处理kiteqserver地址
+	FailGroups      []string `kiteq:"failGroups,omitempty"` //投递失败的分组tags
+	SuccGroups      []string `kiteq:"succGroups,omitempty"` //投递成功的分组tags
+	NextDeliverTime int64    `kiteq:"next_deliver_time"`    //下一次投递的时间
 }
 
 func (self *MessageEntity) String() string {
@@ -56,6 +56,8 @@ func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
 		Commit:       msg.GetHeader().GetCommit(),
 		ExpiredTime:  msg.GetHeader().GetExpiredTime(),
 		DeliverCount: 0,
+		DeliverLimit: msg.GetHeader().GetDeliverLimit(),
+
 		//消息种类
 		MsgType: protocol.CMD_STRING_MESSAGE}
 	return entity
@@ -74,6 +76,7 @@ func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 		Commit:       msg.GetHeader().GetCommit(),
 		ExpiredTime:  msg.GetHeader().GetExpiredTime(),
 		DeliverCount: 0,
+		DeliverLimit: msg.GetHeader().GetDeliverLimit(),
 		//消息种类
 		MsgType: protocol.CMD_BYTES_MESSAGE}
 
@@ -88,4 +91,7 @@ type IKiteStore interface {
 	Rollback(messageId string) bool
 	UpdateEntity(entity *MessageEntity) bool
 	Delete(messageId string) bool
+
+	//根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
+	PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity)
 }

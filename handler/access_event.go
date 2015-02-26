@@ -41,9 +41,9 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	//做权限校验.............
-	// if false {
-	log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
-	// }
+	if false {
+		log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
+	}
 
 	// 权限验证通过 保存到clientmanager
 	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)

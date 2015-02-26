@@ -95,27 +95,36 @@ type deliverEvent struct {
 	topic         string
 	messageType   string
 	expiredTime   int64
-	deliverLimit  int32
 	packet        *protocol.Packet //消息包
+	succGroups    []string         //已经投递成功的分组
 	deliverGroups []string         //需要投递的群组
-	deliverCount  int32            //已经投递的次数
+	deliverLimit  int32
+	deliverCount  int32 //已经投递的次数
+}
+
+//创建投递事件
+func NewDeliverEvent(messageId string, topic string, messageType string) *deliverEvent {
+	return &deliverEvent{
+		messageId:   messageId,
+		topic:       topic,
+		messageType: messageType}
 }
 
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
 	IBackwardEvent
-	futures    map[string]chan interface{}
-	failGroups []string
-	succGroups []string
+	futures            map[string]chan interface{}
+	deliveryFailGroups []string
+	deliverySuccGroups []string
 }
 
 func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan interface{}) *deliverResultEvent {
 	re := &deliverResultEvent{}
 	re.deliverEvent = deliverEvent
 	re.futures = futures
-	re.succGroups = make([]string, 0, 5)
-	re.failGroups = make([]string, 0, 5)
+	re.deliverySuccGroups = make([]string, 0, 5)
+	re.deliveryFailGroups = make([]string, 0, 5)
 	return re
 }
 
@@ -128,13 +137,13 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 			select {
 			case <-time.After(timeout):
 				//等待结果超时
-				self.failGroups = append(self.failGroups, g)
+				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
 			case resp := <-f:
 				ack, ok := resp.(*protocol.DeliverAck)
 				if !ok || !ack.GetStatus() {
-					self.failGroups = append(self.failGroups, ack.GetGroupId())
+					self.deliveryFailGroups = append(self.deliveryFailGroups, ack.GetGroupId())
 				} else {
-					self.succGroups = append(self.succGroups, ack.GetGroupId())
+					self.deliverySuccGroups = append(self.deliverySuccGroups, ack.GetGroupId())
 				}
 
 			}
@@ -146,9 +155,9 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 			case resp := <-f:
 				ack, ok := resp.(*protocol.DeliverAck)
 				if !ok || !ack.GetStatus() {
-					self.failGroups = append(self.failGroups, ack.GetGroupId())
+					self.deliveryFailGroups = append(self.deliveryFailGroups, ack.GetGroupId())
 				} else {
-					self.succGroups = append(self.succGroups, ack.GetGroupId())
+					self.deliverySuccGroups = append(self.deliverySuccGroups, ack.GetGroupId())
 				}
 			}
 		}

@@ -142,3 +142,7 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 	// }
 	return true
 }
+
+func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
+	return false, nil
+}

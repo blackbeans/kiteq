@@ -29,7 +29,8 @@ func NewDefaultPipeline() *DefaultPipeline {
 }
 
 func (self *DefaultPipeline) FireWork(event IForwardEvent) error {
-	return self.getCtx().handler.HandleEvent(self.getCtx(), event)
+	ctx := self.getCtx()
+	return ctx.handler.HandleEvent(ctx, event)
 }
 
 func (self *DefaultPipeline) getCtx() *DefaultPipelineContext {
@@ -71,11 +72,10 @@ func (self *DefaultPipeline) RegisteHandler(name string, handler IHandler) {
 	ctx := &DefaultPipelineContext{handler: handler,
 		canHandleForward:  canHandleForward,
 		canHandleBackward: canHandleBackward}
-
-	// log.Printf("DefaultPipeline|RegisteHandler|%s|%s|%s\n", name, canHandleForward, canHandleBackward)
 	ctx.pipeline = self
 	currctx := self.eventHandler.PushBack(ctx)
 	self.hashEventHandler[name] = currctx
+	log.Printf("DefaultPipeline|RegisteHandler|%s\n", name)
 }
 
 //pipeline中处理向后的事件

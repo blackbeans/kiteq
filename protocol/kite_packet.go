@@ -21,6 +21,10 @@ func NewPacket(cmdtype uint8, data []byte) *Packet {
 		Data:    data}
 }
 
+func (self *Packet) Reset() {
+	self.Opaque = -1
+}
+
 func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	p := NewPacket(cmdtype, data)
 	p.Opaque = opaque

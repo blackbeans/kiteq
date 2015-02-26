@@ -9,6 +9,7 @@ import (
 	"kiteq/stat"
 	"kiteq/store"
 	"log"
+	"os"
 	"time"
 )
 
@@ -20,6 +21,7 @@ type KiteQServer struct {
 	exchanger      *binding.BindExchanger
 	remotingServer *server.RemotingServer
 	pipeline       *pipe.DefaultPipeline
+	recoverManager *RecoverManager
 	flowControl    *stat.FlowControl
 }
 
@@ -39,13 +41,25 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 		return nil
 	}
 
+	recoverPeriod := 1 * time.Minute
+	kiteqName, _ := os.Hostname()
+
 	flowControl := stat.NewFlowControl("KiteQ")
 	//重连管理器
 	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
 
+	//客户端连接管理器
 	clientManager := client.NewClientManager(reconnManager)
+
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger(zkhost)
+
+	//重投策略
+	rw := make([]handler.RedeliveryWindow, 0, 10)
+	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 5*3600))
+	rw = append(rw, handler.NewRedeliveryWindow(3, 10, 10*3600))
+	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 30*3600))
+	rw = append(rw, handler.NewRedeliveryWindow(20, -1, 24*60*3600))
 
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()
@@ -56,22 +70,26 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
+
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
-	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb))
+	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
 	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 
+	recoverManager := NewRecoverManager(kiteqName, recoverPeriod, pipeline, kitedb)
+
 	return &KiteQServer{
-		local:         local,
-		topics:        topics,
-		reconnManager: reconnManager,
-		clientManager: clientManager,
-		exchanger:     exchanger,
-		pipeline:      pipeline,
-		flowControl:   flowControl}
+		local:          local,
+		topics:         topics,
+		reconnManager:  reconnManager,
+		clientManager:  clientManager,
+		exchanger:      exchanger,
+		pipeline:       pipeline,
+		flowControl:    flowControl,
+		recoverManager: recoverManager}
 
 }
 
@@ -102,8 +120,9 @@ func (self *KiteQServer) Start() {
 	} else {
 		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
 	}
-
 	self.reconnManager.Start()
+	//开启recover
+	self.recoverManager.Start()
 
 }
 

@@ -55,30 +55,41 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	}
 
 	//填充订阅分组
-	self.fillGroupIds(pevent)
+	self.fillGroupIds(pevent, entity)
+	self.fillDeliverExt(pevent, entity)
 	ctx.SendForward(pevent)
 	return nil
 
 }
 
 //填充订阅分组
-func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent) {
-	binds := self.exchanger.FindBinds(pevent.topic, pevent.messageType, func(b *binding.Binding) bool {
+func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
+	binds := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(), func(b *binding.Binding) bool {
 		//过滤掉已经投递成功的分组
 		// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
 		return false
 	})
 
-	groupIds := make([]string, 0, 10)
+	hashGroups := make(map[string]*string, 10)
 	//按groupid归并
-outter:
 	for _, bind := range binds {
-		for _, g := range groupIds {
-			if g == bind.GroupId {
-				continue outter
-			}
-		}
-		groupIds = append(groupIds, bind.GroupId)
+		hashGroups[bind.GroupId] = nil
+	}
+
+	//加入投递失败的分组
+	for _, fg := range entity.FailGroups {
+		hashGroups[fg] = nil
+	}
+
+	//去除掉已经投递成功的分组
+	for _, sg := range entity.SuccGroups {
+		delete(hashGroups, sg)
+	}
+
+	//合并本次需要投递的分组
+	groupIds := make([]string, 0, 10)
+	for k, _ := range hashGroups {
+		groupIds = append(groupIds, k)
 	}
 
 	// //如果没有可用的分组则直接跳过
@@ -87,6 +98,16 @@ outter:
 	// } else {
 	// 	log.Printf("DeliverPreHandler|Process|GROUPIDS TO DELIVERY |%s|%s|%s,%s\n", pevent.messageId, pevent.topic, pevent.messageType, groupIds)
 	// }
-
 	pevent.deliverGroups = groupIds
+}
+
+//填充投递的额外信息
+func (self *DeliverPreHandler) fillDeliverExt(pevent *deliverEvent, entity *store.MessageEntity) {
+	pevent.messageId = entity.Header.GetMessageId()
+	pevent.topic = entity.Header.GetTopic()
+	pevent.messageType = entity.Header.GetMessageType()
+	pevent.expiredTime = entity.Header.GetExpiredTime()
+	pevent.succGroups = entity.SuccGroups
+	pevent.deliverLimit = entity.DeliverLimit
+	pevent.deliverCount = entity.DeliverCount
 }

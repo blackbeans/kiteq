@@ -49,7 +49,7 @@ message Header{
     required string topic = 2; //topic类型
     required string messageType = 3; //消息类型
     required int64  expiredTime =4 [default = -1]; //消息过期时间 -1 为不过期
-    required int32  deliveryLimit = 5 [default = -1]; //投递次数限制，默认-1为没有次数限制，但是随着投递的时间会慢慢衰减
+    required int32  deliverLimit = 5 [default = -1]; //投递次数限制，默认-1为没有次数限制，但是随着投递的时间会慢慢衰减
     required string groupId = 6; // 消息发送来源
     required bool commit = 7; //本消息是否提交
 }

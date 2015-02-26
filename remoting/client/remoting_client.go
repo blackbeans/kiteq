@@ -106,9 +106,10 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 		// case <-time.After(100 * time.Millisecond):
 		//1.读取数据包
 		case packet := <-self.remoteSession.ReadChannel:
-			//2.处理一下包
-			go self.packetDispatcher(self, packet)
-
+			if nil != packet {
+				//2.处理一下包
+				go self.packetDispatcher(self, packet)
+			}
 		}
 	}
 

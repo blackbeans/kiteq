@@ -47,10 +47,10 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	if succ && pevent.entity.Header.GetCommit() {
 		//启动异步协程处理分发逻辑
 		go func() {
-			deliver := &deliverEvent{
-				messageId:   pevent.entity.Header.GetMessageId(),
-				topic:       pevent.entity.Header.GetTopic(),
-				messageType: pevent.entity.Header.GetMessageType()}
+			deliver := NewDeliverEvent(
+				pevent.entity.Header.GetMessageId(),
+				pevent.entity.Header.GetTopic(),
+				pevent.entity.Header.GetMessageType())
 			ctx.SendForward(deliver)
 
 		}()
@@ -80,7 +80,7 @@ func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ boo
 }
 
 //发送事务ack信息
-func (self PersistentHandler) tXAck(
+func (self *PersistentHandler) tXAck(
 	header *protocol.Header) *protocol.Packet {
 
 	txack := protocol.MarshalTxACKPacket(header, protocol.TX_UNKNOWN, "Server Check")

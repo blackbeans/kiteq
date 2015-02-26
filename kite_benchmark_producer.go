@@ -33,13 +33,13 @@ func buildStringMessage() *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:     proto.String(store.MessageId()),
-		Topic:         proto.String("trade"),
-		MessageType:   proto.String("pay-succ"),
-		ExpiredTime:   proto.Int64(time.Now().Unix()),
-		DeliveryLimit: proto.Int32(-1),
-		GroupId:       proto.String("go-kite-test"),
-		Commit:        proto.Bool(true)}
+		MessageId:    proto.String(store.MessageId()),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		DeliverLimit: proto.Int32(-1),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(true)}
 	entity.Body = proto.String("echo")
 
 	return entity

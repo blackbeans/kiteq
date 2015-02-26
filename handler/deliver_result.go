@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/store"
-	// "log"
+	"log"
 	"time"
 )
 
@@ -39,12 +39,12 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
-	// log.Printf("DeliverResultHandler|Process|%s|%t\n", self.GetName(), fevent.futures)
+
 	//等待结果响应
 	fevent.wait(1 * time.Second)
-
+	log.Printf("DeliverResultHandler|Process|%s|%t\n", self.GetName(), fevent.futures)
 	//则全部投递成功
-	if len(fevent.failGroups) <= 0 && len(fevent.deliverGroups) == len(fevent.succGroups) {
+	if len(fevent.deliveryFailGroups) <= 0 && len(fevent.deliverGroups) == len(fevent.deliverySuccGroups) {
 
 		self.store.Delete(fevent.messageId)
 		// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
