@@ -17,10 +17,10 @@ func MessageId() string {
 
 //用于持久化的messageEntity
 type MessageEntity struct {
-	Header *protocol.Header `kiteq:"header"`
-	Body   []byte           `kiteq:"body"` //序列化后的消息
+	Header *protocol.Header `kiteq:"header" db:"header"`
+	Body   []byte           `kiteq:"body" db:"body"` //序列化后的消息
 	//-----------------
-	MsgType uint8 `kiteq:"msg_type"` //消息类型
+	MsgType uint8 `kiteq:"msg_type" db:"msg_type"` //消息类型
 
 	MessageId       string   `kiteq:"messageId"`
 	Topic           string   `kiteq:"topic"`                //Topic
@@ -34,6 +34,7 @@ type MessageEntity struct {
 	FailGroups      []string `kiteq:"failGroups,omitempty"` //投递失败的分组tags
 	SuccGroups      []string `kiteq:"succGroups,omitempty"` //投递成功的分组tags
 	NextDeliverTime int64    `kiteq:"next_deliver_time"`    //下一次投递的时间
+
 }
 
 func (self *MessageEntity) String() string {
