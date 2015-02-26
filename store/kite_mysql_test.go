@@ -2,27 +2,47 @@ package store
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"testing"
 )
 
-func Benchmark_Save(b *testing.B) {
-	db := NewKiteMysql("root:root@tcp(localhost:8889)/kite")
-	e := &MessageEntity{
-		topic: "test",
-		body:  []byte("abc"),
-	}
-	var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
-	bs := make([]byte, 16)
+func TestSave(t *testing.T) {
+	kiteMysql := NewKiteMysql("root:@/kite")
+	kiteMysql.Save(&MessageEntity{
+		MessageId: "1",
+		Topic:     "test",
+		Body:      []byte("abc"),
+	})
 
-	for i := 0; i < b.N; i++ {
-		f.Read(bs)
-		e.messageId = fmt.Sprintf("%x", bs)
-		db.Save(e)
-	}
-	log.Println("finish")
+	kiteMysql.Save(&MessageEntity{
+		MessageId: "sutao",
+		Topic:     "test222",
+		Body:      []byte("abc222:w2"),
+	})
+	fmt.Println("testtest")
+
+	ret := kiteMysql.Query("sutao")
+	fmt.Println(ret)
+
+	kiteMysql.Commit("sutao")
+	kiteMysql.Delete("sutao")
 }
+
+//func Benchmark_Save(b *testing.B) {
+//	db := NewKiteMysql("root:root@tcp(localhost:8889)/kite")
+//	e := &MessageEntity{
+//		Topic: "test",
+//		Body:  []byte("abc"),
+//	}
+//	var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
+//	bs := make([]byte, 16)
+//
+//	for i := 0; i < b.N; i++ {
+//		f.Read(bs)
+//		e.MessageId = fmt.Sprintf("%x", bs)
+//		db.Save(e)
+//	}
+//	log.Println("finish")
+//}
 
 func TestQuery(t *testing.T) {
 	// db := NewKiteMysql("root:root@tcp(localhost:8889)/kite")

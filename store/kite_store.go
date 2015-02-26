@@ -7,22 +7,22 @@ import (
 
 //用于持久化的messageEntity
 type MessageEntity struct {
-	Header *protocol.Header `kiteq:"header"`
-	Body   []byte           `kiteq:"body"` //序列化后的消息
+	Header *protocol.Header `kiteq:"header" db:"header"`
+	Body   []byte           `kiteq:"body" db:"body"` //序列化后的消息
 	//-----------------
-	MsgType uint8 `kiteq:"msg_type"` //消息类型
+	MsgType uint8 `kiteq:"msg_type" db:"msg_type"` //消息类型
 
-	MessageId       string   `kiteq:"messageId"`
-	Topic           string   `kiteq:"topic"`                   //Topic
-	MessageType     string   `kiteq:"messageType"`             //MessageType
-	PublishGroup    string   `kiteq:"publish_group"`           //发布的groupId
-	Commit          bool     `kiteq:"commit"`                  //是否已提交
-	ExpiredTime     int64    `kiteq:"expiredTime"`             //过期时间
-	DeliverCount    int32    `kiteq:"deliver_count"`           //投递次数
-	KiteServer      string   `kiteq:"kite_server"`             // 当前的处理kiteqserver地址
-	FailGroups      []string `kiteq:"failGroups,omitempty"`    //投递失败的分组tags
-	DeliverGroups   []string `kiteq:"deliverGroups,omitempty"` //投递成功的分组tags
-	NextDeliverTime int64    `kiteq:"next_deliver_time"`       //下一次投递的时间
+	MessageId       string   `kiteq:"messageId" db:"message_id"`
+	Topic           string   `kiteq:"topic" db:"topic"`                           //Topic
+	MessageType     string   `kiteq:"messageType" db:"message_type"`              //MessageType
+	PublishGroup    string   `kiteq:"publish_group" db:"publish_group"`           //发布的groupId
+	Commit          bool     `kiteq:"commit" db:"commit"`                         //是否已提交
+	ExpiredTime     int64    `kiteq:"expiredTime" db:"expired_time"`              //过期时间
+	DeliverCount    int32    `kiteq:"deliver_count" db:"deliver_count"`           //投递次数
+	KiteServer      string   `kiteq:"kite_server" db:"kite_server"`               // 当前的处理kiteqserver地址
+	FailGroups      []string `kiteq:"failGroups,omitempty" db:"fail_group"`       //投递失败的分组tags
+	DeliverGroups   []string `kiteq:"deliverGroups,omitempty" db:"deliver_group"` //投递成功的分组tags
+	NextDeliverTime int64    `kiteq:"next_deliver_time" db:"next_deliver_time"`   //下一次投递的时间
 
 }
 

@@ -2,8 +2,11 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/golang/protobuf/proto"
+	"github.com/sutoo/gorp"
 	_ "kiteq/protocol"
 	"log"
 )
@@ -31,8 +34,8 @@ CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
 ENGINE = InnoDB;
 */
 type KiteMysqlStore struct {
-	addr string
-	db   *sql.DB
+	addr  string
+	dbmap *gorp.DbMap
 }
 
 func NewKiteMysql(addr string) *KiteMysqlStore {
@@ -42,14 +45,69 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 	if err != nil {
 		log.Fatal("mysql can not connect")
 	}
+
+	// construct a gorp DbMap
+	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
+
+	// add a table, setting the table name and
+	// specifying that the Id property is an auto incrementing PK
+	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").SetKeys(false, "MessageId").SetHashKey("MessageId")
+	dbmap.TypeConverter = CustomTypeConverter{}
+
+	// create the table. in a production system you'd generally
+	// use a migration tool, or create the tables via scripts
+	err = dbmap.CreateTablesIfNotExists()
+	if err != nil {
+		log.Println("CreateTablesIfNotExists failed.")
+	}
 	ins := &KiteMysqlStore{
-		addr: addr,
-		db:   db,
+		addr:  addr,
+		dbmap: dbmap,
 	}
 	return ins
 }
 
+//Converter for []string
+type CustomTypeConverter struct {
+}
+
+func (me CustomTypeConverter) ToDb(val interface{}) (interface{}, error) {
+	switch t := val.(type) {
+	case []string:
+		b, err := json.Marshal(t)
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	}
+	return val, nil
+}
+
+func (me CustomTypeConverter) FromDb(target interface{}) (gorp.CustomScanner, bool) {
+	switch target.(type) {
+	case *[]string:
+		binder := func(holder, target interface{}) error {
+			s, ok := holder.(*string)
+			if !ok {
+				return errors.New("FromDb: Unable to convert to *string")
+			}
+			b := []byte(*s)
+			return json.Unmarshal(b, target)
+		}
+		return gorp.CustomScanner{new(string), target, binder}, true
+	}
+	return gorp.CustomScanner{}, false
+}
+
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
+	obj, err := self.dbmap.Get(MessageEntity{}, messageId, messageId)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return obj.(*MessageEntity)
+	//ret := MessageEntity{}
+	//self.dbmap.SelectOne(&ret, "select * from "
 	// stmt, err := self.db.Prepare("SELECT msgType,publishGroup,deliverCount,commit,header,body FROM `kite_msg` WHERE `messageId` = ?")
 	// if err != nil {
 	// 	log.Println(err)
@@ -76,10 +134,14 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	// //设置一下头部的状态
 	// entity.Header.Commit = proto.Bool(entity.Commit)
 	// return entity
-	return nil
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
+	err := self.dbmap.Insert(entity)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
 	// stmt, err := self.db.Prepare("INSERT INTO `kite_msg`(messageId,topic,messageType,groupId,expiredTime,commit,header,body) VALUES(?, ?, ?, ?, ?, ?, ?)")
 	// if err != nil {
 	// 	log.Println(err)
@@ -96,6 +158,13 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
+	entity := &MessageEntity{MessageId: messageId, Commit: true}
+	_, err := self.dbmap.Update(entity)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return true
 	// stmt, err := self.db.Prepare("UPDATE `kite_msg` SET commit=? where messageId=?")
 	// if err != nil {
 	// 	log.Println(err)
@@ -106,10 +175,16 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 	// 	log.Println(err)
 	// 	return false
 	// }
-	return true
 }
 
 func (self *KiteMysqlStore) Delete(messageId string) bool {
+	entity := &MessageEntity{MessageId: messageId}
+	_, err := self.dbmap.Delete(entity)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
 	// stmt, err := self.db.Prepare("DELETE FROM `kite_msg` WHERE where messageId=? ")
 	// if err != nil {
 	// 	log.Println(err)
@@ -128,6 +203,12 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
+	_, err := self.dbmap.Update(entity)
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+	return true
 	// stmt, err := self.db.Prepare("UPDATE `kite_msg` set topic=?, messageType=?, expiredTime=?, commit=?, body=? where messageId=?")
 	// if err != nil {
 	// 	log.Println(err)
@@ -140,5 +221,4 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 	// 	log.Println(err)
 	// 	return false
 	// }
-	return true
 }
