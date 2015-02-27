@@ -1,7 +1,7 @@
 kiteq
 =======
 
-基于go+protolbuff实现的多种持久化方案的mq框架
+基于go+protobuff实现的多种持久化方案的mq框架
 
 #### 简介
     * 基于zk维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
@@ -27,8 +27,6 @@ kiteq
     ├── stat              状态信息统计
     └── store             KiteQ的存储结构
 
-#### 架构图
-  ![image](./doc/arch.png)
 ##### 概念：
     
     * Binding:订阅关系，描述订阅某种消息类型的数据结构
@@ -36,6 +34,9 @@ kiteq
     * Producer : 消息的发送方
     * Topic: 消息的主题比如 Trade则为消息主题，一般可以定义为某种业务类型
     * MessageType: 第二级别的消息类型，比如Trade下存在支付成功的pay-succ-200的消息类型
+
+#### 架构图
+  ![image](./doc/kiteq.002.png)
 
 #### Zookeeper数据结构
         KiteServer : /kiteq/server/${topic}/ip:port
