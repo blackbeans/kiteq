@@ -71,7 +71,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 		for _, entity := range entities {
 			//如果为未提交的消息则需要发送一个事务检查的消息
 			if !entity.Commit {
-				self.txAck(entity.Header)
+				self.txAck(entity)
 			} else {
 				//发起投递事件
 				self.delivery(entity)
@@ -92,12 +92,12 @@ func (self *RecoverManager) delivery(entity *store.MessageEntity) {
 }
 
 //发送事务ack信息
-func (self *RecoverManager) txAck(header *protocol.Header) {
+func (self *RecoverManager) txAck(entity *store.MessageEntity) {
 
-	txack := protocol.MarshalTxACKPacket(header, protocol.TX_UNKNOWN, "Server Check")
+	txack := protocol.MarshalTxACKPacket(entity.Header, protocol.TX_UNKNOWN, "Server Check")
 	packet := protocol.NewPacket(protocol.CMD_TX_ACK, txack)
 	//向头部的发送分组发送txack消息
-	groupId := header.GetGroupId()
+	groupId := entity.PublishGroup
 	event := NewRemotingEvent(packet, nil, groupId)
 	self.pipeline.FireWork(event)
 }

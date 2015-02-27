@@ -52,7 +52,7 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	clientManager := client.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger(zkhost)
+	exchanger := binding.NewBindExchanger(zkhost, local)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)

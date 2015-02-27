@@ -1,12 +1,12 @@
 package core
 
 import (
-	"fmt"
 	"kiteq/binding"
 	"kiteq/client/listener"
 	"kiteq/protocol"
+	"kiteq/server"
+	"kiteq/store"
 	"log"
-	"os"
 	"testing"
 	"time"
 
@@ -17,43 +17,37 @@ func buildStringMessage() *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
-		MessageId:   proto.String(messageId()),
-		Topic:       proto.String("trade"),
-		MessageType: proto.String("pay-succ"),
-		ExpiredTime: proto.Int64(13700000000),
-		GroupId:     proto.String("go-kite-test"),
-		Commit:      proto.Bool(true)}
+		MessageId:    proto.String(store.MessageId()),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		DeliverLimit: proto.Int32(-1),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(true)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
 }
 
-var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
-
-func messageId() string {
-	b := make([]byte, 16)
-	f.Read(b)
-	return fmt.Sprintf("%x", b)
-}
-
 func TestNewManager(t *testing.T) {
+
+	kiteQ := server.NewKiteQServer("127.0.0.1:13800", "localhost:2181", []string{"trade"}, "mock")
+	kiteQ.Start()
 	// 创建客户端
-	manager := NewKiteClientManager(":18002", "", "s-trade-a", "123456", &listener.MockListener{})
-	// 设置发送类型
-	if err := manager.SetPublishTopics([]string{"trade"}); err != nil {
-		log.Fatal(err)
-	}
+	manager := NewKiteClientManager("localhost:2181", "s-trade-a", "123456", &listener.MockListener{})
+	manager.SetPublishTopics([]string{"trade"})
+
 	// 设置接收类型
-	if err := manager.SetBindings(
+	manager.SetBindings(
 		[]*binding.Binding{
 			binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 		},
-	); err != nil {
-		log.Fatal(err)
-	}
+	)
+
+	manager.Start()
 
 	// 发送数据
-	err := manager.SendStringMessage(buildStringMessage())
+	err := manager.SendMessage("trade", buildStringMessage())
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -61,7 +55,7 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendStringMessage(buildStringMessage())
+	err = manager.SendMessage("trade", buildStringMessage())
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -69,13 +63,15 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendStringMessage(buildStringMessage())
+	err = manager.SendMessage("trade", buildStringMessage())
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
 		log.Println("SEND MESSAGE |SUCCESS")
 	}
 
-	time.Sleep(time.Second * 100)
+	time.Sleep(time.Second * 10)
+	manager.Destory()
+	kiteQ.Shutdown()
 
 }

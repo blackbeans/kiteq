@@ -51,7 +51,7 @@ func (self *HeartbeatHandler) keepAlive() {
 								log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|%s|%d\n", err, h, id)
 								continue
 							} else {
-								log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|tryCount:%d\n", h, id, i)
+								log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|...\n", h, id)
 								break
 							}
 						}

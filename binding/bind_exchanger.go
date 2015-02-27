@@ -9,19 +9,21 @@ import (
 
 //用于管理订阅关系，对接zookeeper的订阅关系变更
 type BindExchanger struct {
-	exchanger map[string] /*topic*/ map[string] /*groupId*/ []*Binding //保存的订阅关系
-	topics    []string                                                 //当前服务器可投递的topic类型
-	lock      sync.RWMutex
-	zkmanager *ZKManager
+	exchanger   map[string] /*topic*/ map[string] /*groupId*/ []*Binding //保存的订阅关系
+	topics      []string                                                 //当前服务器可投递的topic类型
+	lock        sync.RWMutex
+	zkmanager   *ZKManager
+	kiteqserver string
 }
 
-func NewBindExchanger(zkhost string) *BindExchanger {
+func NewBindExchanger(zkhost string, kiteQServer string) *BindExchanger {
 
 	ex := &BindExchanger{
 		exchanger: make(map[string]map[string][]*Binding, 100),
 		topics:    make([]string, 0, 50)}
 	zkmanager := NewZKManager(zkhost, ex)
 	ex.zkmanager = zkmanager
+	ex.kiteqserver = kiteQServer
 	return ex
 }
 
@@ -42,17 +44,16 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 
 //监听topics的对应的订阅关系的变更
 func (self *BindExchanger) subscribeBinds(topics []string) bool {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	for _, topic := range topics {
 		binds, err := self.zkmanager.GetBindAndWatch(topic)
 		if nil != err {
 			log.Printf("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
 			return false
 		} else {
-			self.lock.Lock()
-			defer self.lock.Unlock()
 			for groupId, bs := range binds {
-				gid := strings.TrimSuffix(groupId, "-bind")
-				self.onBindChanged(topic, gid, bs)
+				self.onBindChanged(topic, groupId, bs)
 				log.Printf("BindExchanger|SubscribeBinds|SUCC|%s\n", binds)
 			}
 		}
@@ -82,31 +83,6 @@ func (self *BindExchanger) FindBinds(topic string, messageType string, filter fu
 	}
 
 	return validBinds
-}
-
-func (self *BindExchanger) DataChange(path string, binds []*Binding) {
-
-	//订阅关系变更才处理
-	if strings.HasPrefix(path, KITEQ_SUB) {
-
-		split := strings.Split(path, "/")
-		//如果不是bind级别的变更则忽略
-		if len(split) < 5 || strings.LastIndex(split[4], "-bind") <= 0 {
-			return
-		}
-
-		//获取topic
-		topic := split[3]
-		groupId := split[4]
-		self.lock.Lock()
-		defer self.lock.Unlock()
-		//开始处理变化的订阅关系
-		self.onBindChanged(topic, groupId, binds)
-
-	} else {
-		log.Printf("BindExchanger|DataChange|非SUB节点变更|%s\n", path)
-	}
-
 }
 
 //订阅关系topic下的group发生变更
@@ -152,6 +128,26 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 	}
 }
 
+func (self *BindExchanger) DataChange(path string, binds []*Binding) {
+
+	//订阅关系变更才处理
+	if strings.HasPrefix(path, KITEQ_SUB) {
+
+		split := strings.Split(path, "/")
+		//获取topic
+		topic := split[3]
+		groupId := split[4]
+		self.lock.Lock()
+		defer self.lock.Unlock()
+		//开始处理变化的订阅关系
+		self.onBindChanged(topic, groupId, binds)
+
+	} else {
+		log.Printf("BindExchanger|DataChange|非SUB节点变更|%s\n", path)
+	}
+
+}
+
 //订阅关系改变
 func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Binding) {
 
@@ -176,5 +172,7 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Bind
 
 //关闭掉exchanger
 func (self *BindExchanger) Shutdown() {
+	//删除掉当前的QServer
+	self.zkmanager.UnpushlishQServer(self.kiteqserver, self.topics)
 	self.zkmanager.Close()
 }

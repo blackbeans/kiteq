@@ -114,6 +114,22 @@ func (self *ZKManager) listenEvent() {
 
 }
 
+//去除掉当前的KiteQServer
+func (self *ZKManager) UnpushlishQServer(hostport string, topics []string) {
+	for _, topic := range topics {
+
+		qpath := KITEQ_SERVER + "/" + topic
+
+		//删除当前该Topic下的本机
+		err := self.session.Delete(qpath, -1)
+		if nil != err {
+			log.Printf("ZKManager|UnpushlishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
+		} else {
+			log.Printf("ZKManager|UnpushlishQServer|SUCC|%s/%s\n", qpath, hostport)
+		}
+	}
+}
+
 //发布topic对应的server
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 
@@ -130,7 +146,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 		self.addWatch(spath)
 
 		//注册当前节点
-		path, err := self.registePath(qpath, hostport, zk.CreatePersistent, nil)
+		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)
 		if nil != err {
 			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
 			return err
@@ -314,7 +330,10 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, err
 		if nil != err {
 			continue
 		}
-		hps[groupId] = binds
+
+		//去掉分组后面的-bind
+		gid := strings.TrimSuffix(groupId, "-bind")
+		hps[gid] = binds
 	}
 
 	return hps, nil
