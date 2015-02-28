@@ -6,6 +6,7 @@ import (
 	"kiteq/client/chandler"
 	"kiteq/client/listener"
 	"kiteq/pipe"
+	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
 	"kiteq/stat"
 	"log"
@@ -17,6 +18,9 @@ import (
 	"sync"
 	"time"
 )
+
+//本地事务的方法
+type DoTranscation func(message *protocol.QMessage) (bool, error)
 
 const MAX_CLIENT_CONN = 10
 
@@ -226,22 +230,67 @@ func (self *KiteClientManager) SetBindings(bindings []*binding.Binding) {
 
 }
 
-func (self *KiteClientManager) SendMessage(topic string, msg interface{}) error {
+//发送事务消息
+func (self *KiteClientManager) SendTxMessage(msg *protocol.QMessage, doTranscation DoTranscation) (err error) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-	clients, ok := self.kiteClients[topic]
+	//路由选择策略
+	c, err := self.selectKiteClient(msg.GetHeader())
+	if nil != err {
+		return err
+	}
+
+	//先发送消息
+	err = c.sendMessage(msg)
+	if nil != err {
+		return err
+	}
+
+	//执行本地事务返回succ为成功则提交、其余条件包括错误、失败都属于回滚
+	feedback := ""
+	succ := false
+	txstatus := protocol.TX_UNKNOWN
+	//执行本地事务
+	succ, err = doTranscation(msg)
+	if nil == err && succ {
+		txstatus = protocol.TX_COMMIT
+	} else {
+		txstatus = protocol.TX_ROLLBACK
+		if nil != err {
+			feedback = err.Error()
+		}
+	}
+	//发送txack到服务端
+	c.sendTxAck(msg, txstatus, feedback)
+	return err
+}
+
+//发送消息
+func (self *KiteClientManager) SendMessage(msg *protocol.QMessage) error {
+	self.lock.RLock()
+	defer self.lock.RUnlock()
+	c, err := self.selectKiteClient(msg.GetHeader())
+	if nil != err {
+		return err
+	}
+	return c.sendMessage(msg)
+}
+
+//kiteclient路由选择策略
+func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteClient, error) {
+
+	clients, ok := self.kiteClients[header.GetTopic()]
 	if !ok {
-		log.Println("KiteClientManager|SendMessage|FAIL|NO Remote Client|%s\n", msg)
-		return errors.New("NO KITE CLIENT !")
+		log.Println("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		return nil, errors.New("NO KITE CLIENT !")
 	}
 
 	if len(clients) <= 0 {
-		return errors.New("NO KITE CLIENT !")
+		return nil, errors.New("NO KITE CLIENT !")
 	}
 
 	c := clients[rand.Intn(len(clients))]
-	return c.sendMessage(msg)
-
+	return c, nil
 }
 
 func (self *KiteClientManager) Destory() {

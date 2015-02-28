@@ -39,7 +39,7 @@ var lc int32 = 0
 type defualtListener struct {
 }
 
-func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
+func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
 
 	return true
 }

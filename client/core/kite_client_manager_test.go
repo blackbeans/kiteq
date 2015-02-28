@@ -29,6 +29,22 @@ func buildStringMessage() *protocol.StringMessage {
 	return entity
 }
 
+func buildBytesMessage() *protocol.BytesMessage {
+	//创建消息
+	entity := &protocol.BytesMessage{}
+	entity.Header = &protocol.Header{
+		MessageId:    proto.String(store.MessageId()),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		DeliverLimit: proto.Int32(-1),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(true)}
+	entity.Body = []byte("helloworld")
+
+	return entity
+}
+
 func TestNewManager(t *testing.T) {
 
 	kiteQ := server.NewKiteQServer("127.0.0.1:13800", "localhost:2181", []string{"trade"}, "mock")
@@ -47,7 +63,7 @@ func TestNewManager(t *testing.T) {
 	manager.Start()
 
 	// 发送数据
-	err := manager.SendMessage("trade", buildStringMessage())
+	err := manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -55,7 +71,7 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendMessage("trade", buildStringMessage())
+	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -63,7 +79,15 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendMessage("trade", buildStringMessage())
+	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
+	if nil != err {
+		log.Println("SEND MESSAGE |FAIL|", err)
+	} else {
+		log.Println("SEND MESSAGE |SUCCESS")
+	}
+
+	// 发送数据
+	err = manager.SendMessage(protocol.NewQMessage(buildBytesMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {

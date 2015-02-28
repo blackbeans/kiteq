@@ -118,7 +118,7 @@ func (self *ZKManager) listenEvent() {
 func (self *ZKManager) UnpushlishQServer(hostport string, topics []string) {
 	for _, topic := range topics {
 
-		qpath := KITEQ_SERVER + "/" + topic
+		qpath := KITEQ_SERVER + "/" + topic + hostport
 
 		//删除当前该Topic下的本机
 		err := self.session.Delete(qpath, -1)

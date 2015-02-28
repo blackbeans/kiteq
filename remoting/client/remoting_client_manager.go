@@ -73,6 +73,8 @@ func (self *ClientManager) DeleteClients(hostports ...string) {
 	defer self.lock.Unlock()
 	for _, hostport := range hostports {
 		self.reconnectFailHook(hostport)
+		//取消重连任务
+		self.reconnectManager.cancel(hostport)
 	}
 }
 
