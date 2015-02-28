@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/golang/protobuf/proto"
 	"github.com/sutoo/gorp"
@@ -105,6 +106,9 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		log.Println(err)
 		return nil
 	}
+	if obj == nil {
+		return nil
+	}
 	return obj.(*MessageEntity)
 
 	// 是否需要额外设置头部的状态i?????
@@ -157,5 +161,18 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 }
 
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
-	return false, nil
+	cond := make([]*gorp.Cond, 2)
+	cond[0] = &gorp.Cond{Field: "kite_server", Operator: "=", Value: kiteServer}
+	cond[1] = &gorp.Cond{Field: "next_deliver_time", Operator: "<", Value: nextDeliveryTime}
+
+	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit, MessageEntity{}, cond)
+	if err != nil {
+		fmt.Println(err)
+		return false, nil
+	}
+	results := make([]*MessageEntity, len(rawResults))
+	for _, v := range rawResults {
+		results = append(results, v.(*MessageEntity))
+	}
+	return true, results
 }
