@@ -115,22 +115,13 @@ func (self *Session) WritePacket() {
 
 	ch := self.WriteChannel
 	for !self.isClose {
-		select {
-		//100ms读超时
-		// case <-time.After(100 * time.Millisecond):
-		//1.读取数据包
-		case packet := <-ch:
-			//2.处理一下包
-			//并发去写
-			go func() {
-				length, err := self.conn.Write(packet)
-				if nil != err {
-					log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d|%t\n", self.remoteAddr, err, length, len(packet), packet)
-					self.Closed()
-				} else {
-					// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
-				}
-			}()
+		packet := <-ch
+		length, err := self.conn.Write(packet)
+		if nil != err {
+			log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d|%t\n", self.remoteAddr, err, length, len(packet), packet)
+			self.Closed()
+		} else {
+			// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 
 		}
 	}
