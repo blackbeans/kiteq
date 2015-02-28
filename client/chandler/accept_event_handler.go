@@ -88,11 +88,11 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//这里应该回调消息监听器然后发送处理结果
 		// log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
 
-		strMsg := acceptEvent.msg.(*protocol.StringMessage)
+		message := protocol.NewQMessage(acceptEvent.msg)
 
-		succ := self.listener.OnMessage(acceptEvent.msg.(*protocol.StringMessage))
+		succ := self.listener.OnMessage(message)
 
-		dpacket := protocol.MarshalDeliverAckPacket(strMsg.GetHeader(), succ)
+		dpacket := protocol.MarshalDeliverAckPacket(message.GetHeader(), succ)
 
 		respPacket := protocol.NewRespPacket(acceptEvent.opaque, protocol.CMD_DELIVER_ACK, dpacket)
 

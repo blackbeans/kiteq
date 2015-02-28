@@ -23,37 +23,31 @@ func newKitClient(hostport string, pipeline *pipe.DefaultPipeline) *kiteClient {
 	return client
 }
 
-func (self *kiteClient) sendMessage(message interface{}) error {
+//发送事务的确认,无需等待服务器反馈
+func (self *kiteClient) sendTxAck(message *protocol.QMessage,
+	txstatus protocol.TxStatus, feedback string) error {
+	txpacket := protocol.MarshalTxACKPacket(message.GetHeader(), txstatus, feedback)
+	return self.innerSendMessage(protocol.CMD_TX_ACK, txpacket, -1)
+}
 
-	bm, bok := message.(*protocol.BytesMessage)
-	if bok {
-		data, err := protocol.MarshalPbMessage(bm)
-		if nil != err {
-			return err
-		}
-		return self.innerSendMessage(protocol.CMD_BYTES_MESSAGE, data)
-	} else {
-		sm, mok := message.(*protocol.StringMessage)
-		if mok {
-			data, err := protocol.MarshalPbMessage(sm)
-			if nil != err {
-				return err
-			}
-			return self.innerSendMessage(protocol.CMD_STRING_MESSAGE, data)
-		} else {
-			return errors.New("INALID MESSAGE !")
-		}
+func (self *kiteClient) sendMessage(message *protocol.QMessage) error {
+
+	data, err := protocol.MarshalPbMessage(message.GetPbMessage())
+	if nil != err {
+		return err
 	}
+	return self.innerSendMessage(message.GetMsgType(), data, 200*time.Millisecond)
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
-func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
+func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout time.Duration) error {
 
 	msgpacket := protocol.NewPacket(cmdType, packet)
 	remoteEvent := pipe.NewRemotingEvent(msgpacket, []string{self.hostport})
 	err := self.pipeline.FireWork(remoteEvent)
-	if nil != err {
+	//如果是需要等待结果的则等待
+	if nil != err || timeout <= 0 {
 		return err
 	}
 
@@ -65,7 +59,7 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
 	var resp interface{}
 	//
 	select {
-	case <-time.After(200 * time.Millisecond):
+	case <-time.After(timeout):
 		//删除掉当前holder
 		return TIMEOUT_ERROR
 	case resp = <-fc:
@@ -78,4 +72,5 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte) error {
 			return nil
 		}
 	}
+
 }

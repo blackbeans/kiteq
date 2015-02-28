@@ -18,8 +18,8 @@ import (
 type defualtListener struct {
 }
 
-func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
-	log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
+func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
+	log.Println("defualtListener|OnMessage", msg.GetHeader(), msg.GetBody())
 	return true
 }
 
@@ -29,7 +29,7 @@ func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxRes
 	return nil
 }
 
-func buildStringMessage() *protocol.StringMessage {
+func buildStringMessage(commit bool) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
@@ -39,7 +39,7 @@ func buildStringMessage() *protocol.StringMessage {
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		Commit:       proto.Bool(commit)}
 	entity.Body = proto.String("echo")
 
 	return entity
@@ -48,6 +48,7 @@ func buildStringMessage() *protocol.StringMessage {
 func main() {
 
 	c := flag.Int("c", 10, "-c=10")
+	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 
@@ -81,13 +82,25 @@ func main() {
 		go func() {
 			wg.Add(1)
 			for !stop {
-				err := kite.SendStringMessage(buildStringMessage())
-				if nil != err {
-					fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
-					atomic.AddInt32(&fc, 1)
+				if *tx {
+					msg := buildStringMessage(false)
+					err := kite.SendTxStringMessage(msg, doTranscation)
+					if nil != err {
+						fmt.Printf("SEND TxMESSAGE |FAIL|%s\n", err)
+						atomic.AddInt32(&fc, 1)
+					} else {
+						atomic.AddInt32(&count, 1)
+					}
 				} else {
-					atomic.AddInt32(&count, 1)
+					err := kite.SendStringMessage(buildStringMessage(true))
+					if nil != err {
+						fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
+						atomic.AddInt32(&fc, 1)
+					} else {
+						atomic.AddInt32(&count, 1)
+					}
 				}
+				stop = true
 			}
 			wg.Done()
 		}()
@@ -104,4 +117,8 @@ func main() {
 
 	wg.Wait()
 	kite.Destory()
+}
+
+func doTranscation(message *protocol.QMessage) (bool, error) {
+	return true, nil
 }

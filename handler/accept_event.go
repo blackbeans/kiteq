@@ -52,9 +52,9 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		return nil
 
 	case protocol.CMD_BYTES_MESSAGE:
-		msg = store.NewBytesMessageEntity(ae.msg.(*protocol.BytesMessage))
+		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.BytesMessage)))
 	case protocol.CMD_STRING_MESSAGE:
-		msg = store.NewStringMessageEntity(ae.msg.(*protocol.StringMessage))
+		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.StringMessage)))
 	default:
 		//这只是一个bug不支持的数据类型能给你
 		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)

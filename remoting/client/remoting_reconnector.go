@@ -113,6 +113,14 @@ func (self *ReconnectManager) submit(task *reconnectTask) {
 
 }
 
+//取消重连任务
+func (self *ReconnectManager) cancel(hostport string) {
+	t, ok := self.timers[hostport]
+	if ok {
+		t.Stop()
+	}
+}
+
 func (self *ReconnectManager) stop() {
 	self.allowReconnect = false
 }

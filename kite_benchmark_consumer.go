@@ -28,7 +28,7 @@ func (self *defualtListener) monitor() {
 	}
 }
 
-func (self *defualtListener) OnMessage(msg *protocol.StringMessage) bool {
+func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
 	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
 	atomic.AddInt32(&self.count, 1)
 	return true

@@ -5,6 +5,57 @@ import (
 	"log"
 )
 
+type QMessage struct {
+	message proto.Message
+	msgType uint8
+	header  *Header
+	body    interface{}
+}
+
+func NewQMessage(msg interface{}) *QMessage {
+
+	message, ok := msg.(proto.Message)
+	if !ok {
+		return nil
+	}
+
+	bm, bok := message.(*BytesMessage)
+	if bok {
+		return &QMessage{
+			msgType: CMD_BYTES_MESSAGE,
+			header:  bm.GetHeader(),
+			body:    bm.GetBody(),
+			message: message}
+	} else {
+		sm, mok := message.(*StringMessage)
+		if mok {
+			return &QMessage{
+				msgType: CMD_STRING_MESSAGE,
+				header:  sm.GetHeader(),
+				body:    sm.GetBody(),
+				message: message}
+		}
+	}
+	return nil
+
+}
+
+func (self *QMessage) GetHeader() *Header {
+	return self.header
+}
+
+func (self *QMessage) GetBody() interface{} {
+	return self.body
+}
+
+func (self *QMessage) GetMsgType() uint8 {
+	return self.msgType
+}
+
+func (self *QMessage) GetPbMessage() proto.Message {
+	return self.message
+}
+
 func UnmarshalPbMessage(data []byte, msg proto.Message) error {
 	return proto.Unmarshal(data, msg)
 }
@@ -13,12 +64,12 @@ func MarshalPbMessage(message proto.Message) ([]byte, error) {
 	return proto.Marshal(message)
 }
 
-func MarshalMessage(header *Header, msgType uint8, body []byte) []byte {
+func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 	switch msgType {
 	case CMD_BYTES_MESSAGE:
 		message := &BytesMessage{}
 		message.Header = header
-		message.Body = body
+		message.Body = body.([]byte)
 		data, err := proto.Marshal(message)
 		if nil != err {
 			log.Printf("MarshalMessage|%s|%d|%s\n", header, msgType, err)
@@ -27,7 +78,7 @@ func MarshalMessage(header *Header, msgType uint8, body []byte) []byte {
 	case CMD_STRING_MESSAGE:
 		message := &StringMessage{}
 		message.Header = header
-		message.Body = proto.String(string(body))
+		message.Body = proto.String(body.(string))
 		data, err := proto.Marshal(message)
 		if nil != err {
 			log.Printf("MarshalMessage|%s|%d|%s\n", header, msgType, err)

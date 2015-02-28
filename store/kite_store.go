@@ -18,7 +18,7 @@ func MessageId() string {
 //用于持久化的messageEntity
 type MessageEntity struct {
 	Header *protocol.Header `kiteq:"header" db:"header"`
-	Body   []byte           `kiteq:"body" db:"body"` //序列化后的消息
+	Body   interface{}      `kiteq:"body" db:"body"` //序列化后的消息
 	//-----------------
 	MsgType uint8 `kiteq:"msg_type" db:"msg_type"` //消息类型
 
@@ -38,35 +38,15 @@ type MessageEntity struct {
 }
 
 func (self *MessageEntity) String() string {
-	return fmt.Sprintf("id:%s Topic:%s Commit:%t Body:%s", self.MessageId, self.Topic, self.Commit, string(self.Body))
+	return fmt.Sprintf("id:%s Topic:%s Commit:%t Body:%s", self.MessageId, self.Topic, self.Commit, self.Body)
 }
 
-func (self *MessageEntity) GetBody() []byte {
+func (self *MessageEntity) GetBody() interface{} {
 	return self.Body
 }
 
 //创建stringmessage
-func NewStringMessageEntity(msg *protocol.StringMessage) *MessageEntity {
-	entity := &MessageEntity{
-		Header:       msg.GetHeader(),
-		Body:         []byte(msg.GetBody()),
-		MessageId:    msg.GetHeader().GetMessageId(),
-		Topic:        msg.GetHeader().GetTopic(),
-		MessageType:  msg.GetHeader().GetMessageType(),
-		PublishGroup: msg.GetHeader().GetGroupId(),
-		Commit:       msg.GetHeader().GetCommit(),
-		ExpiredTime:  msg.GetHeader().GetExpiredTime(),
-		DeliverCount: 0,
-		DeliverLimit: msg.GetHeader().GetDeliverLimit(),
-
-		//消息种类
-		MsgType: protocol.CMD_STRING_MESSAGE}
-	return entity
-
-}
-
-//创建bytesmessage的实体
-func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
+func NewMessageEntity(msg *protocol.QMessage) *MessageEntity {
 	entity := &MessageEntity{
 		Header:       msg.GetHeader(),
 		Body:         msg.GetBody(),
@@ -78,10 +58,11 @@ func NewBytesMessageEntity(msg *protocol.BytesMessage) *MessageEntity {
 		ExpiredTime:  msg.GetHeader().GetExpiredTime(),
 		DeliverCount: 0,
 		DeliverLimit: msg.GetHeader().GetDeliverLimit(),
-		//消息种类
-		MsgType: protocol.CMD_BYTES_MESSAGE}
 
+		//消息种类
+		MsgType: msg.GetMsgType()}
 	return entity
+
 }
 
 //kitestore存储
