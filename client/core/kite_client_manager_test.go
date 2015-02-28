@@ -47,7 +47,7 @@ func TestNewManager(t *testing.T) {
 	manager.Start()
 
 	// 发送数据
-	err := manager.SendMessage("trade", buildStringMessage())
+	err := manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -55,7 +55,7 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendMessage("trade", buildStringMessage())
+	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {
@@ -63,7 +63,7 @@ func TestNewManager(t *testing.T) {
 	}
 
 	// 发送数据
-	err = manager.SendMessage("trade", buildStringMessage())
+	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
 	if nil != err {
 		log.Println("SEND MESSAGE |FAIL|", err)
 	} else {

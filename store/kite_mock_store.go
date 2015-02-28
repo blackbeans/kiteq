@@ -10,7 +10,7 @@ type MockKiteStore struct {
 }
 
 func (self *MockKiteStore) Query(messageId string) *MessageEntity {
-	entity := NewStringMessageEntity(buildStringMessage(messageId))
+	entity := NewMessageEntity(protocol.NewQMessage(buildStringMessage(messageId)))
 	return entity
 
 }
@@ -33,7 +33,7 @@ func (self *MockKiteStore) UpdateEntity(entity *MessageEntity) bool {
 
 func (self *MockKiteStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 	recoverMessage := buildStringMessage(MessageId())
-	entity := NewStringMessageEntity(recoverMessage)
+	entity := NewMessageEntity(protocol.NewQMessage(recoverMessage))
 	entity.DeliverCount = 10
 	entity.SuccGroups = []string{"a", "b"}
 	entity.FailGroups = []string{"c", "d"}

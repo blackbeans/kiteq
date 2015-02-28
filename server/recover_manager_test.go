@@ -42,7 +42,7 @@ func TestRecoverManager(t *testing.T) {
 	kitedb := &store.MockKiteStore{}
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger("localhost:2181")
+	exchanger := binding.NewBindExchanger("localhost:2181", "127.0.0.1:13800")
 	ch := make(chan bool, 1)
 
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))

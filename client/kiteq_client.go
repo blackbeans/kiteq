@@ -29,12 +29,24 @@ func (self *KiteQClient) SetBindings(bindings []*binding.Binding) {
 
 }
 
+func (self *KiteQClient) SendTxStringMessage(msg *protocol.StringMessage, transcation core.DoTranscation) error {
+	message := protocol.NewQMessage(msg)
+	return self.kclientManager.SendTxMessage(message, transcation)
+}
+
+func (self *KiteQClient) SendTxBytesMessage(msg *protocol.BytesMessage, transcation core.DoTranscation) error {
+	message := protocol.NewQMessage(msg)
+	return self.kclientManager.SendTxMessage(message, transcation)
+}
+
 func (self *KiteQClient) SendStringMessage(msg *protocol.StringMessage) error {
-	return self.kclientManager.SendMessage(msg.GetHeader().GetTopic(), msg)
+	message := protocol.NewQMessage(msg)
+	return self.kclientManager.SendMessage(message)
 }
 
 func (self *KiteQClient) SendBytesMessage(msg *protocol.BytesMessage) error {
-	return self.kclientManager.SendMessage(msg.GetHeader().GetTopic(), msg)
+	message := protocol.NewQMessage(msg)
+	return self.kclientManager.SendMessage(message)
 }
 
 func (self *KiteQClient) Destory() {
