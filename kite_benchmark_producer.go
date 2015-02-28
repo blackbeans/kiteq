@@ -100,7 +100,7 @@ func main() {
 						atomic.AddInt32(&count, 1)
 					}
 				}
-
+				stop = true
 			}
 			wg.Done()
 		}()
