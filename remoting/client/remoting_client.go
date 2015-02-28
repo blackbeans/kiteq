@@ -56,13 +56,13 @@ func (self *RemotingClient) LocalAddr() string {
 //启动当前的client
 func (self *RemotingClient) Start() {
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 10; i++ {
 		//开启写操作
 		go self.remoteSession.WritePacket()
 	}
 
 	//开启转发
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 10; i++ {
 
 		go self.dispatcherPacket(self.remoteSession)
 	}
