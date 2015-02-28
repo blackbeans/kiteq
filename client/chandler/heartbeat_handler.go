@@ -48,10 +48,10 @@ func (self *HeartbeatHandler) keepAlive() {
 							err := c.Ping(hp, time.Duration(int64(self.heartbeatTimeout)*int64(i+1)))
 							//如果有错误则需要记录
 							if nil != err {
-								log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|%s|%d\n", err, h, id)
+								log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
 								continue
 							} else {
-								log.Printf("HeartbeatHandler|KeepAlive|SUCC|%s|%d|...\n", h, id)
+								log.Printf("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
 								break
 							}
 						}
@@ -87,7 +87,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	// log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	hevent.RemoteClient.Attach(hevent.Opaque, hevent.Version)
 	return nil
 }

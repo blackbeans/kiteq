@@ -12,8 +12,8 @@ import (
 type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
-	ReadChannel  chan []byte //request的channel
-	WriteChannel chan []byte //response的channel
+	ReadChannel  chan *protocol.Packet //request的channel
+	WriteChannel chan *protocol.Packet //response的channel
 	isClose      bool
 }
 
@@ -25,8 +25,8 @@ func NewSession(conn *net.TCPConn) *Session {
 
 	session := &Session{
 		conn:         conn,
-		ReadChannel:  make(chan []byte, 1000),
-		WriteChannel: make(chan []byte, 1000),
+		ReadChannel:  make(chan *protocol.Packet, 1000),
+		WriteChannel: make(chan *protocol.Packet, 1000),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String()}
 
@@ -84,14 +84,16 @@ func (self *Session) ReadPacket() {
 			return
 		}
 
+		//如果是\n那么就是一个完整的包
 		if buff.Len() > protocol.PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
-			//如果是\n那么就是一个完整的包
-			packet := make([]byte, buff.Len())
-			//拷贝数据
-			copy(packet, buff.Bytes())
-			//写入缓冲
-			self.ReadChannel <- packet
+			tlv, err := protocol.UnmarshalTLV(buff.Bytes())
+			if nil == err && nil != tlv {
+				// copy(packet, buff.Bytes())
+				//写入缓冲
+				self.ReadChannel <- tlv
+			}
+
 			//重置buffer
 			buff.Reset()
 
@@ -100,13 +102,15 @@ func (self *Session) ReadPacket() {
 }
 
 //写出数据
-func (self *Session) Write(packet []byte) {
+func (self *Session) Write(packet *protocol.Packet) {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Printf("Session|WritePacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
 		}
 	}()
-	self.WriteChannel <- packet
+	if !self.isClose {
+		self.WriteChannel <- packet
+	}
 }
 
 //写入响应
@@ -115,13 +119,21 @@ func (self *Session) WritePacket() {
 	for !self.isClose {
 
 		//1.读取数据包
-		packet := <-ch
+		tlv := <-ch
+		if nil == tlv {
+			//如果tlv为空可能是当前channel已经关闭
+			continue
+		}
 
+		packet := protocol.MarshalPacket(tlv)
+		if len(packet) <= 0 {
+			continue
+		}
 		//2.处理一下包
 		//并发去写
 		length, err := self.conn.Write(packet)
 		if nil != err {
-			log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d|%t\n", self.remoteAddr, err, length, len(packet), packet)
+			log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 			self.Closed()
 		} else {
 			// log.Printf("Session|WritePacket|SUCC|%t\n", packet)

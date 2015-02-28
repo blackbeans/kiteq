@@ -23,13 +23,13 @@ type RemotingClient struct {
 	remoteAddr       *net.TCPAddr
 	heartbeat        int64
 	remoteSession    *session.Session
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte) //包处理函数
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	lock             sync.Mutex
 	holder           map[int32]chan interface{}
 }
 
 func NewRemotingClient(conn *net.TCPConn,
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingClient {
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingClient {
 
 	remoteSession := session.NewSession(conn)
 	//创建一个remotingcleint
@@ -62,10 +62,7 @@ func (self *RemotingClient) Start() {
 	}
 
 	//开启转发
-	for i := 0; i < 10; i++ {
-
-		go self.dispatcherPacket(self.remoteSession)
-	}
+	go self.dispatcherPacket(self.remoteSession)
 
 	//启动读取
 	go self.remoteSession.ReadPacket()
@@ -101,16 +98,13 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	//解析包
 	for nil != self.remoteSession &&
 		!self.remoteSession.Closed() {
-		select {
-		//100ms读超时
-		// case <-time.After(100 * time.Millisecond):
-		//1.读取数据包
-		case packet := <-self.remoteSession.ReadChannel:
-			if nil != packet {
-				//2.处理一下包
-				go self.packetDispatcher(self, packet)
-			}
+		packet := <-self.remoteSession.ReadChannel
+		if nil == packet {
+			//packet为空可能session已经关闭
+			continue
 		}
+		//处理一下包
+		go self.packetDispatcher(self, packet)
 	}
 
 }
@@ -157,8 +151,8 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer self.lock.Unlock()
 	ch, ok := self.holder[opaque]
 	if ok {
-		ch <- obj
 		delete(self.holder, opaque)
+		ch <- obj
 		close(ch)
 	}
 }
@@ -167,15 +161,15 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 	tid, future := self.fillOpaque(packet)
 	self.lock.Lock()
+	defer self.lock.Unlock()
 	old, ok := self.holder[tid]
 	if ok {
 		delete(self.holder, tid)
 		close(old)
 	}
 	self.holder[tid] = future
-	self.lock.Unlock()
 
-	self.remoteSession.Write(packet.Marshal())
+	self.remoteSession.Write(packet)
 	return future
 }
 

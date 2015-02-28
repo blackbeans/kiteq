@@ -31,7 +31,7 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	return p
 }
 
-func (self *Packet) Marshal() []byte {
+func (self *Packet) marshal() []byte {
 	//总长度	 1+ 4 字节+ 1字节 + 4字节 + var + \r + \n
 	length := PACKET_HEAD_LEN + len(self.Data) + 2
 	buffer := make([]byte, 0, length)
@@ -48,7 +48,7 @@ func (self *Packet) Marshal() []byte {
 
 var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
-func (self *Packet) Unmarshal(r *bytes.Reader) error {
+func (self *Packet) unmarshal(r *bytes.Reader) error {
 
 	err := binary.Read(r, binary.BigEndian, &self.Opaque)
 	if nil != err {
@@ -84,13 +84,17 @@ func (self *Packet) Unmarshal(r *bytes.Reader) error {
 	return nil
 }
 
+func MarshalPacket(packet *Packet) []byte {
+	return packet.marshal()
+}
+
 //解码packet
 func UnmarshalTLV(packet []byte) (*Packet, error) {
 	packet = bytes.TrimRight(packet, CMD_STR_CRLF)
 	r := bytes.NewReader(packet)
 
 	tlv := &Packet{}
-	err := tlv.Unmarshal(r)
+	err := tlv.unmarshal(r)
 	if nil != err {
 		return nil, err
 	} else {

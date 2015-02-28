@@ -41,14 +41,13 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 
 	//重连管理器
 	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
-	reconnManager.Start()
 	//流量
 	flowControl := stat.NewFlowControl("kiteclient-" + groupId)
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()
 	clientm := rclient.NewClientManager(reconnManager)
 	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet", flowControl))
-	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat", 2*time.Second, 1*time.Second, clientm))
+	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat", 10*time.Second, 5*time.Second, clientm))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
 	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm, flowControl))
 
@@ -168,7 +167,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				continue
 			}
 			remoteClient = rclient.NewRemotingClient(conn,
-				func(rc *rclient.RemotingClient, packet []byte) {
+				func(rc *rclient.RemotingClient, packet *protocol.Packet) {
 					self.flowControl.DispatcherFlow.Incr(1)
 					event := pipe.NewPacketEvent(rc, packet)
 					err := self.pipeline.FireWork(event)

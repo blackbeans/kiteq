@@ -2,6 +2,7 @@ package client
 
 import (
 	"log"
+	"sync"
 	"time"
 )
 
@@ -36,12 +37,12 @@ func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient 
 
 //重连管理器
 type ReconnectManager struct {
-	taskQ             chan *reconnectTask
 	timers            map[string] /*hostport*/ *time.Timer
 	allowReconnect    bool          //是否允许重连
 	reconnectTimeout  time.Duration //重连超时
 	maxReconnectTimes int           //最大重连次数
 	handshake         func(ga *GroupAuth, remoteClient *RemotingClient) (bool, error)
+	lock              sync.Mutex
 }
 
 //重连管理器
@@ -50,7 +51,6 @@ func NewReconnectManager(allowReconnect bool,
 	handshake func(ga *GroupAuth, remoteClient *RemotingClient) (bool, error)) *ReconnectManager {
 
 	manager := &ReconnectManager{
-		taskQ:             make(chan *reconnectTask, 1000),
 		timers:            make(map[string]*time.Timer, 20),
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
@@ -58,12 +58,30 @@ func NewReconnectManager(allowReconnect bool,
 	return manager
 }
 
-//启动重连
-func (self *ReconnectManager) Start() {
-	go func() {
-		for self.allowReconnect {
-			task := <-self.taskQ
-			addr := task.remoteClient.RemoteAddr()
+//提交重连任务
+func (self *ReconnectManager) submit(task *reconnectTask) {
+	if !self.allowReconnect {
+		return
+	}
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	//如果已经有该重连任务在执行则忽略
+	_, ok := self.timers[task.remoteClient.RemoteAddr()]
+	if ok {
+		return
+	}
+	self.startReconTask(task)
+}
+
+func (self *ReconnectManager) startReconTask(task *reconnectTask) {
+	addr := task.remoteClient.RemoteAddr()
+	//创建定时的timer
+	timer := time.AfterFunc(time.Duration(task.retryCount*10)*time.Second, func() {
+		log.Printf("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
+		succ, err := task.reconnect(self.handshake)
+		if nil != err || !succ {
+			timer := self.timers[addr]
+
 			//如果当前重试次数大于最大重试次数则放弃
 			if task.retryCount > self.maxReconnectTimes {
 				log.Printf("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d\n", addr, task.retryCount)
@@ -73,54 +91,40 @@ func (self *ReconnectManager) Start() {
 					delete(self.timers, addr)
 					task.finishHook(addr)
 				}
-				continue
+				return
 			}
 
-			timer := time.AfterFunc(time.Duration(task.retryCount*10)*time.Second, func() {
-				log.Printf("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
-				succ, err := task.reconnect(self.handshake)
-				if nil != err || !succ {
-					timer := self.timers[task.remoteClient.RemoteAddr()]
-					//继续提交重试任务,如果成功那么就不用再重建
-					timer.Reset(time.Duration(task.retryCount*10) * time.Second)
-				} else {
-					_, ok := self.timers[addr]
-					if ok {
-						delete(self.timers, addr)
-					}
-				}
-				log.Printf("ReconnectManager|END RECONNECT|%s|addr:%s|succ:%s,err:%s,|retryCount:%d\n", task.remoteClient.RemoteAddr(), addr, succ, err, task.retryCount)
-			})
-
-			//记录timer
-			self.timers[addr] = timer
+			//继续提交重试任务,如果成功那么就不用再重建
+			timer.Reset(time.Duration(task.retryCount*10) * time.Second)
+		} else {
+			_, ok := self.timers[addr]
+			if ok {
+				delete(self.timers, addr)
+			}
 		}
+		log.Printf("ReconnectManager|END RECONNECT|%s|addr:%s|succ:%s,err:%s,|retryCount:%d\n", task.remoteClient.RemoteAddr(), addr, succ, err, task.retryCount)
+	})
 
-	}()
-}
-
-//提交重连任务
-func (self *ReconnectManager) submit(task *reconnectTask) {
-	if !self.allowReconnect {
-		return
-	}
-	//如果已经有该重连任务在执行则忽略
-	_, ok := self.timers[task.remoteClient.RemoteAddr()]
-	if ok {
-		return
-	}
-	self.taskQ <- task
-
+	//记录timer
+	self.timers[addr] = timer
 }
 
 //取消重连任务
 func (self *ReconnectManager) cancel(hostport string) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	t, ok := self.timers[hostport]
 	if ok {
+		delete(self.timers, hostport)
 		t.Stop()
 	}
 }
 
 func (self *ReconnectManager) stop() {
 	self.allowReconnect = false
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	for _, t := range self.timers {
+		t.Stop()
+	}
 }
