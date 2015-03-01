@@ -22,18 +22,18 @@ type MessageEntity struct {
 	//-----------------
 	MsgType uint8 `kiteq:"msg_type" db:"msg_type"` //消息类型
 
-	MessageId       string   `kiteq:"messageId"`
-	Topic           string   `kiteq:"topic"`                //Topic
-	MessageType     string   `kiteq:"messageType"`          //MessageType
-	PublishGroup    string   `kiteq:"publish_group"`        //发布的groupId
-	Commit          bool     `kiteq:"commit"`               //是否已提交
-	ExpiredTime     int64    `kiteq:"expiredTime"`          //过期时间
-	DeliverCount    int32    `kiteq:"deliver_count"`        //投递次数
-	DeliverLimit    int32    `kiteq:"deliver_limit"`        //投递次数上线
-	KiteServer      string   `kiteq:"kite_server"`          // 当前的处理kiteqserver地址
-	FailGroups      []string `kiteq:"failGroups,omitempty"` //投递失败的分组tags
-	SuccGroups      []string `kiteq:"succGroups,omitempty"` //投递成功的分组tags
-	NextDeliverTime int64    `kiteq:"next_deliver_time"`    //下一次投递的时间
+	MessageId       string   `kiteq:"messageId" db:"message_id"`
+	Topic           string   `kiteq:"topic" db:"topic"`                         //Topic
+	MessageType     string   `kiteq:"messageType" db:"message_type"`            //MessageType
+	PublishGroup    string   `kiteq:"publish_group" db:"publish_group"`         //发布的groupId
+	Commit          bool     `kiteq:"commit" db:"commit"`                       //是否已提交
+	ExpiredTime     int64    `kiteq:"expiredTime" db:"expired_time"`            //过期时间
+	DeliverCount    int32    `kiteq:"deliver_count" db:"deliver_count"`         //投递次数
+	DeliverLimit    int32    `kiteq:"deliver_limit" db:"deliver_limit"`         //投递次数上线
+	KiteServer      string   `kiteq:"kite_server" db:"kite_server"`             // 当前的处理kiteqserver地址
+	FailGroups      []string `kiteq:"failGroups,omitempty" db:"fail_groups"`    //投递失败的分组tags
+	SuccGroups      []string `kiteq:"succGroups,omitempty" db:"succ_groups"`    //投递成功的分组tags
+	NextDeliverTime int64    `kiteq:"next_deliver_time" db:"next_deliver_time"` //下一次投递的时间
 
 }
 

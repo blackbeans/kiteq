@@ -2,28 +2,44 @@ package store
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 )
 
 func TestSave(t *testing.T) {
 	kiteMysql := NewKiteMysql("root:@/kite")
 	kiteMysql.Save(&MessageEntity{
-		MessageId: "1",
-		Topic:     "test",
-		Body:      []byte("abc"),
+		MessageId:       "0",
+		Topic:           "test",
+		KiteServer:      "sutao",
+		Body:            []byte("abc"),
+		NextDeliverTime: 1,
 	})
 
-	kiteMysql.Save(&MessageEntity{
-		MessageId: "sutao",
-		Topic:     "test222",
-		Body:      []byte("abc222:w2"),
-	})
-
+	for i := 0; i < 1000; i++ {
+		kiteMysql.Save(&MessageEntity{
+			MessageId:       strconv.Itoa(i),
+			KiteServer:      "sutao",
+			Topic:           fmt.Sprintf("topic %s", i),
+			Body:            []byte("abc222:w2"),
+			NextDeliverTime: 2,
+		})
+	}
 	ret := kiteMysql.Query("sutao")
 	fmt.Println(ret)
 
-	kiteMysql.Commit("sutao")
-	kiteMysql.Delete("sutao")
+	kiteServer := "sutao"
+	var nextDeliveryTime int64 = 123
+	var startIdx int32 = 0
+	var limit int32 = 10
+	hashKey := "0"
+	fmt.Println("PageQueryEntity")
+	isSucess, resultSet := kiteMysql.PageQueryEntity(hashKey, kiteServer, nextDeliveryTime, startIdx, limit)
+	if isSucess {
+		fmt.Println("result set", resultSet)
+	} else {
+		fmt.Println("result false")
+	}
 }
 
 //func Benchmark_Save(b *testing.B) {
