@@ -61,8 +61,10 @@ func (self *RemotingClient) Start() {
 		go self.remoteSession.WritePacket()
 	}
 
-	//开启转发
-	go self.dispatcherPacket(self.remoteSession)
+	for i := 0; i < 5; i++ {
+		//开启转发
+		go self.dispatcherPacket(self.remoteSession)
+	}
 
 	//启动读取
 	go self.remoteSession.ReadPacket()
@@ -99,10 +101,11 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	for nil != self.remoteSession &&
 		!self.remoteSession.Closed() {
 		packet := <-self.remoteSession.ReadChannel
+
 		if nil == packet {
-			//packet为空可能session已经关闭
 			continue
 		}
+
 		//处理一下包
 		go self.packetDispatcher(self, packet)
 	}
@@ -111,7 +114,7 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 //同步发起ping的命令
 func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Duration) error {
-	pong, err := self.WriteAndGet(heartbeat, timeout)
+	pong, err := self.WriteAndGet(*heartbeat, timeout)
 	if nil != err {
 		return err
 	}
@@ -158,8 +161,10 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 }
 
 //只是写出去
-func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
-	tid, future := self.fillOpaque(packet)
+func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
+
+	// //克隆一份
+	tid, future := self.fillOpaque(&packet)
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	old, ok := self.holder[tid]
@@ -168,15 +173,14 @@ func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
 		close(old)
 	}
 	self.holder[tid] = future
-
-	self.remoteSession.Write(packet)
+	self.remoteSession.Write(protocol.MarshalPacket(&packet))
 	return future
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
 //写数据并且得到相应
-func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
+func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	future := self.Write(packet)

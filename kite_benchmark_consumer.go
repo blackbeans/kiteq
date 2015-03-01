@@ -41,6 +41,7 @@ func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxRes
 }
 
 func main() {
+
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 

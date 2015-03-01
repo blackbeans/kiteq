@@ -5,7 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/stat"
-	"log"
+	// "log"
 )
 
 //远程操作的PacketHandler
@@ -78,7 +78,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
 		if nil == err {
 			hb := &hearbeat
-			log.Printf("PacketHandler|handlePacket|HeartBeat|%t\n", hb)
+			// log.Printf("PacketHandler|handlePacket|HeartBeat|%t\n", hb)
 			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
 		}
 		//消息持久化

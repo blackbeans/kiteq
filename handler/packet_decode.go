@@ -45,6 +45,11 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	self.flowControl.ReadFlow.Incr(1)
+	// packet, err := protocol.UnmarshalTLV(pevent.Packet)
+	// if nil != err || nil == packet {
+	// 	log.Printf("PacketHandler|Process|UnmarshalTLV|FAIL|%s|%t\n", self.GetName(), pevent.Packet)
+	// 	return err
+	// }
 
 	cevent, err := self.handlePacket(pevent)
 	if nil != err {
@@ -61,6 +66,7 @@ var sunkEvent = &SunkEvent{}
 func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	var err error
 	var event IEvent
+
 	packet := pevent.Packet
 	//根据类型反解packet
 	switch packet.CmdType {

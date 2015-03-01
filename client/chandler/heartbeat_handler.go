@@ -87,7 +87,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	// log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	hevent.RemoteClient.Attach(hevent.Opaque, hevent.Version)
 	return nil
 }

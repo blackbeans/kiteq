@@ -75,8 +75,8 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
-	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	// pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
+	// pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 

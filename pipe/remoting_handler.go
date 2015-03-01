@@ -71,13 +71,14 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 	//特别的失败分组，为了减少chan的创建数
 	failGroup := make(chan interface{}, 1)
 	futures := make(map[string]chan interface{}, 10)
+	packet := *event.Packet
 	if len(event.TargetHost) > 0 {
 		//特定机器
 		for _, host := range event.TargetHost {
 			rclient := self.clientManager.FindRemoteClient(host)
 			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
-				futures[host] = rclient.Write(event.Packet)
+				futures[host] = rclient.Write(packet)
 				self.flowControl.WriteFlow.Incr(1)
 
 			} else {
@@ -102,7 +103,8 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 				continue
 			}
 			idx := rand.Intn(len(c))
-			futures[gid] = c[idx].Write(event.Packet)
+			//克隆一份
+			futures[gid] = c[idx].Write(packet)
 			self.flowControl.WriteFlow.Incr(1)
 		}
 	}

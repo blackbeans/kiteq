@@ -41,6 +41,6 @@ func (self *RemoteFutureHandler) Process(ctx *DefaultPipelineContext, event IEve
 	devent := pevent.RemotingEvent.Event.(*deliverEvent)
 	// //创建一个投递结果
 	resultEvent := newDeliverResultEvent(devent, futures)
-	ctx.SendForward(resultEvent)
+	ctx.SendBackward(resultEvent)
 	return nil
 }
