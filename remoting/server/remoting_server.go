@@ -1,6 +1,7 @@
 package server
 
 import (
+	"kiteq/protocol"
 	. "kiteq/remoting/client"
 	"kiteq/stat"
 	"log"
@@ -14,13 +15,13 @@ type RemotingServer struct {
 	keepalive        time.Duration
 	stopChan         chan bool
 	isShutdown       bool
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte)
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)
 	flowControl      *stat.FlowControl
 }
 
 func NewRemotionServer(hostport string, keepalive time.Duration,
 	flowControl *stat.FlowControl,
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingServer {
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingServer {
 
 	//设置为8个并发
 	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)

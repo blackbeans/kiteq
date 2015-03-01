@@ -23,13 +23,13 @@ type RemotingClient struct {
 	remoteAddr       *net.TCPAddr
 	heartbeat        int64
 	remoteSession    *session.Session
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte) //包处理函数
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	lock             sync.Mutex
 	holder           map[int32]chan interface{}
 }
 
 func NewRemotingClient(conn *net.TCPConn,
-	packetDispatcher func(remoteClient *RemotingClient, packet []byte)) *RemotingClient {
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingClient {
 
 	remoteSession := session.NewSession(conn)
 	//创建一个remotingcleint
@@ -61,9 +61,8 @@ func (self *RemotingClient) Start() {
 		go self.remoteSession.WritePacket()
 	}
 
-	//开启转发
-	for i := 0; i < 10; i++ {
-
+	for i := 0; i < 5; i++ {
+		//开启转发
 		go self.dispatcherPacket(self.remoteSession)
 	}
 
@@ -101,23 +100,21 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	//解析包
 	for nil != self.remoteSession &&
 		!self.remoteSession.Closed() {
-		select {
-		//100ms读超时
-		// case <-time.After(100 * time.Millisecond):
-		//1.读取数据包
-		case packet := <-self.remoteSession.ReadChannel:
-			if nil != packet {
-				//2.处理一下包
-				go self.packetDispatcher(self, packet)
-			}
+		packet := <-self.remoteSession.ReadChannel
+
+		if nil == packet {
+			continue
 		}
+
+		//处理一下包
+		go self.packetDispatcher(self, packet)
 	}
 
 }
 
 //同步发起ping的命令
 func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Duration) error {
-	pong, err := self.WriteAndGet(heartbeat, timeout)
+	pong, err := self.WriteAndGet(*heartbeat, timeout)
 	if nil != err {
 		return err
 	}
@@ -157,32 +154,33 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer self.lock.Unlock()
 	ch, ok := self.holder[opaque]
 	if ok {
-		ch <- obj
 		delete(self.holder, opaque)
+		ch <- obj
 		close(ch)
 	}
 }
 
 //只是写出去
-func (self *RemotingClient) Write(packet *protocol.Packet) chan interface{} {
-	tid, future := self.fillOpaque(packet)
+func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
+
+	// //克隆一份
+	tid, future := self.fillOpaque(&packet)
 	self.lock.Lock()
+	defer self.lock.Unlock()
 	old, ok := self.holder[tid]
 	if ok {
 		delete(self.holder, tid)
 		close(old)
 	}
 	self.holder[tid] = future
-	self.lock.Unlock()
-
-	self.remoteSession.Write(packet.Marshal())
+	self.remoteSession.Write(protocol.MarshalPacket(&packet))
 	return future
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
 //写数据并且得到相应
-func (self *RemotingClient) WriteAndGet(packet *protocol.Packet,
+func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	future := self.Write(packet)

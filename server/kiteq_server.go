@@ -4,6 +4,7 @@ import (
 	"kiteq/binding"
 	"kiteq/handler"
 	"kiteq/pipe"
+	"kiteq/protocol"
 	"kiteq/remoting/client"
 	"kiteq/remoting/server"
 	"kiteq/stat"
@@ -74,8 +75,8 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
-	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	// pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
+	// pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 
@@ -96,7 +97,7 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 func (self *KiteQServer) Start() {
 
 	self.remotingServer = server.NewRemotionServer(self.local, 3*time.Second, self.flowControl,
-		func(rclient *client.RemotingClient, packet []byte) {
+		func(rclient *client.RemotingClient, packet *protocol.Packet) {
 			self.flowControl.DispatcherFlow.Incr(1)
 			event := pipe.NewPacketEvent(rclient, packet)
 			err := self.pipeline.FireWork(event)
@@ -120,7 +121,6 @@ func (self *KiteQServer) Start() {
 	} else {
 		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
 	}
-	self.reconnManager.Start()
 	//开启recover
 	self.recoverManager.Start()
 

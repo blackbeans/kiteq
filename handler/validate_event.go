@@ -52,7 +52,7 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 		packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)
 
 		//直接写出去授权失败
-		remoteClient.WriteAndGet(packet, 100*time.Millisecond)
+		remoteClient.WriteAndGet(*packet, 100*time.Millisecond)
 		//断开连接
 		remoteClient.Shutdown()
 	}
