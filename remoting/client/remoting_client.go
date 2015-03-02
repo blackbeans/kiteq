@@ -61,12 +61,11 @@ func (self *RemotingClient) Start() {
 	self.localAddr = fmt.Sprintf("%s:%d", laddr.IP, laddr.Port)
 	self.remoteAddr = fmt.Sprintf("%s:%d", raddr.IP, raddr.Port)
 
-	for i := 0; i < 10; i++ {
-		//开启写操作
-		go self.remoteSession.WritePacket()
-	}
+	//开启写操作
+	go self.remoteSession.WritePacket()
 
-	for i := 0; i < 5; i++ {
+	//开启多个派发goroutine
+	for i := 0; i < 10; i++ {
 		//开启转发
 		go self.dispatcherPacket(self.remoteSession)
 	}
@@ -104,12 +103,8 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 		!self.remoteSession.Closed() {
 		packet := <-self.remoteSession.ReadChannel
 
-		if nil == packet {
-			continue
-		}
-
 		//处理一下包
-		go self.packetDispatcher(self, packet)
+		go self.packetDispatcher(self, &packet)
 	}
 
 }
@@ -175,7 +170,7 @@ func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
 		close(old)
 	}
 	self.holder[tid] = future
-	self.remoteSession.Write(protocol.MarshalPacket(&packet))
+	self.remoteSession.Write(packet)
 	return future
 }
 
@@ -184,6 +179,8 @@ var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 //写数据并且得到相应
 func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
+
+	//同步写出
 
 	future := self.Write(packet)
 

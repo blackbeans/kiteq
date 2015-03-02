@@ -9,16 +9,25 @@ import (
 
 //请求的packet
 type Packet struct {
-	Opaque  int32
-	CmdType uint8 //类型
-	Data    []byte
+	Opaque        int32
+	CmdType       uint8 //类型
+	Data          []byte
+	blockingWrite bool
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
-		Opaque:  -1,
-		CmdType: cmdtype,
-		Data:    data}
+		Opaque:        -1,
+		CmdType:       cmdtype,
+		Data:          data,
+		blockingWrite: false}
+}
+
+func (self *Packet) BlockingWrite() {
+	self.blockingWrite = true
+}
+func (self *Packet) IsBlockingWrite() bool {
+	return self.blockingWrite
 }
 
 func (self *Packet) Reset() {
@@ -72,8 +81,6 @@ func (self *Packet) unmarshal(r *bytes.Reader) error {
 		err = binary.Read(r, binary.BigEndian, self.Data)
 		rl := uint32(len(self.Data))
 		if nil != err || rl != dataLength {
-			// log.Printf("Packet|Unmarshal|Corrupt Data|%s|%d/%d|%t\n", err, rl,
-			// 	dataLength, packet)
 			return errors.New("Corrupt PacketData")
 		}
 
@@ -96,7 +103,7 @@ func UnmarshalTLV(packet []byte) (*Packet, error) {
 	tlv := &Packet{}
 	err := tlv.unmarshal(r)
 	if nil != err {
-		return nil, err
+		return tlv, err
 	} else {
 		return tlv, nil
 	}

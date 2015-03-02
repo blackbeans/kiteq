@@ -3,6 +3,7 @@ package session
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"kiteq/protocol"
 	"log"
 	"net"
@@ -12,8 +13,10 @@ import (
 type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
-	ReadChannel  chan *protocol.Packet //request的channel
-	WriteChannel chan []byte           //response的channel
+	br           *bufio.Reader
+	bw           *bufio.Writer
+	ReadChannel  chan protocol.Packet //request的channel
+	WriteChannel chan protocol.Packet //response的channel
 	isClose      bool
 }
 
@@ -25,8 +28,10 @@ func NewSession(conn *net.TCPConn) *Session {
 
 	session := &Session{
 		conn:         conn,
-		ReadChannel:  make(chan *protocol.Packet, 1000),
-		WriteChannel: make(chan []byte, 1000),
+		br:           bufio.NewReaderSize(conn, 1024),
+		bw:           bufio.NewWriterSize(conn, 1024),
+		ReadChannel:  make(chan protocol.Packet, 1000),
+		WriteChannel: make(chan protocol.Packet, 1000),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String()}
 
@@ -45,19 +50,21 @@ func (self *Session) ReadPacket() {
 			log.Printf("Session|ReadPacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
 		}
 	}()
-	br := bufio.NewReader(self.conn)
+
 	//缓存本次包的数据
 	packetBuff := make([]byte, 0, 1024)
 	buff := bytes.NewBuffer(packetBuff)
 
 	for !self.isClose {
-		slice, err := br.ReadSlice(protocol.CMD_CRLF[0])
+		slice, err := self.br.ReadSlice(protocol.CMD_CRLF[0])
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
 			buff.Reset()
-			self.Close()
-			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			return
+			if err == io.EOF {
+				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
+				self.Close()
+			}
+			continue
 		}
 
 		lflen, err := buff.Write(slice)
@@ -69,11 +76,14 @@ func (self *Session) ReadPacket() {
 		}
 
 		//读取下一个字节
-		delim, err := br.ReadByte()
+		delim, err := self.br.ReadByte()
 		if nil != err {
-			log.Printf("Session|ReadPacket|%s|\\n|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			self.Close()
-			return
+			if err == io.EOF {
+				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
+				self.Close()
+			}
+			buff.Reset()
+			continue
 		}
 
 		//写入，如果数据太大直接有ErrTooLarge则关闭session退出
@@ -90,13 +100,12 @@ func (self *Session) ReadPacket() {
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 			if nil != err || nil == packet {
 				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, packet)
+				buff.Reset()
 				continue
 			}
 
 			//写入缓冲
-			self.ReadChannel <- packet
-			// }
-
+			self.ReadChannel <- *packet
 			//重置buffer
 			buff.Reset()
 
@@ -105,34 +114,81 @@ func (self *Session) ReadPacket() {
 }
 
 //写出数据
-func (self *Session) Write(packet []byte) {
+func (self *Session) Write(packet protocol.Packet) {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Printf("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
 		}
 	}()
+
 	if !self.isClose {
-		self.WriteChannel <- packet
+		//如果是异步写出的
+		if !packet.IsBlockingWrite() {
+			self.WriteChannel <- packet
+		} else {
+			//如果是同步写出
+			self.write0(&packet)
+			self.flush()
+		}
+	}
+}
+
+//真正写入网络的流
+func (self *Session) write0(tlv *protocol.Packet) {
+
+	packet := protocol.MarshalPacket(tlv)
+	if nil == packet || len(packet) <= 0 {
+		log.Printf("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
+		//如果是同步写出
+		return
+	}
+
+	//2.处理一下包
+	length, err := self.bw.Write(packet)
+	if nil != err {
+		log.Printf("Session|write0|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
+		if err == io.EOF {
+			self.Closed()
+		}
+		self.bw.Reset(self.conn)
+	} else {
+		// log.Printf("Session|write0|SUCC|%t\n", packet)
 	}
 }
 
 //写入响应
 func (self *Session) WritePacket() {
 	ch := self.WriteChannel
-	// writer := bufio.NewWriter(self.conn)
+	bcount := 0
+	var packet protocol.Packet
 	for !self.isClose {
-
+		select {
 		//1.读取数据包
-		packet := <-ch
-		// writer.Write(packet)
-		//2.处理一下包
-		length, err := self.conn.Write(packet)
-		// length, err := writer.Write(packet)
+		case packet = <-ch:
+			//写入网络
+			if nil != &packet {
+				self.write0(&packet)
+				bcount++
+				//100个包统一flush一下
+				bcount = bcount % 1000
+				if bcount == 0 {
+					self.flush()
+				}
+			}
+			//如果超过1ms没有要写的数据强制flush一下
+		case <-time.After(10 * time.Millisecond):
+			self.flush()
+		}
+
+	}
+}
+
+func (self *Session) flush() {
+	if self.bw.Buffered() > 0 {
+		err := self.bw.Flush()
 		if nil != err {
-			log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
-			self.Closed()
-		} else {
-			// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
+			log.Printf("Session|Write|FLUSH|FAIL|%t\n", err.Error())
+			self.bw.Reset(self.conn)
 		}
 	}
 }

@@ -36,7 +36,7 @@ func (self *kiteClient) sendMessage(message *protocol.QMessage) error {
 	if nil != err {
 		return err
 	}
-	return self.innerSendMessage(message.GetMsgType(), data, 200*time.Millisecond)
+	return self.innerSendMessage(message.GetMsgType(), data, 3*time.Second)
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
@@ -57,13 +57,8 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 		return errors.New("ILLEGAL STATUS !")
 	}
 	var resp interface{}
-	//
 	select {
-	case <-time.After(timeout):
-		//删除掉当前holder
-		return TIMEOUT_ERROR
 	case resp = <-fc:
-
 		storeAck, ok := resp.(*protocol.MessageStoreAck)
 		if !ok || !storeAck.GetStatus() {
 			return errors.New(fmt.Sprintf("kiteClient|SendMessage|FAIL|%s\n", resp))
@@ -71,6 +66,9 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 			// log.Printf("kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
 			return nil
 		}
+	case <-time.After(timeout):
+		//删除掉当前holder
+		return TIMEOUT_ERROR
 	}
 
 }
