@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"log"
 )
 
 //请求的packet
@@ -85,7 +84,7 @@ func (self *Packet) unmarshal(r *bytes.Reader) error {
 		}
 
 	} else {
-		log.Printf("Packet|Unmarshal|NO Data|%t\n", self)
+		return errors.New("Unmarshal|NO Data")
 	}
 
 	return nil

@@ -8,6 +8,8 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync"
@@ -51,6 +53,11 @@ func main() {
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
+
+	go func() {
+
+		log.Println(http.ListenAndServe(":28000", nil))
+	}()
 
 	kite := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
 	kite.SetTopics([]string{"trade"})

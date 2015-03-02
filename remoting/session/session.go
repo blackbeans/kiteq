@@ -60,11 +60,17 @@ func (self *Session) ReadPacket() {
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
 			buff.Reset()
+			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			if err == io.EOF {
-				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 				self.Close()
 			}
 			continue
+		}
+
+		if buff.Len()+len(slice) >= protocol.MAX_PACKET_BYTES {
+			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
+			self.Close()
+			return
 		}
 
 		lflen, err := buff.Write(slice)
@@ -78,11 +84,11 @@ func (self *Session) ReadPacket() {
 		//读取下一个字节
 		delim, err := self.br.ReadByte()
 		if nil != err {
+			buff.Reset()
 			if err == io.EOF {
-				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 				self.Close()
 			}
-			buff.Reset()
+			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			continue
 		}
 
@@ -99,7 +105,7 @@ func (self *Session) ReadPacket() {
 
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 			if nil != err || nil == packet {
-				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, packet)
+				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, buff.Len())
 				buff.Reset()
 				continue
 			}
@@ -161,7 +167,9 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
 	var packet protocol.Packet
+	timer := time.NewTimer(10 * time.Millisecond)
 	for !self.isClose {
+		timer.Reset(10 * time.Millisecond)
 		select {
 		//1.读取数据包
 		case packet = <-ch:
@@ -176,7 +184,7 @@ func (self *Session) WritePacket() {
 				}
 			}
 			//如果超过1ms没有要写的数据强制flush一下
-		case <-time.After(10 * time.Millisecond):
+		case <-timer.C:
 			self.flush()
 		}
 
