@@ -65,31 +65,35 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 //填充订阅分组
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
 	binds := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(), func(b *binding.Binding) bool {
-		//过滤掉已经投递成功的分组
 		// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
+		//过滤掉已经投递成功的分组
+		for _, sg := range entity.SuccGroups {
+			if sg == b.GroupId {
+				return true
+			}
+		}
 		return false
 	})
 
-	hashGroups := make(map[string]*string, 10)
-	//按groupid归并
-	for _, bind := range binds {
-		hashGroups[bind.GroupId] = nil
-	}
-
-	//加入投递失败的分组
-	for _, fg := range entity.FailGroups {
-		hashGroups[fg] = nil
-	}
-
-	//去除掉已经投递成功的分组
-	for _, sg := range entity.SuccGroups {
-		delete(hashGroups, sg)
-	}
-
 	//合并本次需要投递的分组
 	groupIds := make([]string, 0, 10)
-	for k, _ := range hashGroups {
-		groupIds = append(groupIds, k)
+	//按groupid归并
+	for _, bind := range binds {
+		groupIds = append(groupIds, bind.GroupId)
+		// hashGroups[bind.GroupId] = nil
+	}
+
+outter:
+	//加入投递失败的分组
+	for _, fg := range entity.FailGroups {
+
+		for _, g := range groupIds {
+			//如果已经存在则不添加进去
+			if g == fg {
+				continue outter
+			}
+		}
+		groupIds = append(groupIds, fg)
 	}
 
 	// //如果没有可用的分组则直接跳过

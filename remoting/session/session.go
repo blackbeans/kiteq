@@ -87,9 +87,6 @@ func (self *Session) ReadPacket() {
 		//如果是\n那么就是一个完整的包
 		if buff.Len() > protocol.PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
-			// packet := make([]byte, buff.Len())
-			// copy(packet, buff.Bytes())
-
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 			if nil != err || nil == packet {
 				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, packet)
@@ -122,12 +119,15 @@ func (self *Session) Write(packet []byte) {
 //写入响应
 func (self *Session) WritePacket() {
 	ch := self.WriteChannel
+	// writer := bufio.NewWriter(self.conn)
 	for !self.isClose {
 
 		//1.读取数据包
 		packet := <-ch
+		// writer.Write(packet)
 		//2.处理一下包
 		length, err := self.conn.Write(packet)
+		// length, err := writer.Write(packet)
 		if nil != err {
 			log.Printf("Session|WritePacket|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 			self.Closed()
@@ -135,7 +135,6 @@ func (self *Session) WritePacket() {
 			// log.Printf("Session|WritePacket|SUCC|%t\n", packet)
 		}
 	}
-
 }
 
 //当前连接是否关闭

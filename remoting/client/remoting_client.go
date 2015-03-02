@@ -19,8 +19,9 @@ const (
 //网络层的client
 type RemotingClient struct {
 	id               int32
-	localAddr        *net.TCPAddr
-	remoteAddr       *net.TCPAddr
+	conn             *net.TCPConn
+	localAddr        string
+	remoteAddr       string
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
@@ -36,25 +37,29 @@ func NewRemotingClient(conn *net.TCPConn,
 	remotingClient := &RemotingClient{
 		id:               0,
 		heartbeat:        0,
-		localAddr:        conn.LocalAddr().(*net.TCPAddr),
-		remoteAddr:       conn.RemoteAddr().(*net.TCPAddr),
+		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
 		holder:           make(map[int32]chan interface{})}
-
 	return remotingClient
 }
 
 func (self *RemotingClient) RemoteAddr() string {
-	return fmt.Sprintf("%s:%d", self.remoteAddr.IP, self.remoteAddr.Port)
+	return self.remoteAddr
 }
 
 func (self *RemotingClient) LocalAddr() string {
-	return fmt.Sprintf("%s:%d", self.localAddr.IP, self.localAddr.Port)
+	return self.localAddr
 }
 
 //启动当前的client
 func (self *RemotingClient) Start() {
+
+	//重新初始化
+	laddr := self.conn.LocalAddr().(*net.TCPAddr)
+	raddr := self.conn.RemoteAddr().(*net.TCPAddr)
+	self.localAddr = fmt.Sprintf("%s:%d", laddr.IP, laddr.Port)
+	self.remoteAddr = fmt.Sprintf("%s:%d", raddr.IP, raddr.Port)
 
 	for i := 0; i < 10; i++ {
 		//开启写操作
@@ -74,21 +79,18 @@ func (self *RemotingClient) Start() {
 
 //重连
 func (self *RemotingClient) reconnect() (bool, error) {
-	conn, err := net.DialTCP("tcp4", nil, self.remoteAddr)
+
+	conn, err := net.DialTCP("tcp4", nil, self.conn.RemoteAddr().(*net.TCPAddr))
 	if nil != err {
 		log.Printf("RemotingClient|RECONNECT|%s|FAIL|%s\n", self.RemoteAddr(), err)
 		return false, err
 	}
 
-	if nil != err {
-		return false, err
-	}
+	//重新设置conn
+	self.conn = conn
+	//创建session
+	self.remoteSession = session.NewSession(self.conn)
 
-	self.remoteSession = session.NewSession(conn)
-	if nil != err {
-		log.Printf("RemotingClient|RECONNECT|FAIL|%s\n", err)
-		return false, err
-	}
 	//再次启动remoteClient
 	self.Start()
 	return true, nil
