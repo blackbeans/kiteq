@@ -15,8 +15,8 @@ type Session struct {
 	remoteAddr   string
 	br           *bufio.Reader
 	bw           *bufio.Writer
-	ReadChannel  chan protocol.Packet //request的channel
-	WriteChannel chan protocol.Packet //response的channel
+	ReadChannel  chan *protocol.Packet //request的channel
+	WriteChannel chan *protocol.Packet //response的channel
 	isClose      bool
 }
 
@@ -30,8 +30,8 @@ func NewSession(conn *net.TCPConn) *Session {
 		conn:         conn,
 		br:           bufio.NewReaderSize(conn, 1024),
 		bw:           bufio.NewWriterSize(conn, 1024),
-		ReadChannel:  make(chan protocol.Packet, 1000),
-		WriteChannel: make(chan protocol.Packet, 1000),
+		ReadChannel:  make(chan *protocol.Packet, 1000),
+		WriteChannel: make(chan *protocol.Packet, 1000),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String()}
 
@@ -104,6 +104,7 @@ func (self *Session) ReadPacket() {
 		if buff.Len() > protocol.PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
 
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
+
 			if nil != err || nil == packet {
 				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, buff.Len())
 				buff.Reset()
@@ -111,7 +112,7 @@ func (self *Session) ReadPacket() {
 			}
 
 			//写入缓冲
-			self.ReadChannel <- *packet
+			self.ReadChannel <- packet
 			//重置buffer
 			buff.Reset()
 
@@ -120,7 +121,7 @@ func (self *Session) ReadPacket() {
 }
 
 //写出数据
-func (self *Session) Write(packet protocol.Packet) {
+func (self *Session) Write(packet *protocol.Packet) {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Printf("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
@@ -133,7 +134,7 @@ func (self *Session) Write(packet protocol.Packet) {
 			self.WriteChannel <- packet
 		} else {
 			//如果是同步写出
-			self.write0(&packet)
+			self.write0(packet)
 			self.flush()
 		}
 	}
@@ -150,7 +151,8 @@ func (self *Session) write0(tlv *protocol.Packet) {
 	}
 
 	//2.处理一下包
-	length, err := self.bw.Write(packet)
+	// length, err := self.bw.Write(packet)
+	length, err := self.conn.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		if err == io.EOF {
@@ -166,7 +168,7 @@ func (self *Session) write0(tlv *protocol.Packet) {
 func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
-	var packet protocol.Packet
+	var packet *protocol.Packet
 	timer := time.NewTimer(10 * time.Millisecond)
 	for !self.isClose {
 		timer.Reset(10 * time.Millisecond)
@@ -174,8 +176,8 @@ func (self *Session) WritePacket() {
 		//1.读取数据包
 		case packet = <-ch:
 			//写入网络
-			if nil != &packet {
-				self.write0(&packet)
+			if nil != packet {
+				self.write0(packet)
 				bcount++
 				//100个包统一flush一下
 				bcount = bcount % 1000

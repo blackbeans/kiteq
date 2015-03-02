@@ -102,9 +102,12 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	for nil != self.remoteSession &&
 		!self.remoteSession.Closed() {
 		packet := <-self.remoteSession.ReadChannel
+		if nil == packet {
+			continue
+		}
 
 		//处理一下包
-		go self.packetDispatcher(self, &packet)
+		go self.packetDispatcher(self, packet)
 	}
 
 }
@@ -170,7 +173,7 @@ func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
 		close(old)
 	}
 	self.holder[tid] = future
-	self.remoteSession.Write(packet)
+	self.remoteSession.Write(&packet)
 	return future
 }
 
