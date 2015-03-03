@@ -4,21 +4,29 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"log"
 )
 
 //请求的packet
 type Packet struct {
-	Opaque  int32
-	CmdType uint8 //类型
-	Data    []byte
+	Opaque        int32
+	CmdType       uint8 //类型
+	Data          []byte
+	blockingWrite bool
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
-		Opaque:  -1,
-		CmdType: cmdtype,
-		Data:    data}
+		Opaque:        -1,
+		CmdType:       cmdtype,
+		Data:          data,
+		blockingWrite: false}
+}
+
+func (self *Packet) BlockingWrite() {
+	self.blockingWrite = true
+}
+func (self *Packet) IsBlockingWrite() bool {
+	return self.blockingWrite
 }
 
 func (self *Packet) Reset() {
@@ -31,7 +39,7 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 	return p
 }
 
-func (self *Packet) Marshal() []byte {
+func (self *Packet) marshal() []byte {
 	//总长度	 1+ 4 字节+ 1字节 + 4字节 + var + \r + \n
 	length := PACKET_HEAD_LEN + len(self.Data) + 2
 	buffer := make([]byte, 0, length)
@@ -48,7 +56,7 @@ func (self *Packet) Marshal() []byte {
 
 var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
-func (self *Packet) Unmarshal(r *bytes.Reader) error {
+func (self *Packet) unmarshal(r *bytes.Reader) error {
 
 	err := binary.Read(r, binary.BigEndian, &self.Opaque)
 	if nil != err {
@@ -72,16 +80,18 @@ func (self *Packet) Unmarshal(r *bytes.Reader) error {
 		err = binary.Read(r, binary.BigEndian, self.Data)
 		rl := uint32(len(self.Data))
 		if nil != err || rl != dataLength {
-			// log.Printf("Packet|Unmarshal|Corrupt Data|%s|%d/%d|%t\n", err, rl,
-			// 	dataLength, packet)
-			return errors.New("Corrupt PacketData")
+			return errors.New("Corrupt PacketData ")
 		}
 
 	} else {
-		log.Printf("Packet|Unmarshal|NO Data|%t\n", self)
+		return errors.New("Unmarshal|NO Data")
 	}
 
 	return nil
+}
+
+func MarshalPacket(packet *Packet) []byte {
+	return packet.marshal()
 }
 
 //解码packet
@@ -90,9 +100,9 @@ func UnmarshalTLV(packet []byte) (*Packet, error) {
 	r := bytes.NewReader(packet)
 
 	tlv := &Packet{}
-	err := tlv.Unmarshal(r)
+	err := tlv.unmarshal(r)
 	if nil != err {
-		return nil, err
+		return tlv, err
 	} else {
 		return tlv, nil
 	}

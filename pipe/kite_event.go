@@ -20,11 +20,11 @@ type IForwardEvent interface {
 
 type PacketEvent struct {
 	IForwardEvent
-	Packet       []byte //本次的数据包
+	Packet       *protocol.Packet //本次的数据包
 	RemoteClient *rclient.RemotingClient
 }
 
-func NewPacketEvent(remoteClient *rclient.RemotingClient, packet []byte) *PacketEvent {
+func NewPacketEvent(remoteClient *rclient.RemotingClient, packet *protocol.Packet) *PacketEvent {
 	return &PacketEvent{Packet: packet, RemoteClient: remoteClient}
 }
 

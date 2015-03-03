@@ -8,10 +8,14 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -51,6 +55,11 @@ func main() {
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
+
+	go func() {
+
+		log.Println(http.ListenAndServe(":28000", nil))
+	}()
 
 	kite := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
 	kite.SetTopics([]string{"trade"})
@@ -100,19 +109,30 @@ func main() {
 						atomic.AddInt32(&count, 1)
 					}
 				}
-				stop = true
+				// stop = true
 			}
 			wg.Done()
 		}()
 	}
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Kill)
-
-	select {
-	//kill掉的server
-	case <-ch:
-		stop = true
+	var s = make(chan os.Signal, 1)
+	signal.Notify(s, syscall.SIGKILL, syscall.SIGUSR1)
+	//是否收到kill的命令
+	for {
+		cmd := <-s
+		if cmd == syscall.SIGKILL {
+			break
+		} else if cmd == syscall.SIGUSR1 {
+			//如果为siguser1则进行dump内存
+			unixtime := time.Now().Unix()
+			path := "./heapdump-producer" + fmt.Sprintf("%d", unixtime)
+			f, err := os.Create(path)
+			if nil != err {
+				continue
+			} else {
+				debug.WriteHeapDump(f.Fd())
+			}
+		}
 	}
 
 	wg.Wait()

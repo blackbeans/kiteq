@@ -5,7 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/stat"
-	"log"
+	// "log"
 )
 
 //远程操作的PacketHandler
@@ -46,15 +46,7 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	self.flowControl.ReadFlow.Incr(1)
 
-	//decode2requestPacket
-	tlv, err := protocol.UnmarshalTLV(pevent.Packet)
-	if nil == tlv || nil != err {
-		log.Printf("PacketHandler|%s|UnmarshalTLV|FAIL|%s|%s\n", self.GetName(), err, pevent.Packet)
-		//如果为空
-		return INVALID_PACKET_ERROR
-	}
-
-	cevent, err := self.handlePacket(pevent, tlv)
+	cevent, err := self.handlePacket(pevent)
 	if nil != err {
 		return err
 	}
@@ -66,9 +58,11 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 var sunkEvent = &SunkEvent{}
 
 //对于请求事件
-func (self *PacketHandler) handlePacket(pevent *PacketEvent, packet *protocol.Packet) (IEvent, error) {
+func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	var err error
 	var event IEvent
+
+	packet := pevent.Packet
 	//根据类型反解packet
 	switch packet.CmdType {
 	//连接的元数据

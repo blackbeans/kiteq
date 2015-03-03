@@ -50,11 +50,10 @@ func TestRecoverManager(t *testing.T) {
 	hostname, _ := os.Hostname()
 	rm := NewRecoverManager(hostname, 1*time.Second, pipeline, kitedb)
 	rm.Start()
-
 	select {
 	case succ := <-ch:
 		log.Printf("--------------recover %s\n", succ)
-	case <-time.After(10 * time.Second):
+	case <-time.After(20 * time.Second):
 		t.Fail()
 		log.Println("waite recover  deliver timeout\n")
 	}

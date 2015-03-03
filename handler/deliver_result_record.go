@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/store"
-	// "log"
+	"log"
 	"sort"
 	"time"
 )
@@ -29,8 +29,9 @@ func (self redeliveryWindows) Swap(i, j int) {
 	self[i], self[j] = self[j], self[i]
 }
 func (self redeliveryWindows) Less(i, j int) bool {
-	return self[i].maxDeliveryCount <= self[j].minDeliveryCount &&
-		self[i].maxDeliveryCount < self[j].maxDeliveryCount
+	return (self[i].maxDeliveryCount <= self[j].minDeliveryCount &&
+		self[i].maxDeliveryCount < self[j].maxDeliveryCount) &&
+		self[i].maxDeliveryCount >= 0
 }
 
 //-------投递结果记录的handler
@@ -49,6 +50,7 @@ func NewResultRecordHandler(name string, kitestore store.IKiteStore, rw []Redeli
 	dhandler.rw = redeliveryWindows(rw)
 	//排好序
 	sort.Sort(dhandler.rw)
+	log.Printf("ResultRecordHandler|SORT RedeliveryWindows|%s\n ", dhandler.rw)
 	return dhandler
 }
 
@@ -110,19 +112,18 @@ func (self *ResultRecordHandler) saveDevlierResult(messageId string, deliverCoun
 }
 
 func (self *ResultRecordHandler) nextDeliveryTime(deliverCount int32) int64 {
-	idx := sort.Search(len(self.rw), func(i int) bool {
-		//只有投递次数在 [minDeliveryCount , maxDeliveryCount)返回当前的配置或者
-		//到达最后一个配置是[minDeliveryCount,-1)
-		if self.rw[i].minDeliveryCount <= deliverCount &&
-			(self.rw[i].maxDeliveryCount > deliverCount ||
-				self.rw[i].maxDeliveryCount <= 0) {
-			return true
+	delayTime := self.rw[0].delaySeconds
+	for _, w := range self.rw {
+		if deliverCount >= w.minDeliveryCount &&
+			w.maxDeliveryCount > deliverCount ||
+			(w.maxDeliveryCount < 0 && deliverCount >= w.minDeliveryCount) {
+			delayTime = w.delaySeconds
 		}
-		return false
-	})
+	}
 
+	// log.Printf("ResultRecordHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
 	//总是返回一个区间的不然是个bug
-	delayTime := self.rw[idx].delaySeconds
+
 	//设置一下下次投递时间为当前时间+延时时间
 	return time.Now().Add(time.Duration(delayTime) * time.Second).Unix()
 }
