@@ -167,9 +167,16 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 
 //将结果attach到当前的等待回调chan
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
+	defer func() {
+		if err := recover(); nil != err {
+			log.Printf("RemotingClient|Attach|FAIL|%s|%s\n", err, obj)
+		}
+	}()
+
 	locker := self.locker(opaque)
 	locker.Lock()
 	defer locker.Unlock()
+
 	ch, ok := holder[opaque]
 	if ok {
 		delete(holder, opaque)
