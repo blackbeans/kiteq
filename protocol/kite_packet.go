@@ -80,7 +80,7 @@ func (self *Packet) unmarshal(r *bytes.Reader) error {
 		err = binary.Read(r, binary.BigEndian, self.Data)
 		rl := uint32(len(self.Data))
 		if nil != err || rl != dataLength {
-			return errors.New("Corrupt PacketData")
+			return errors.New("Corrupt PacketData ")
 		}
 
 	} else {

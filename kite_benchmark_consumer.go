@@ -6,6 +6,9 @@ import (
 	"kiteq/binding"
 	"kiteq/client"
 	"kiteq/protocol"
+	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"sync/atomic"
@@ -44,6 +47,11 @@ func main() {
 
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
+
+	go func() {
+
+		log.Println(http.ListenAndServe(":38000", nil))
+	}()
 
 	lis := &defualtListener{}
 	go lis.monitor()
