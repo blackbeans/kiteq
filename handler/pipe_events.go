@@ -5,18 +5,8 @@ import (
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
 	"kiteq/store"
-	"sync"
 	"time"
 )
-
-var timerPool *sync.Pool
-
-func init() {
-	timerPool = &sync.Pool{}
-	timerPool.New = func() interface{} {
-		return time.NewTimer(3 * time.Second)
-	}
-}
 
 type iauth interface {
 	IForwardEvent
@@ -142,14 +132,10 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 func (self *deliverResultEvent) wait(timeout time.Duration) {
 
 	if timeout > 0 {
-		//从池子里获取
-		timer := timerPool.Get().(*time.Timer)
-		defer timerPool.Put(timer)
 		//统计回调结果
 		for g, f := range self.futures {
-			timer.Reset(timeout)
 			select {
-			case <-timer.C:
+			case <-time.After(timeout):
 				//等待结果超时
 				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
 			case resp := <-f:

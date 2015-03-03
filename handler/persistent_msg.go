@@ -62,7 +62,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 			ctx.SendForward(remoteEvent)
 		}()
 	} else {
-		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity)
+		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity.Header)
 	}
 
 	//发送存储结果ack

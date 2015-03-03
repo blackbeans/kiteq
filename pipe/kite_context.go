@@ -98,7 +98,7 @@ func (self *DefaultPipeline) eventSunk(event IEvent) {
 
 //pipeline处理中间出现错误
 func (self *DefaultPipeline) errorCaught(event IEvent, err error) error {
-	log.Printf("DefaultPipeline|errorCaught|event:%t|err:%s\n", event, err)
+	log.Printf("DefaultPipeline|errorCaught|err:%s\n", err)
 	return err
 }
 

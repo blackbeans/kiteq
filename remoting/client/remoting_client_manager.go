@@ -103,12 +103,12 @@ func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
 	if ok {
 		//如果重连则提交重连任务
 		if self.reconnectManager.allowReconnect {
-			self.reconnectManager.submit(newReconnectTasK(c, ga, func(addr string) {
+			self.reconnectManager.submit(c, ga, func(addr string) {
 				//重连任务失败完成后的hook,直接移除该机器
 				self.lock.Lock()
 				defer self.lock.Unlock()
 				self.reconnectFailHook(addr)
-			}))
+			})
 		} else {
 			//不需要重连的直接删除掉连接
 			self.reconnectFailHook(c.RemoteAddr())

@@ -14,25 +14,34 @@ import (
 
 const (
 	MAX_WATER_MARK int = 100000
+	CONCURRENT         = 16
 )
+
+//全局唯一的Hodler
+var holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
 
 //网络层的client
 type RemotingClient struct {
-	id               int32
+	id               uint32
 	conn             *net.TCPConn
 	localAddr        string
 	remoteAddr       string
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
-	lock             sync.Mutex
-	holder           map[int32]chan interface{}
+	locks            []*sync.Mutex
 }
 
 func NewRemotingClient(conn *net.TCPConn,
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingClient {
 
 	remoteSession := session.NewSession(conn)
+
+	//创建8把锁
+	locks := make([]*sync.Mutex, 0, CONCURRENT)
+	for i := 0; i < CONCURRENT; i++ {
+		locks = append(locks, &sync.Mutex{})
+	}
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
 		id:               0,
@@ -40,7 +49,8 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		holder:           make(map[int32]chan interface{})}
+		locks:            locks}
+
 	return remotingClient
 }
 
@@ -74,6 +84,10 @@ func (self *RemotingClient) Start() {
 	go self.remoteSession.ReadPacket()
 
 	log.Printf("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
+}
+
+func (self *RemotingClient) locker(id int32) sync.Locker {
+	return self.locks[id%CONCURRENT]
 }
 
 //重连
@@ -112,6 +126,8 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 }
 
+var ERROR_PONG = errors.New("ERROR PONG TYPE !")
+
 //同步发起ping的命令
 func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Duration) error {
 	pong, err := self.WriteAndGet(*heartbeat, timeout)
@@ -120,8 +136,8 @@ func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Durati
 	}
 	version, ok := pong.(int64)
 	if !ok {
-
-		return errors.New(fmt.Sprintf("ERROR PONG TYPE !|%t", pong))
+		log.Printf("RemotingClient|Ping|Pong|ERROR TYPE |%s\n", pong)
+		return ERROR_PONG
 	}
 	self.updateHeartBeat(version)
 	return nil
@@ -141,20 +157,22 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	tid := packet.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
-		id := atomic.AddInt32(&self.id, 1) % int32(MAX_WATER_MARK)
+		id := int32((atomic.AddUint32(&self.id, 1) % uint32(MAX_WATER_MARK)))
 		packet.Opaque = id
 		tid = id
 	}
+
 	return tid, make(chan interface{}, 1)
 }
 
 //将结果attach到当前的等待回调chan
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	ch, ok := self.holder[opaque]
+	locker := self.locker(opaque)
+	locker.Lock()
+	defer locker.Unlock()
+	ch, ok := holder[opaque]
 	if ok {
-		delete(self.holder, opaque)
+		delete(holder, opaque)
 		ch <- obj
 		close(ch)
 	}
@@ -163,16 +181,12 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 //只是写出去
 func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
 
-	// //克隆一份
 	tid, future := self.fillOpaque(&packet)
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	old, ok := self.holder[tid]
-	if ok {
-		delete(self.holder, tid)
-		close(old)
-	}
-	self.holder[tid] = future
+	locker := self.locker(tid)
+	locker.Lock()
+	defer locker.Unlock()
+
+	holder[tid] = future
 	self.remoteSession.Write(&packet)
 	return future
 }
@@ -184,9 +198,7 @@ func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	//同步写出
-
 	future := self.Write(packet)
-
 	var resp interface{}
 	//
 	select {

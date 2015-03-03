@@ -21,7 +21,6 @@ func NewRemotingHandler(name string, clientManager *client.ClientManager, flowCo
 	remtingHandler.clientManager = clientManager
 	remtingHandler.flowControl = flowControl
 	return remtingHandler
-
 }
 
 func (self *RemotingHandler) TypeAssert(event IEvent) bool {
@@ -66,10 +65,11 @@ func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 	return nil
 }
 
+var FAILGROUP_FUTURE = make(chan interface{}, 1)
+
 func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan interface{} {
 
 	//特别的失败分组，为了减少chan的创建数
-	failGroup := make(chan interface{}, 1)
 	futures := make(map[string]chan interface{}, 10)
 	packet := *event.Packet
 	if len(event.TargetHost) > 0 {
@@ -83,7 +83,8 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 
 			} else {
 				//记为失败的下次需要重新发送
-				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s|%s\n", self.GetName(), host, event.Packet)
+				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
+				futures[host] = FAILGROUP_FUTURE
 			}
 		}
 	}
@@ -109,19 +110,11 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 		}
 	}
 
-	//统计哪些不在线的host
-	for _, h := range event.TargetHost {
-		_, ok := futures[h]
-		if !ok {
-			futures[h] = failGroup
-		}
-	}
-
 	//统计哪些不在线的分组
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = failGroup
+			futures[g] = FAILGROUP_FUTURE
 		}
 	}
 

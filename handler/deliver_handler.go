@@ -38,7 +38,7 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	//没有投递分组直接投递结果
 	if len(pevent.deliverGroups) <= 0 {
 		//直接显示投递成功
-		resultEvent := newDeliverResultEvent(pevent, make(map[string]chan interface{}, 0))
+		resultEvent := newDeliverResultEvent(pevent, nil)
 		ctx.SendForward(resultEvent)
 		return nil
 	}

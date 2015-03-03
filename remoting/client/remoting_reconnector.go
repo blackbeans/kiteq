@@ -59,18 +59,18 @@ func NewReconnectManager(allowReconnect bool,
 }
 
 //提交重连任务
-func (self *ReconnectManager) submit(task *reconnectTask) {
+func (self *ReconnectManager) submit(c *RemotingClient, ga *GroupAuth, finishHook func(addr string)) {
 	if !self.allowReconnect {
 		return
 	}
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	//如果已经有该重连任务在执行则忽略
-	_, ok := self.timers[task.remoteClient.RemoteAddr()]
+	_, ok := self.timers[c.RemoteAddr()]
 	if ok {
 		return
 	}
-	self.startReconTask(task)
+	self.startReconTask(newReconnectTasK(c, ga, finishHook))
 }
 
 func (self *ReconnectManager) startReconTask(task *reconnectTask) {

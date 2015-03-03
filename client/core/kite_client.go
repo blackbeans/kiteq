@@ -6,18 +6,8 @@ import (
 	"kiteq/pipe"
 	"kiteq/protocol"
 	// "log"
-	"sync"
 	"time"
 )
-
-var timerPool *sync.Pool
-
-func init() {
-	timerPool = &sync.Pool{}
-	timerPool.New = func() interface{} {
-		return time.NewTimer(3 * time.Second)
-	}
-}
 
 type kiteClient struct {
 	hostport string
@@ -67,11 +57,6 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 		return errors.New("ILLEGAL STATUS !")
 	}
 
-	//从池子里获取
-	timer := timerPool.Get().(*time.Timer)
-	timer.Reset(timeout)
-	defer timerPool.Put(timer)
-
 	var resp interface{}
 	select {
 	case resp = <-fc:
@@ -82,7 +67,7 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 			// log.Printf("kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
 			return nil
 		}
-	case <-timer.C:
+	case <-time.After(timeout):
 		//删除掉当前holder
 		return TIMEOUT_ERROR
 	}

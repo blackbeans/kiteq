@@ -36,7 +36,7 @@ func (self redeliveryWindows) Less(i, j int) bool {
 
 //-------投递结果记录的handler
 type ResultRecordHandler struct {
-	BaseBackwardHandler
+	BaseForwardHandler
 	kitestore store.IKiteStore
 	rw        redeliveryWindows //多个恢复的windows
 }
@@ -44,7 +44,7 @@ type ResultRecordHandler struct {
 //------创建投递结果处理器
 func NewResultRecordHandler(name string, kitestore store.IKiteStore, rw []RedeliveryWindow) *ResultRecordHandler {
 	dhandler := &ResultRecordHandler{}
-	dhandler.BaseBackwardHandler = NewBaseBackwardHandler(name, dhandler)
+	dhandler.BaseForwardHandler = NewBaseForwardHandler(name, dhandler)
 	dhandler.kitestore = kitestore
 
 	dhandler.rw = redeliveryWindows(rw)

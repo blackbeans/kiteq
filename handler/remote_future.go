@@ -7,13 +7,13 @@ import (
 
 //网络调用的futurehandler
 type RemoteFutureHandler struct {
-	BaseBackwardHandler
+	BaseForwardHandler
 }
 
 //------创建deliverpre
 func NewRemotingFutureHandler(name string) *RemoteFutureHandler {
 	phandler := &RemoteFutureHandler{}
-	phandler.BaseBackwardHandler = NewBaseBackwardHandler(name, phandler)
+	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	return phandler
 }
 
@@ -41,6 +41,6 @@ func (self *RemoteFutureHandler) Process(ctx *DefaultPipelineContext, event IEve
 	devent := pevent.RemotingEvent.Event.(*deliverEvent)
 	// //创建一个投递结果
 	resultEvent := newDeliverResultEvent(devent, futures)
-	ctx.SendBackward(resultEvent)
+	ctx.SendForward(resultEvent)
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 
 //-------投递结果的handler
 type DeliverResultHandler struct {
-	BaseBackwardHandler
+	BaseForwardHandler
 	store          store.IKiteStore
 	deliverTimeout time.Duration
 }
@@ -17,7 +17,7 @@ type DeliverResultHandler struct {
 //------创建投递结果处理器
 func NewDeliverResultHandler(name string, store store.IKiteStore, deliverTimeout time.Duration) *DeliverResultHandler {
 	dhandler := &DeliverResultHandler{}
-	dhandler.BaseBackwardHandler = NewBaseBackwardHandler(name, dhandler)
+	dhandler.BaseForwardHandler = NewBaseForwardHandler(name, dhandler)
 	dhandler.store = store
 	dhandler.deliverTimeout = deliverTimeout
 	return dhandler
@@ -50,6 +50,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
 	}
 	// //向后继续记录投递结果
-	ctx.SendBackward(fevent)
+	ctx.SendForward(fevent)
 	return nil
 }

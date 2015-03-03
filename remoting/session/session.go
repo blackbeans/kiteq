@@ -76,7 +76,6 @@ func (self *Session) ReadPacket() {
 		lflen, err := buff.Write(slice)
 		//如果写满了则需要增长
 		if lflen != len(slice) {
-			log.Printf("Session|ReadPacket|%d\n", buff.Len())
 			buff.Write(slice[lflen:])
 		}
 
@@ -105,7 +104,7 @@ func (self *Session) ReadPacket() {
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 
 			if nil != err || nil == packet {
-				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%s\n", err, buff.Len())
+				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d\n", err, buff.Len())
 				buff.Reset()
 				continue
 			}
@@ -156,8 +155,14 @@ func (self *Session) write0(tlv *protocol.Packet) {
 		log.Printf("Session|write0|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		if err == io.EOF {
 			self.Closed()
+			return
 		}
+
 		self.bw.Reset(self.conn)
+		if err == io.ErrShortWrite {
+			self.bw.Write(packet[length:])
+		}
+
 	} else {
 		// log.Printf("Session|write0|SUCC|%t\n", packet)
 	}
@@ -168,9 +173,10 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
 	var packet *protocol.Packet
-	timer := time.NewTimer(10 * time.Millisecond)
+	timeout := 10 * time.Millisecond
+	timer := time.NewTimer(timeout)
 	for !self.isClose {
-		timer.Reset(10 * time.Millisecond)
+		timer.Reset(timeout)
 		select {
 		//1.读取数据包
 		case packet = <-ch:
@@ -188,8 +194,8 @@ func (self *Session) WritePacket() {
 		case <-timer.C:
 			self.flush()
 		}
-
 	}
+	timer.Stop()
 }
 
 func (self *Session) flush() {
