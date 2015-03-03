@@ -12,8 +12,10 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -113,13 +115,24 @@ func main() {
 		}()
 	}
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Kill)
-
-	select {
-	//kill掉的server
-	case <-ch:
-		stop = true
+	var s = make(chan os.Signal, 1)
+	signal.Notify(s, syscall.SIGKILL, syscall.SIGUSR1)
+	//是否收到kill的命令
+	for {
+		cmd := <-s
+		if cmd == syscall.SIGKILL {
+			break
+		} else if cmd == syscall.SIGUSR1 {
+			//如果为siguser1则进行dump内存
+			unixtime := time.Now().Unix()
+			path := "./heapdump-producer" + fmt.Sprintf("%d", unixtime)
+			f, err := os.Create(path)
+			if nil != err {
+				continue
+			} else {
+				debug.WriteHeapDump(f.Fd())
+			}
+		}
 	}
 
 	wg.Wait()
