@@ -4,11 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/sutoo/gorp"
-	_ "kiteq/protocol"
+	"kiteq/protocol"
 	"log"
 )
 
@@ -40,6 +39,7 @@ type KiteMysqlStore struct {
 }
 
 func NewKiteMysql(addr string) *KiteMysqlStore {
+	log.Println("[kite_mysql]NewKiteMysql", addr)
 	db, err := sql.Open("mysql", addr)
 	db.SetMaxIdleConns(100)
 	db.SetMaxOpenConns(1024)
@@ -72,7 +72,21 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 type CustomTypeConverter struct {
 }
 
-func (me CustomTypeConverter) ToDb(val interface{}) (interface{}, error) {
+func (me CustomTypeConverter) ToDb(val interface{}, fieldName string) (interface{}, error) {
+	//first bind by field name
+	if fieldName == "Body" {
+		s, stringOk := val.(string)
+		if stringOk {
+			return []byte(s), nil
+		} else {
+			b, byteOk := val.([]byte)
+			if byteOk {
+				return b, nil
+			} else {
+				return nil, errors.New("ToDb: unsuppoted type")
+			}
+		}
+	}
 	switch t := val.(type) {
 	case []string:
 		b, err := json.Marshal(t)
@@ -80,11 +94,43 @@ func (me CustomTypeConverter) ToDb(val interface{}) (interface{}, error) {
 			return "", err
 		}
 		return string(b), nil
+	case *protocol.Header:
+		data, err := proto.Marshal(t)
+		if err != nil {
+			return "", err
+		}
+		return data, nil
 	}
 	return val, nil
 }
 
-func (me CustomTypeConverter) FromDb(target interface{}) (gorp.CustomScanner, bool) {
+func (me CustomTypeConverter) FromDb(target interface{}, fieldName string) (gorp.CustomScanner, bool) {
+	if fieldName == "Body" {
+		binder := func(holder, target interface{}) error {
+			s, stringOk := holder.(*string)
+			if stringOk {
+				t, ok := target.(*interface{})
+				if ok {
+					*t = (*s)
+				}
+			} else {
+				b, byteOk := holder.(*[]byte)
+				if byteOk {
+					t, ok := target.(*interface{})
+					if ok {
+						*t = b
+					}
+				} else {
+					log.Printf("FromDb: unsported type %T\n", holder)
+					return errors.New("FromDb: unsported type.")
+				}
+			}
+			return nil
+		}
+		return gorp.CustomScanner{new(string), target, binder}, true
+
+	}
+
 	switch target.(type) {
 	case *[]string:
 		binder := func(holder, target interface{}) error {
@@ -94,6 +140,24 @@ func (me CustomTypeConverter) FromDb(target interface{}) (gorp.CustomScanner, bo
 			}
 			b := []byte(*s)
 			return json.Unmarshal(b, target)
+		}
+		return gorp.CustomScanner{new(string), target, binder}, true
+	case **protocol.Header:
+		binder := func(holder, target interface{}) error {
+
+			s, ok := holder.(*string)
+			if !ok {
+				return errors.New("FromDb: Unable to convert to string")
+			}
+			b := []byte(*s)
+			tmp := &protocol.Header{}
+			if err := proto.Unmarshal(b, tmp); err != nil {
+				return err
+			}
+			targetP, ok := target.(**protocol.Header)
+			*targetP = tmp
+
+			return nil
 		}
 		return gorp.CustomScanner{new(string), target, binder}, true
 	}
@@ -109,7 +173,8 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	if obj == nil {
 		return nil
 	}
-	return obj.(*MessageEntity)
+	entity := obj.(*MessageEntity)
+	return entity
 
 	// 是否需要额外设置头部的状态i?????
 	// //设置一下头部的状态
@@ -118,6 +183,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
+	log.Println("kite_mysql|Save|", entity.MessageId)
 	err := self.dbmap.Insert(entity)
 	if err != nil {
 		log.Println(err)
@@ -167,7 +233,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 
 	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit, MessageEntity{}, cond)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return false, nil
 	}
 	results := make([]*MessageEntity, len(rawResults))
