@@ -76,8 +76,6 @@ func (self *Session) ReadPacket() {
 		lflen, err := buff.Write(slice)
 		//如果写满了则需要增长
 		if lflen != len(slice) {
-			//增长+1
-			buff.Grow(len(slice) - lflen + 1)
 			buff.Write(slice[lflen:])
 		}
 
