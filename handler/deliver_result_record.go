@@ -88,7 +88,7 @@ func (self *ResultRecordHandler) Process(ctx *DefaultPipelineContext, event IEve
 		fevent.deliverGroups = fevent.deliveryFailGroups
 		fevent.packet.Reset()
 		//再次发起重投策略
-		ctx.SendBackward(fevent.deliverEvent)
+		// ctx.SendBackward(fevent.deliverEvent)
 	} else {
 		//只能等待后续的recover重投了
 	}

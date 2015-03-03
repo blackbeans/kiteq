@@ -45,12 +45,12 @@ func (self *Packet) marshal() []byte {
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 
-	binary.Write(buff, binary.BigEndian, self.Opaque) // 请求id
-	//彻底包装request为TLV
-	binary.Write(buff, binary.BigEndian, self.CmdType)           //数据类型
-	binary.Write(buff, binary.BigEndian, uint32(len(self.Data))) //总数据包长度
-	binary.Write(buff, binary.BigEndian, self.Data)              // 数据包
-	binary.Write(buff, binary.BigEndian, CMD_CRLF)
+	Write(buff, binary.BigEndian, self.Opaque) // 请求id
+	// //彻底包装request为TLV
+	Write(buff, binary.BigEndian, self.CmdType)           //数据类型
+	Write(buff, binary.BigEndian, uint32(len(self.Data))) //总数据包长度
+	Write(buff, binary.BigEndian, self.Data)              // 数据包
+	Write(buff, binary.BigEndian, CMD_CRLF)
 	return buff.Bytes()
 }
 
@@ -58,31 +58,30 @@ var ERROR_PACKET_TYPE = errors.New("unmatches packet type ")
 
 func (self *Packet) unmarshal(r *bytes.Reader) error {
 
-	err := binary.Read(r, binary.BigEndian, &self.Opaque)
+	err := Read(r, binary.BigEndian, &self.Opaque)
 	if nil != err {
 		return err
 	}
 
-	err = binary.Read(r, binary.BigEndian, &self.CmdType)
+	err = Read(r, binary.BigEndian, &self.CmdType)
 	if nil != err {
 		return err
 	}
 
 	var dataLength uint32 //数据长度
-	err = binary.Read(r, binary.BigEndian, &dataLength)
+	err = Read(r, binary.BigEndian, &dataLength)
 	if nil != err {
 		return err
 	}
 
 	if dataLength > 0 {
-		//读取数据包
-		self.Data = make([]byte, dataLength, dataLength)
-		err = binary.Read(r, binary.BigEndian, self.Data)
-		rl := uint32(len(self.Data))
-		if nil != err || rl != dataLength {
+		if int(dataLength) == r.Len() {
+			//读取数据包
+			self.Data = make([]byte, dataLength, dataLength)
+			return Read(r, binary.BigEndian, self.Data)
+		} else {
 			return errors.New("Corrupt PacketData ")
 		}
-
 	} else {
 		return errors.New("Unmarshal|NO Data")
 	}
