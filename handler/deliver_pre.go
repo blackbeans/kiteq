@@ -44,6 +44,9 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//查询消息
 	entity := self.kitestore.Query(pevent.messageId)
+	if nil == entity {
+		return nil
+	}
 	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
 
 	//创建不同的packet

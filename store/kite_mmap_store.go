@@ -2,6 +2,7 @@ package store
 
 import (
 	"container/list"
+	"log"
 	"sync"
 )
 
@@ -35,13 +36,21 @@ func (self *KiteMMapStore) Query(messageId string) *MessageEntity {
 func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
+
+	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := self.datalink.Len()
 	if cl >= self.maxcap {
-		delete(self.idx, entity.Header.GetMessageId())
-		self.datalink.Remove(self.datalink.Back())
+		log.Printf("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		back := self.datalink.Back()
+		delete(self.idx, back.Value.(*MessageEntity).MessageId)
+		back.Value = entity
+		self.datalink.MoveToFront(back)
+
+	} else {
+		front := self.datalink.PushFront(entity)
+		self.idx[entity.MessageId] = front
 	}
-	e := self.datalink.PushFront(entity)
-	self.idx[entity.Header.GetMessageId()] = e
+
 	return true
 }
 func (self *KiteMMapStore) Commit(messageId string) bool {
@@ -62,6 +71,7 @@ func (self *KiteMMapStore) Rollback(messageId string) bool {
 	if !ok {
 		return true
 	}
+	delete(self.idx, messageId)
 	self.datalink.Remove(e)
 	return true
 }

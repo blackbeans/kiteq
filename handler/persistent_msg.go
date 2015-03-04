@@ -44,24 +44,17 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
-	if succ && pevent.entity.Header.GetCommit() {
-		//启动异步协程处理分发逻辑
-		go func() {
-			deliver := NewDeliverEvent(
-				pevent.entity.Header.GetMessageId(),
-				pevent.entity.Header.GetTopic(),
-				pevent.entity.Header.GetMessageType())
-			ctx.SendForward(deliver)
 
-		}()
-	} else if succ {
-		//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
-		go func() {
-			remoteEvent := NewRemotingEvent(self.tXAck(
-				pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
-			ctx.SendForward(remoteEvent)
-		}()
-	} else {
+	//根据消息状态处理
+	if succ && pevent.entity.Header.GetCommit() {
+		//启动投递一次
+		deliver := NewDeliverEvent(
+			pevent.entity.Header.GetMessageId(),
+			pevent.entity.Header.GetTopic(),
+			pevent.entity.Header.GetMessageType())
+		ctx.SendForward(deliver)
+
+	} else if !succ {
 		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity.Header)
 	}
 
@@ -69,6 +62,14 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
 		pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
+
+	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+	if succ && !pevent.entity.Header.GetCommit() {
+
+		remoteEvent := NewRemotingEvent(self.tXAck(
+			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
+		ctx.SendForward(remoteEvent)
+	}
 	return nil
 }
 
