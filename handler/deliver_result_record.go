@@ -79,11 +79,26 @@ func (self *ResultRecordHandler) Process(ctx *DefaultPipelineContext, event IEve
 	//存储投递结果
 	self.saveDevlierResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
 
+	//都投递成功
+	if len(fevent.deliveryFailGroups) <= 0 {
+		//删除该消息
+		self.kitestore.Delete(fevent.messageId)
+		// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
+	} else {
+		//重投策略
+		self.checkRedelivery(fevent)
+	}
+
+	return nil
+
+}
+
+func (self *ResultRecordHandler) checkRedelivery(fevent *deliverResultEvent) {
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 	if fevent.expiredTime >= time.Now().Unix() || fevent.deliverLimit >= fevent.deliverCount {
 		//只是记录一下本次发送记录不发起重投策略
 
-	} else if fevent.deliverCount <= 3 {
+	} else if fevent.deliverCount < 3 {
 		//只有在消息前三次投递才会失败立即重投
 		fevent.deliverGroups = fevent.deliveryFailGroups
 		fevent.packet.Reset()
@@ -92,8 +107,6 @@ func (self *ResultRecordHandler) Process(ctx *DefaultPipelineContext, event IEve
 	} else {
 		//只能等待后续的recover重投了
 	}
-	return nil
-
 }
 
 //存储投递结果
