@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/protobuf/proto"
 	"github.com/sutoo/gorp"
@@ -73,6 +74,9 @@ type CustomTypeConverter struct {
 }
 
 func (me CustomTypeConverter) ToDb(val interface{}, fieldName string) (interface{}, error) {
+	if val == nil {
+		return nil, nil
+	}
 	//first bind by field name
 	if fieldName == "Body" {
 		s, stringOk := val.(string)
@@ -97,6 +101,7 @@ func (me CustomTypeConverter) ToDb(val interface{}, fieldName string) (interface
 	case *protocol.Header:
 		data, err := proto.Marshal(t)
 		if err != nil {
+			fmt.Printf("ToDB proto.Marshal failed.%T, %v \n", val, val)
 			return "", err
 		}
 		return data, nil
@@ -183,7 +188,6 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
-	log.Println("kite_mysql|Save|", entity.MessageId)
 	err := self.dbmap.Insert(entity)
 	if err != nil {
 		log.Println(err)
@@ -193,8 +197,20 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
-	entity := &MessageEntity{MessageId: messageId, Commit: true}
-	_, err := self.dbmap.Update(entity)
+	values := make(map[string]interface{})
+	values["Commit"] = true
+	cond := make([]gorp.Cond, 1)
+	cond[0] = gorp.Cond{
+		Field:    "MessageId",
+		Value:    messageId,
+		Operator: "=",
+	}
+	updateCond := gorp.UpdateCond{
+		Values: values,
+		Cond:   cond,
+		Ptr:    &MessageEntity{},
+	}
+	_, err := self.dbmap.UpdateByColumn(messageId, messageId, updateCond)
 	if err != nil {
 		log.Println(err)
 		return false
@@ -228,8 +244,8 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 	cond := make([]*gorp.Cond, 2)
-	cond[0] = &gorp.Cond{Field: "kite_server", Operator: "=", Value: kiteServer}
-	cond[1] = &gorp.Cond{Field: "next_deliver_time", Operator: "<", Value: nextDeliveryTime}
+	cond[0] = &gorp.Cond{Field: "KiteServer", Operator: "=", Value: kiteServer}
+	cond[1] = &gorp.Cond{Field: "NextDeliverTime", Operator: "<", Value: nextDeliveryTime}
 
 	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit, MessageEntity{}, cond)
 	if err != nil {
