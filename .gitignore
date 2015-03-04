@@ -22,3 +22,8 @@ _testmain.go
 *.exe
 *.test
 *.prof
+
+kite_benchmark_consumer
+kite_benchmark_producer
+kiteq
+

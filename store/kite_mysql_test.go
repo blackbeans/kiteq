@@ -39,21 +39,12 @@ func TestSave(t *testing.T) {
 	//}
 	ret := kiteMysql.Query("26c03f00665862591f696a980b5a6c40")
 	fmt.Println("Query")
-	fmt.Printf("Query dump %T %v\n", ret.Header, ret.Header)
-	fmt.Printf("Query dump %T %v\n", ret.Body, ret.Body)
+	fmt.Printf("Query dump %v\n", ret)
 
-	kiteServer := "sutao"
-	var nextDeliveryTime int64 = 123
-	var startIdx int32 = 0
-	var limit int32 = 10
-	hashKey := "0"
-	fmt.Println("PageQueryEntity")
-	isSucess, resultSet := kiteMysql.PageQueryEntity(hashKey, kiteServer, nextDeliveryTime, startIdx, limit)
-	if isSucess {
-		fmt.Println("result set", resultSet)
-	} else {
-		fmt.Println("result false")
-	}
+	fmt.Println("Commint BEGIN")
+	kiteMysql.Commit("26c03f00665862591f696a980b5a6c40")
+	fmt.Println("Commint END")
+
 }
 
 //func Benchmark_Save(b *testing.B) {
