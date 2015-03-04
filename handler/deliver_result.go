@@ -101,10 +101,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 }
 
 func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bool {
-	log.Printf("DeliverResultHandler|checkRedelivery|%s|%s|%s|%s|%s|%d|%d|%s\n", fevent.messageId, fevent.deliverCount,
-		fevent.succGroups, fevent.deliveryFailGroups, fevent.expiredTime, time.Now().Unix(), fevent.deliverLimit, fevent.deliverCount,
-		fevent.expiredTime <= time.Now().Unix() || (fevent.deliverLimit <= fevent.deliverCount &&
-			fevent.deliverLimit > 0))
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 	if fevent.expiredTime <= time.Now().Unix() || (fevent.deliverLimit <= fevent.deliverCount &&
 		fevent.deliverLimit > 0) {
