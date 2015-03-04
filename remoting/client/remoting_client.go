@@ -19,10 +19,15 @@ const (
 
 //全局唯一的Hodler
 var holder map[int32]chan interface{}
+var locks []*sync.Mutex
 
 func init() {
 	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
-
+	//创建8把锁
+	locks = make([]*sync.Mutex, 0, CONCURRENT)
+	for i := 0; i < CONCURRENT; i++ {
+		locks = append(locks, &sync.Mutex{})
+	}
 }
 
 //网络层的client
@@ -34,7 +39,7 @@ type RemotingClient struct {
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
-	locks            []*sync.Mutex
+
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -42,19 +47,13 @@ func NewRemotingClient(conn *net.TCPConn,
 
 	remoteSession := session.NewSession(conn)
 
-	//创建8把锁
-	locks := make([]*sync.Mutex, 0, CONCURRENT)
-	for i := 0; i < CONCURRENT; i++ {
-		locks = append(locks, &sync.Mutex{})
-	}
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
 		id:               0,
 		heartbeat:        0,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
-		remoteSession:    remoteSession,
-		locks:            locks}
+		remoteSession:    remoteSession}
 
 	return remotingClient
 }
@@ -92,7 +91,7 @@ func (self *RemotingClient) Start() {
 }
 
 func (self *RemotingClient) locker(id int32) sync.Locker {
-	return self.locks[id%CONCURRENT]
+	return locks[id%CONCURRENT]
 }
 
 //重连
