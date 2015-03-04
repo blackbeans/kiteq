@@ -11,6 +11,8 @@ import (
 	"kiteq/store"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,15 +33,47 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 	return false, nil
 }
 
-func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQServer {
+func NewKiteQServer(local, zkhost string, topics []string, db string) *KiteQServer {
 	var kitedb store.IKiteStore
-	if mysql == "mock" {
+	if strings.HasPrefix(db, "mock://") {
 		kitedb = &store.MockKiteStore{}
-	} else if len(mysql) > 0 {
+	} else if strings.HasPrefix(db, "mmap://") {
+		url := strings.TrimLeft(db, "mmap://")
+		split := strings.Split(url, "&")
+		params := make(map[string]string, len(split))
+		for _, v := range split {
+			p := strings.SplitN(v, "=", 2)
+			params[p[0]] = p[1]
+		}
+
+		file := params["file"]
+		if len(file) <= 0 {
+			log.Fatalf("NewKiteQServer|INVALID|FILE PATH|%s\n", db)
+		}
+		initval := 10 * 10000
+		initcap, ok := params["initcap"]
+		if ok {
+			v, e := strconv.ParseInt(initcap, 10, 32)
+			if nil != e {
+				log.Fatalf("NewKiteQServer|INVALID|INIT CAP|%s\n", db)
+			}
+			initval = int(v)
+		}
+		max := 50 * 10000
+		maxcap, ok := params["maxcap"]
+		if ok {
+			v, e := strconv.ParseInt(maxcap, 10, 32)
+			if nil != e {
+				log.Fatalf("NewKiteQServer|INVALID|MAX CAP|%s\n", db)
+			}
+			max = int(v)
+		}
+		kitedb = store.NewKiteMMapStore(file, initval, max)
+	} else if strings.HasPrefix(db, "mysql://") {
+		mysql := strings.TrimLeft(db, "mysql://")
 		kitedb = store.NewKiteMysql(mysql)
 	} else {
-		log.Fatalf("KiteQServer|NewKiteQServer|INVALID MYSQL|%s\n", mysql)
-		return nil
+		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
 
 	recoverPeriod := 1 * time.Minute
@@ -75,9 +109,8 @@ func NewKiteQServer(local, zkhost string, topics []string, mysql string) *KiteQS
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kitedb, 100*time.Millisecond))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", 100*time.Millisecond, kitedb, rw))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
-	pipeline.RegisteHandler("resultRecord", handler.NewResultRecordHandler("resultRecord", kitedb, rw))
 
 	recoverManager := NewRecoverManager(kiteqName, recoverPeriod, pipeline, kitedb)
 

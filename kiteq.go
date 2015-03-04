@@ -23,7 +23,7 @@ func main() {
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
-	mysql := flag.String("mysql", "", "-mysql=root:root@tcp(localhost:3306)/kite")
+	db := flag.String("db", "mmap://file:///data/kiteq", "-db=mysql://root:root@tcp(localhost:3306)/kite")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 
 	flag.Parse()
@@ -37,7 +37,7 @@ func main() {
 		}
 	}()
 
-	qserver := server.NewKiteQServer(*bindHost, *zkhost, strings.Split(*topics, ","), *mysql)
+	qserver := server.NewKiteQServer(*bindHost, *zkhost, strings.Split(*topics, ","), *db)
 
 	qserver.Start()
 

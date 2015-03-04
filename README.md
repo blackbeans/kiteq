@@ -72,10 +72,10 @@ kiteq
     1.编译：sh build.sh 
     2.安装装Zookeeper:省略
     启动KiteQ:
-        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -mysql="mock" -topics=trade,feed -zkhost=localhost:2181
+        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="mock://kiteq" -topics=trade,feed -zkhost=localhost:2181
         -bind  //绑定本地IP:Port
         -pport //pprof的Http端口
-        -mysql //mysql存储的链接地址 或 mock 启动mock模式
+        -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
         -topics //本机可以处理的topics列表逗号分隔
         -zkhost //zk的地址
 
