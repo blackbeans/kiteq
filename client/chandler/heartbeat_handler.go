@@ -45,6 +45,7 @@ func (self *HeartbeatHandler) keepAlive() {
 					} else {
 						for ; i < 3; i++ {
 							hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
+							hp.BlockingWrite()
 							err := c.Ping(hp, time.Duration(int64(self.heartbeatTimeout)*int64(i+1)))
 							//如果有错误则需要记录
 							if nil != err {

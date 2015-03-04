@@ -1,18 +1,14 @@
 package store
 
 import (
+	"code.google.com/p/go-uuid/uuid"
 	"fmt"
 	"kiteq/protocol"
-	"os"
 )
-
-var f, _ = os.OpenFile("/dev/urandom", os.O_RDONLY, 0)
 
 //生成messageId uuid
 func MessageId() string {
-	b := make([]byte, 16)
-	f.Read(b)
-	return fmt.Sprintf("%x", b)
+	return uuid.New()
 }
 
 //用于持久化的messageEntity

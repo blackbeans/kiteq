@@ -44,7 +44,6 @@ func (self *Packet) marshal() []byte {
 	length := PACKET_HEAD_LEN + len(self.Data) + 2
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
-
 	Write(buff, binary.BigEndian, self.Opaque) // 请求id
 	// //彻底包装request为TLV
 	Write(buff, binary.BigEndian, self.CmdType)           //数据类型

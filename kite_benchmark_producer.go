@@ -50,7 +50,6 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 }
 
 func main() {
-
 	c := flag.Int("c", 10, "-c=10")
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")

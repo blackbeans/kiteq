@@ -18,7 +18,12 @@ const (
 )
 
 //全局唯一的Hodler
-var holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
+var holder map[int32]chan interface{}
+
+func init() {
+	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
+
+}
 
 //网络层的client
 type RemotingClient struct {
@@ -207,7 +212,6 @@ func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	//同步写出
 	future := self.Write(packet)
 	var resp interface{}
-	//
 	select {
 	case <-time.After(timeout):
 		//删除掉当前holder

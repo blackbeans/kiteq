@@ -1,6 +1,7 @@
 #!/bin/bash
 
 go get github.com/golang/protobuf/{proto,protoc-gen-go}
+go get code.google.com/p/go-uuid/uuid
 go get github.com/go-sql-driver/mysql
 go get github.com/blackbeans/zk
 go get -u github.com/sutoo/gorp

@@ -129,7 +129,9 @@ func (self *Session) Write(packet *protocol.Packet) {
 	if !self.isClose {
 		//如果是异步写出的
 		if !packet.IsBlockingWrite() {
-			self.WriteChannel <- packet
+			if !self.isClose {
+				self.WriteChannel <- packet
+			}
 		} else {
 			//如果是同步写出
 			self.write0(packet)
@@ -173,10 +175,18 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
 	var packet *protocol.Packet
-	timeout := 10 * time.Millisecond
-	timer := time.NewTimer(timeout)
+	timeout := 100 * time.Millisecond
+	maxIdleCount := 10
+	idleCount := 1
+	timer := time.NewTimer(1 * time.Second)
 	for !self.isClose {
-		timer.Reset(timeout)
+
+		if idleCount >= maxIdleCount {
+			idleCount = maxIdleCount
+		}
+		//最大空闲等待时间
+		waitTime := time.Duration(int64(idleCount) * int64(timeout))
+		timer.Reset(waitTime)
 		select {
 		//1.读取数据包
 		case packet = <-ch:
@@ -185,14 +195,16 @@ func (self *Session) WritePacket() {
 				self.write0(packet)
 				bcount++
 				//100个包统一flush一下
-				bcount = bcount % 1000
+				bcount = bcount % 100
 				if bcount == 0 {
 					self.flush()
 				}
 			}
+			idleCount = 1
 			//如果超过1ms没有要写的数据强制flush一下
 		case <-timer.C:
 			self.flush()
+			idleCount++
 		}
 	}
 	timer.Stop()
