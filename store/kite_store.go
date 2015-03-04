@@ -1,8 +1,8 @@
 package store
 
 import (
-	"code.google.com/p/go-uuid/uuid"
 	"fmt"
+	"github.com/blackbeans/go-uuid"
 	"kiteq/protocol"
 )
 
