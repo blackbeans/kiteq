@@ -150,6 +150,11 @@ func (self *Session) write0(tlv *protocol.Packet) {
 		return
 	}
 
+	//如果可用不够packet长度，则flush一次
+	if self.bw.Available() < len(packet) {
+		self.flush()
+	}
+
 	//2.处理一下包
 	length, err := self.bw.Write(packet)
 	// length, err := self.conn.Write(packet)
@@ -195,7 +200,7 @@ func (self *Session) WritePacket() {
 				self.write0(packet)
 				bcount++
 				//100个包统一flush一下
-				bcount = bcount % 100
+				bcount = bcount % 1000
 				if bcount == 0 {
 					self.flush()
 				}
