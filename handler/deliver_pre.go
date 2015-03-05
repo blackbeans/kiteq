@@ -30,8 +30,8 @@ func (self *DeliverPreHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *DeliverPreHandler) cast(event IEvent) (val *deliverEvent, ok bool) {
-	val, ok = event.(*deliverEvent)
+func (self *DeliverPreHandler) cast(event IEvent) (val *deliverPreEvent, ok bool) {
+	val, ok = event.(*deliverPreEvent)
 	return
 }
 
@@ -42,25 +42,34 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	//查询消息
-	entity := self.kitestore.Query(pevent.messageId)
+	//如果没有entity则直接查询一下db
+	entity := pevent.entity
 	if nil == entity {
-		return nil
+		//查询消息
+		entity := self.kitestore.Query(pevent.messageId)
+		if nil == entity {
+			return nil
+		}
 	}
+
 	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
+
+	//构造deliverEvent
+	deliverEvent := newDeliverEvent(pevent.messageId, pevent.header.GetTopic(), pevent.header.GetMessageType())
 
 	//创建不同的packet
 	switch entity.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
-		pevent.packet = protocol.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
+		deliverEvent.packet = protocol.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
 	case protocol.CMD_STRING_MESSAGE:
-		pevent.packet = protocol.NewPacket(protocol.CMD_STRING_MESSAGE, data)
+		deliverEvent.packet = protocol.NewPacket(protocol.CMD_STRING_MESSAGE, data)
 	}
 
 	//填充订阅分组
-	self.fillGroupIds(pevent, entity)
-	self.fillDeliverExt(pevent, entity)
-	ctx.SendForward(pevent)
+	self.fillGroupIds(deliverEvent, entity)
+	self.fillDeliverExt(deliverEvent, entity)
+	//向后投递发送
+	ctx.SendForward(deliverEvent)
 	return nil
 
 }

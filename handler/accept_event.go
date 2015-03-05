@@ -61,10 +61,9 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	if nil != msg {
-		pevent := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
-		ctx.SendForward(pevent)
+		deliver := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
+		ctx.SendForward(deliver)
 		return nil
 	}
-
 	return INVALID_MSG_TYPE_ERROR
 }

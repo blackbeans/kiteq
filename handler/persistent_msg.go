@@ -40,37 +40,64 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
-	// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
 
+	//如果是fly模式不做持久化
+	if nil != pevent.entity && (pevent.entity.Header.GetFly() && pevent.entity.Header.GetCommit()) {
+		self.sendFlyMessage(ctx, pevent)
+		return nil
+	} else {
+		self.sendUnFlyMessage(ctx, pevent)
+	}
+
+	return nil
+}
+
+//发送非flymessage
+func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
-
-	//根据消息状态处理
 	if succ && pevent.entity.Header.GetCommit() {
-		//启动投递一次
-		deliver := NewDeliverEvent(
+		//启动投递当然会重投3次
+		deliver := NewDeliverPreEvent(
 			pevent.entity.Header.GetMessageId(),
-			pevent.entity.Header.GetTopic(),
-			pevent.entity.Header.GetMessageType())
+			pevent.entity.Header,
+			pevent.entity)
 		ctx.SendForward(deliver)
-
-	} else if !succ {
+	} else {
+		// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
+		//如果是commit消息先尝试投递一下，如果失败了持久化，因为大部分的消息都是直接投递成功的
+		//减少对store的多余的存储
 		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity.Header)
 	}
 
-	//发送存储结果ack
-	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
-	ctx.SendForward(remoteEvent)
-
 	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 	if succ && !pevent.entity.Header.GetCommit() {
-
 		remoteEvent := NewRemotingEvent(self.tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 	}
-	return nil
+
+	go func() {
+		//发送存储结果ack
+		remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+			pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
+		ctx.SendForward(remoteEvent)
+	}()
+
+}
+
+//发送flymessage
+func (self *PersistentHandler) sendFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
+
+	//发送存储结果ack
+	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+		pevent.entity.Header.GetMessageId(), true), []string{pevent.remoteClient.RemoteAddr()})
+	ctx.SendForward(remoteEvent)
+
+	//先尝试投递
+	deliver := NewDeliverPreEvent(pevent.entity.Header.GetMessageId(), pevent.entity.Header, pevent.entity)
+	ctx.SendForward(deliver)
+
 }
 
 func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ bool) *protocol.Packet {

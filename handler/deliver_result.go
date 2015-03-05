@@ -81,13 +81,14 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	}
 
 	//存储投递结果
-	self.saveDevlierResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+	self.saveDeliverResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+
+	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
-		//删除该消息
 		self.kitestore.Delete(fevent.messageId)
-		// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.failGroups)
+
 	} else {
 		//重投策略
 		if self.checkRedelivery(fevent) {
@@ -112,13 +113,13 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		fevent.packet.Reset()
 		return true
 	} else {
-		//只能等待后续的recover重投了
+		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
 	}
 	return false
 }
 
 //存储投递结果
-func (self *DeliverResultHandler) saveDevlierResult(messageId string, deliverCount int32,
+func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCount int32,
 	succGroups []string, failGroups []string) {
 
 	entity := &store.MessageEntity{

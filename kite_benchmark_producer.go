@@ -43,7 +43,9 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(commit)}
+		Commit:       proto.Bool(commit),
+		Fly:          proto.Bool(true)}
+
 	entity.Body = proto.String("echo")
 
 	return entity
@@ -108,7 +110,7 @@ func main() {
 						atomic.AddInt32(&count, 1)
 					}
 				}
-
+				// stop = true
 			}
 			wg.Done()
 		}()

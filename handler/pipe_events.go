@@ -5,6 +5,7 @@ import (
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
 	"kiteq/store"
+	// "log"
 	"time"
 )
 
@@ -75,7 +76,7 @@ func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *r
 	return tx
 }
 
-//消息持久化操作
+//投递策略
 type persistentEvent struct {
 	IForwardEvent
 	entity       *store.MessageEntity
@@ -86,6 +87,22 @@ type persistentEvent struct {
 func newPersistentEvent(entity *store.MessageEntity, remoteClient *rclient.RemotingClient, opaque int32) *persistentEvent {
 	return &persistentEvent{entity: entity, remoteClient: remoteClient, opaque: opaque}
 
+}
+
+//投递准备事件
+type deliverPreEvent struct {
+	IForwardEvent
+	messageId string
+	header    *protocol.Header
+	entity    *store.MessageEntity
+}
+
+func NewDeliverPreEvent(messageId string, header *protocol.Header,
+	entity *store.MessageEntity) *deliverPreEvent {
+	return &deliverPreEvent{
+		messageId: messageId,
+		header:    header,
+		entity:    entity}
 }
 
 //投递事件
@@ -103,7 +120,7 @@ type deliverEvent struct {
 }
 
 //创建投递事件
-func NewDeliverEvent(messageId string, topic string, messageType string) *deliverEvent {
+func newDeliverEvent(messageId string, topic string, messageType string) *deliverEvent {
 	return &deliverEvent{
 		messageId:   messageId,
 		topic:       topic,
@@ -138,25 +155,27 @@ func (self *deliverResultEvent) wait(timeout time.Duration) {
 			case <-time.After(timeout):
 				//等待结果超时
 				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+				// log.Printf("deliverResultEvent|wait|timeout\n")
 			case resp := <-f:
+				// log.Printf("deliverResultEvent|wait|%s\n", resp)
 				ack, ok := resp.(*protocol.DeliverAck)
 				if !ok || !ack.GetStatus() {
-					self.deliveryFailGroups = append(self.deliveryFailGroups, ack.GetGroupId())
+					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
 				} else {
-					self.deliverySuccGroups = append(self.deliverySuccGroups, ack.GetGroupId())
+					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
 				}
 			}
 		}
 	} else {
 		//统计回调结果
-		for _, f := range self.futures {
+		for g, f := range self.futures {
 			select {
 			case resp := <-f:
 				ack, ok := resp.(*protocol.DeliverAck)
 				if !ok || !ack.GetStatus() {
-					self.deliveryFailGroups = append(self.deliveryFailGroups, ack.GetGroupId())
+					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
 				} else {
-					self.deliverySuccGroups = append(self.deliverySuccGroups, ack.GetGroupId())
+					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
 				}
 			}
 		}

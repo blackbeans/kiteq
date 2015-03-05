@@ -239,9 +239,10 @@ type Header struct {
 	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
 	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
 	ExpiredTime      *int64  `protobuf:"varint,4,req,name=expiredTime,def=-1" json:"expiredTime,omitempty"`
-	DeliverLimit     *int32  `protobuf:"varint,5,req,name=deliverLimit,def=-1" json:"deliverLimit,omitempty"`
+	DeliverLimit     *int32  `protobuf:"varint,5,req,name=deliverLimit,def=100" json:"deliverLimit,omitempty"`
 	GroupId          *string `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
 	Commit           *bool   `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
+	Fly              *bool   `protobuf:"varint,8,req,name=fly,def=1" json:"fly,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -250,7 +251,8 @@ func (m *Header) String() string { return proto.CompactTextString(m) }
 func (*Header) ProtoMessage()    {}
 
 const Default_Header_ExpiredTime int64 = -1
-const Default_Header_DeliverLimit int32 = -1
+const Default_Header_DeliverLimit int32 = 100
+const Default_Header_Fly bool = true
 
 func (m *Header) GetMessageId() string {
 	if m != nil && m.MessageId != nil {
@@ -299,6 +301,13 @@ func (m *Header) GetCommit() bool {
 		return *m.Commit
 	}
 	return false
+}
+
+func (m *Header) GetFly() bool {
+	if m != nil && m.Fly != nil {
+		return *m.Fly
+	}
+	return Default_Header_Fly
 }
 
 // byte类消息

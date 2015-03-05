@@ -24,6 +24,7 @@ func NewSession(conn *net.TCPConn) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
+	//禁用nagle
 	conn.SetNoDelay(true)
 
 	session := &Session{

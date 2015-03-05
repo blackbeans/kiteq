@@ -83,10 +83,10 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 
 //发起投递事件
 func (self *RecoverManager) delivery(entity *store.MessageEntity) {
-	deliver := handler.NewDeliverEvent(
+	deliver := handler.NewDeliverPreEvent(
 		entity.Header.GetMessageId(),
-		entity.Header.GetTopic(),
-		entity.Header.GetMessageType())
+		entity.Header,
+		nil)
 	//会先经过pre处理器填充额外信息
 	self.pipeline.FireWork(deliver)
 }

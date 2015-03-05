@@ -284,7 +284,7 @@ func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteC
 	}
 
 	if len(clients) <= 0 {
-		return nil, errors.New("NO KITE CLIENT !")
+		log.Panic("KiteClientManager|NO KITESERVER |%s\n", header.GetTopic())
 	}
 
 	c := clients[rand.Intn(len(clients))]
