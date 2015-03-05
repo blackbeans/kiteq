@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/rand"
 	"flag"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"io"
 	"kiteq/client"
 	"kiteq/protocol"
 	"kiteq/store"
@@ -33,9 +35,19 @@ func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxRes
 	return nil
 }
 
-func buildStringMessage(commit bool) *protocol.StringMessage {
+var body []byte
+var rander = rand.Reader // random function
+func init() {
+	body = make([]byte, 256, 256)
+	// randomBits completely fills slice b with random data.
+	if _, err := io.ReadFull(rander, body); err != nil {
+		panic(err.Error()) // rand should never fail
+	}
+}
+
+func buildBytesMessage(commit bool) *protocol.BytesMessage {
 	//创建消息
-	entity := &protocol.StringMessage{}
+	entity := &protocol.BytesMessage{}
 	entity.Header = &protocol.Header{
 		MessageId:    proto.String(store.MessageId()),
 		Topic:        proto.String("trade"),
@@ -46,7 +58,7 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 		Commit:       proto.Bool(commit),
 		Fly:          proto.Bool(true)}
 
-	entity.Body = proto.String("echo")
+	entity.Body = body
 
 	return entity
 }
@@ -93,8 +105,8 @@ func main() {
 			wg.Add(1)
 			for !stop {
 				if *tx {
-					msg := buildStringMessage(false)
-					err := kite.SendTxStringMessage(msg, doTranscation)
+					msg := buildBytesMessage(false)
+					err := kite.SendTxBytesMessage(msg, doTranscation)
 					if nil != err {
 						fmt.Printf("SEND TxMESSAGE |FAIL|%s\n", err)
 						atomic.AddInt32(&fc, 1)
@@ -102,7 +114,7 @@ func main() {
 						atomic.AddInt32(&count, 1)
 					}
 				} else {
-					err := kite.SendStringMessage(buildStringMessage(true))
+					err := kite.SendBytesMessage(buildBytesMessage(true))
 					if nil != err {
 						fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
 						atomic.AddInt32(&fc, 1)

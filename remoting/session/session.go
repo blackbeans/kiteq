@@ -13,7 +13,6 @@ import (
 type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
-	syncFlush    bool //是否强制flush 包数比较小的时候直接开启强制flush
 	br           *bufio.Reader
 	bw           *bufio.Writer
 	ReadChannel  chan *protocol.Packet //request的channel
@@ -35,8 +34,7 @@ func NewSession(conn *net.TCPConn) *Session {
 		ReadChannel:  make(chan *protocol.Packet, 1000),
 		WriteChannel: make(chan *protocol.Packet, 1000),
 		isClose:      false,
-		remoteAddr:   conn.RemoteAddr().String(),
-		syncFlush:    true}
+		remoteAddr:   conn.RemoteAddr().String()}
 
 	return session
 }
@@ -137,25 +135,19 @@ func (self *Session) Write(packet *protocol.Packet) {
 			}
 		} else {
 			//如果是同步写出
-			self.write0(packet)
-			self.flush()
+			self.write0(true, packet)
 		}
 	}
 }
 
 //真正写入网络的流
-func (self *Session) write0(tlv *protocol.Packet) {
+func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 
 	packet := protocol.MarshalPacket(tlv)
 	if nil == packet || len(packet) <= 0 {
 		log.Printf("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
 		//如果是同步写出
 		return
-	}
-
-	//如果可用不够packet长度，则flush一次
-	if self.bw.Available() < len(packet) {
-		self.flush()
 	}
 
 	//2.处理一下包
@@ -176,6 +168,11 @@ func (self *Session) write0(tlv *protocol.Packet) {
 	} else {
 		// log.Printf("Session|write0|SUCC|%t\n", packet)
 	}
+
+	//强制flush
+	if syncFlush {
+		self.flush()
+	}
 }
 
 //写入响应
@@ -183,33 +180,44 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
 	var packet *protocol.Packet
-	timeout := 1 * time.Millisecond
-	timer := time.NewTimer(timeout)
+	timeout := 1 * time.Second
+	packetSize := 0
+	tick := time.NewTicker(timeout)
+	syncFlush := true //是否强制flush 包数比较小的时候直接开启强制flush
 	//如果1s中的包数小于1000个则直接syncFlush
 	for !self.isClose {
+		//写入网络
 		select {
 		//1.读取数据包
 		case packet = <-ch:
 			//写入网络
 			if nil != packet {
-				self.write0(packet)
 				bcount++
+				packetSize += len(packet.Data)
+
+				//每秒包大于512个字节
+				if packetSize >= 128 {
+					syncFlush = false
+				} else {
+					syncFlush = true
+				}
+
+				self.write0(syncFlush, packet)
 				//1000个包统一flush一下
 				bcount = bcount % 1000
-				if bcount == 0 {
-					self.syncFlush = false
+				if bcount == 0 && !syncFlush {
 					self.flush()
 				}
+
 			}
 			//如果超过1s没有要写的数据强制flush一下
-		case <-timer.C:
+		case <-tick.C:
 			self.flush()
+			packetSize = 0
 			bcount = 0
-			//设置为直接写出
-			self.syncFlush = true
 		}
 	}
-	timer.Stop()
+	tick.Stop()
 }
 
 func (self *Session) flush() {
