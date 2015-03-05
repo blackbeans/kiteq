@@ -195,7 +195,6 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 	old, ok := self.kiteClients[topic]
 	self.kiteClients[topic] = clients
 	if ok {
-
 		del := make([]string, 0, 2)
 	outter:
 		for _, o := range old {
@@ -203,8 +202,8 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				if c.hostport == o.hostport {
 					continue outter
 				}
-				del = append(del, c.hostport)
 			}
+			del = append(del, o.hostport)
 		}
 
 		if len(del) > 0 {

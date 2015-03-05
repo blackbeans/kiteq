@@ -72,46 +72,55 @@ func (self *ClientManager) DeleteClients(hostports ...string) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	for _, hostport := range hostports {
-		self.reconnectFailHook(hostport)
+		//取消重连
+		self.removeClient(hostport)
 		//取消重连任务
 		self.reconnectManager.cancel(hostport)
+
 	}
 }
 
-func (self *ClientManager) reconnectFailHook(hostport string) {
-	_, ok := self.groupAuth[hostport]
+func (self *ClientManager) removeClient(hostport string) {
+	ga, ok := self.groupAuth[hostport]
 	if ok {
+		//删除分组
 		delete(self.groupAuth, hostport)
-		clients, ok := self.groupClients[hostport]
+		//删除group中的client
+		gc, ok := self.groupClients[ga.GroupId]
 		if ok {
-			for i, c := range clients {
-				//如果是当前链接
-				if c.RemoteAddr() == hostport {
-					c.Shutdown()
-					self.groupClients[hostport] = append(clients[:i], clients[i+1:]...)
+			for i, cli := range gc {
+				if cli.RemoteAddr() == hostport {
+					self.groupClients[ga.GroupId] = append(gc[0:i], gc[i+1:]...)
 					break
 				}
 			}
+		}
+
+		//删除hostport->client的对应关系
+		c, ok := self.allClients[hostport]
+		if ok {
+			c.Shutdown()
 			delete(self.allClients, hostport)
-			log.Printf("ClientManager|reconnectFailHook|Remove Client|%s\n", hostport)
 		}
 	}
+
+	log.Printf("ClientManager|removeClient|%s...\n", hostport)
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	ga, ok := self.groupAuth[c.RemoteAddr()]
 	if ok {
 		//如果重连则提交重连任务
 		if self.reconnectManager.allowReconnect {
 			self.reconnectManager.submit(c, ga, func(addr string) {
 				//重连任务失败完成后的hook,直接移除该机器
-				self.lock.Lock()
-				defer self.lock.Unlock()
-				self.reconnectFailHook(addr)
+				self.DeleteClients(addr)
 			})
 		} else {
 			//不需要重连的直接删除掉连接
-			self.reconnectFailHook(c.RemoteAddr())
+			self.removeClient(c.RemoteAddr())
 		}
 	}
 }
@@ -123,7 +132,8 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
 	if ok && rclient.IsClosed() {
-		self.SubmitReconnect(rclient)
+		//已经关闭的直接返回nil
+		return nil
 	}
 	return rclient
 }
@@ -147,7 +157,6 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 
 			if c.IsClosed() {
 				//提交到重连
-				self.SubmitReconnect(c)
 				continue
 			}
 			//如果当前client处于非关闭状态并且没有过滤则入选
