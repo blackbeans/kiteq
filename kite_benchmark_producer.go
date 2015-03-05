@@ -53,7 +53,7 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
-		DeliverLimit: proto.Int32(-1),
+		DeliverLimit: proto.Int32(100),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(commit),
 		Fly:          proto.Bool(false)}

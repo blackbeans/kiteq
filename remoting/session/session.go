@@ -157,11 +157,9 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 		return
 	}
 
-	var writer io.Writer
+	var writer io.Writer = self.bw
 	if syncFlush {
 		writer = self.conn
-	} else {
-		writer = self.bw
 	}
 
 	length, err := writer.Write(packet)
@@ -175,7 +173,7 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 		}
 
 		//只有syncflush才reset
-		if !syncFlush && nil != err {
+		if !syncFlush {
 			self.bw.Reset(self.conn)
 		}
 		//如果没有写够则再写一次
@@ -189,9 +187,9 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 //写入响应
 func (self *Session) WritePacket() {
 	ch := self.WriteChannel
-	bcount := 0
+	pcount := 0
 	var packet *protocol.Packet
-	timeout := 1 * time.Second
+	timeout := 10 * time.Millisecond
 	packetSize := 0
 	tick := time.NewTicker(timeout)
 	syncFlush := true //是否强制flush 包数比较小的时候直接开启强制flush
@@ -203,29 +201,31 @@ func (self *Session) WritePacket() {
 		case packet = <-ch:
 			//写入网络
 			if nil != packet {
-				bcount++
+				pcount++
 				packetSize += len(packet.Data)
 
 				//每秒包大于512个字节
-				if packetSize >= 128 {
-					syncFlush = false
-				} else {
+				if packetSize/pcount < 512 {
 					syncFlush = true
+				} else {
+					syncFlush = false
 				}
 
 				self.write0(syncFlush, packet)
-				//1000个包统一flush一下
-				bcount = bcount % 1000
-				if bcount == 0 && !syncFlush {
-					self.flush()
+				//10个包统一归零
+				pcount = pcount % 10
+				if pcount == 0 {
+					packetSize = 0
 				}
 
 			}
 			//如果超过1s没有要写的数据强制flush一下
 		case <-tick.C:
-			self.flush()
-			packetSize = 0
-			bcount = 0
+			if packetSize > 0 {
+				self.flush()
+				packetSize = 0
+				pcount = 0
+			}
 		}
 	}
 	tick.Stop()
