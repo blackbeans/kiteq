@@ -36,5 +36,5 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 		}
 	}
 
-	return false, errors.New("handshake fail!")
+	return false, errors.New("handshake fail! [" + remoteClient.RemoteAddr() + "]")
 }

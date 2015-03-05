@@ -13,6 +13,7 @@ import (
 type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
+	syncFlush    bool //是否强制flush 包数比较小的时候直接开启强制flush
 	br           *bufio.Reader
 	bw           *bufio.Writer
 	ReadChannel  chan *protocol.Packet //request的channel
@@ -34,7 +35,8 @@ func NewSession(conn *net.TCPConn) *Session {
 		ReadChannel:  make(chan *protocol.Packet, 1000),
 		WriteChannel: make(chan *protocol.Packet, 1000),
 		isClose:      false,
-		remoteAddr:   conn.RemoteAddr().String()}
+		remoteAddr:   conn.RemoteAddr().String(),
+		syncFlush:    true}
 
 	return session
 }
@@ -181,18 +183,10 @@ func (self *Session) WritePacket() {
 	ch := self.WriteChannel
 	bcount := 0
 	var packet *protocol.Packet
-	timeout := 100 * time.Millisecond
-	maxIdleCount := 10
-	idleCount := 1
+	timeout := 1 * time.Millisecond
 	timer := time.NewTimer(timeout)
+	//如果1s中的包数小于1000个则直接syncFlush
 	for !self.isClose {
-
-		if idleCount >= maxIdleCount {
-			idleCount = maxIdleCount
-		}
-		//最大空闲等待时间
-		waitTime := time.Duration(int64(idleCount) * int64(timeout))
-		timer.Reset(waitTime)
 		select {
 		//1.读取数据包
 		case packet = <-ch:
@@ -200,17 +194,19 @@ func (self *Session) WritePacket() {
 			if nil != packet {
 				self.write0(packet)
 				bcount++
-				//100个包统一flush一下
-				bcount = bcount % 100
+				//1000个包统一flush一下
+				bcount = bcount % 1000
 				if bcount == 0 {
+					self.syncFlush = false
 					self.flush()
 				}
 			}
-			idleCount = 1
-			//如果超过1ms没有要写的数据强制flush一下
+			//如果超过1s没有要写的数据强制flush一下
 		case <-timer.C:
 			self.flush()
-			idleCount++
+			bcount = 0
+			//设置为直接写出
+			self.syncFlush = true
 		}
 	}
 	timer.Stop()

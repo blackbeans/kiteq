@@ -131,7 +131,7 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
-	if ok && rclient.IsClosed() {
+	if !ok || rclient.IsClosed() {
 		//已经关闭的直接返回nil
 		return nil
 	}

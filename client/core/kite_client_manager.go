@@ -151,8 +151,6 @@ func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent
 
 //当触发QServer地址发生变更
 func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
-	self.lock.Lock()
-	defer self.lock.Unlock()
 
 	//重建一下topic下的kiteclient
 	clients := make([]*kiteClient, 0, 10)
@@ -191,6 +189,8 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 		log.Printf("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
 	}
 
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	//替换掉线的server
 	old, ok := self.kiteClients[topic]
 	self.kiteClients[topic] = clients
@@ -230,8 +230,7 @@ func (self *KiteClientManager) SetBindings(bindings []*binding.Binding) {
 
 //发送事务消息
 func (self *KiteClientManager) SendTxMessage(msg *protocol.QMessage, doTranscation DoTranscation) (err error) {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
+
 	//路由选择策略
 	c, err := self.selectKiteClient(msg.GetHeader())
 	if nil != err {
@@ -265,8 +264,6 @@ func (self *KiteClientManager) SendTxMessage(msg *protocol.QMessage, doTranscati
 
 //发送消息
 func (self *KiteClientManager) SendMessage(msg *protocol.QMessage) error {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
 	c, err := self.selectKiteClient(msg.GetHeader())
 	if nil != err {
 		return err
@@ -277,14 +274,13 @@ func (self *KiteClientManager) SendMessage(msg *protocol.QMessage) error {
 //kiteclient路由选择策略
 func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteClient, error) {
 
-	clients, ok := self.kiteClients[header.GetTopic()]
-	if !ok {
-		log.Println("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
-		return nil, errors.New("NO KITE CLIENT !")
-	}
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 
-	if len(clients) <= 0 {
-		log.Panic("KiteClientManager|NO KITESERVER |%s\n", header.GetTopic())
+	clients, ok := self.kiteClients[header.GetTopic()]
+	if !ok || len(clients) <= 0 {
+		log.Println("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		return nil, errors.New("NO KITE CLIENT ! [" + header.GetTopic() + "]")
 	}
 
 	c := clients[rand.Intn(len(clients))]
