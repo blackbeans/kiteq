@@ -164,7 +164,6 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 		writer = self.bw
 	}
 
-	//同步sync
 	length, err := writer.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
@@ -174,13 +173,11 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 			self.Close()
 			return
 		}
-	} else {
 
 		//只有syncflush才reset
 		if !syncFlush && nil != err {
 			self.bw.Reset(self.conn)
 		}
-
 		//如果没有写够则再写一次
 		if err == io.ErrShortWrite {
 			writer.Write(packet[length:])
