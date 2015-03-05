@@ -7,6 +7,7 @@ import (
 	"kiteq/protocol"
 	"log"
 	"net"
+	"syscall"
 	"time"
 )
 
@@ -61,9 +62,12 @@ func (self *Session) ReadPacket() {
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
 			buff.Reset()
-			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
-			if err == io.EOF {
+			//链接是关闭的
+			if err == io.EOF ||
+				err == syscall.EPIPE ||
+				err == syscall.ECONNRESET {
 				self.Close()
+				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			}
 			continue
 		}
@@ -84,18 +88,21 @@ func (self *Session) ReadPacket() {
 		delim, err := self.br.ReadByte()
 		if nil != err {
 			buff.Reset()
-			if err == io.EOF {
+			//链接是关闭的
+			if err == io.EOF ||
+				err == syscall.EPIPE ||
+				err == syscall.ECONNRESET {
 				self.Close()
+				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			}
-			log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			continue
 		}
 
 		//写入，如果数据太大直接有ErrTooLarge则关闭session退出
 		err = buff.WriteByte(delim)
 		if nil != err {
-			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
+			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			return
 		}
 
@@ -150,29 +157,36 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 		return
 	}
 
-	//2.处理一下包
-	length, err := self.bw.Write(packet)
-	// length, err := self.conn.Write(packet)
+	var writer io.Writer
+	if syncFlush {
+		writer = self.conn
+	} else {
+		writer = self.bw
+	}
+
+	//同步sync
+	length, err := writer.Write(packet)
 	if nil != err {
-		log.Printf("Session|write0|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
-		if err == io.EOF {
-			self.Closed()
+		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
+		//链接是关闭的
+		if err == io.EOF ||
+			err == syscall.EPIPE || err == syscall.ECONNRESET {
+			self.Close()
 			return
 		}
+	} else {
 
-		self.bw.Reset(self.conn)
-		if err == io.ErrShortWrite {
-			self.bw.Write(packet[length:])
+		//只有syncflush才reset
+		if !syncFlush && nil != err {
+			self.bw.Reset(self.conn)
 		}
 
-	} else {
-		// log.Printf("Session|write0|SUCC|%t\n", packet)
+		//如果没有写够则再写一次
+		if err == io.ErrShortWrite {
+			writer.Write(packet[length:])
+		}
 	}
 
-	//强制flush
-	if syncFlush {
-		self.flush()
-	}
 }
 
 //写入响应
@@ -242,6 +256,7 @@ func (self *Session) Close() error {
 		self.conn.Close()
 		close(self.WriteChannel)
 		close(self.ReadChannel)
+		log.Printf("Session|Close|%s...\n", self.remoteAddr)
 	}
 	return nil
 }

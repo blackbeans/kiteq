@@ -69,19 +69,17 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 		log.Printf("PersistentHandler|Process|SAVE|FAIL|%s\n", pevent.entity.Header)
 	}
 
+	//发送存储结果ack
+	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+		pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
+	ctx.SendForward(remoteEvent)
+
 	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 	if succ && !pevent.entity.Header.GetCommit() {
 		remoteEvent := NewRemotingEvent(self.tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 	}
-
-	go func() {
-		//发送存储结果ack
-		remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-			pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
-		ctx.SendForward(remoteEvent)
-	}()
 
 }
 

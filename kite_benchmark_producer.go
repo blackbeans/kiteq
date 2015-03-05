@@ -56,7 +56,7 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(commit),
-		Fly:          proto.Bool(true)}
+		Fly:          proto.Bool(false)}
 
 	entity.Body = body
 
