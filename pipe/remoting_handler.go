@@ -7,6 +7,13 @@ import (
 	"math/rand"
 )
 
+//没有链接的分组直接失败
+var EMPTY_FUTURE = make(map[string]chan interface{}, 0)
+
+func init() {
+	close(EMPTY_FUTURE)
+}
+
 //远程操作的remotinghandler
 
 type RemotingHandler struct {
@@ -32,8 +39,6 @@ func (self *RemotingHandler) cast(event IEvent) (val *RemotingEvent, ok bool) {
 	val, ok = event.(*RemotingEvent)
 	return
 }
-
-var EMPTY_FUTURE = make(map[string]chan interface{}, 0)
 
 func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
