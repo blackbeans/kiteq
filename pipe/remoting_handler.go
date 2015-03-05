@@ -9,9 +9,10 @@ import (
 
 //没有链接的分组直接失败
 var EMPTY_FUTURE = make(map[string]chan interface{}, 0)
+var QUICK_FAILGROUP_FUTURE = make(chan interface{}, 1)
 
 func init() {
-	close(EMPTY_FUTURE)
+	close(QUICK_FAILGROUP_FUTURE)
 }
 
 //远程操作的remotinghandler
@@ -69,8 +70,6 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 func (self *RemotingHandler) invokeSingle(event *RemotingEvent) error {
 	return nil
 }
-
-var FAILGROUP_FUTURE = make(chan interface{}, 1)
 
 func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan interface{} {
 
