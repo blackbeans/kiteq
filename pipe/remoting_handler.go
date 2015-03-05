@@ -88,7 +88,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			} else {
 				//记为失败的下次需要重新发送
 				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
-				futures[host] = FAILGROUP_FUTURE
+				futures[host] = QUICK_FAILGROUP_FUTURE
 			}
 		}
 	}
@@ -118,7 +118,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = FAILGROUP_FUTURE
+			futures[g] = QUICK_FAILGROUP_FUTURE
 		}
 	}
 
