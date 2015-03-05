@@ -197,6 +197,7 @@ func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
 	locker.Lock()
 	defer locker.Unlock()
 
+	delete(holder, tid)
 	holder[tid] = future
 	self.remoteSession.Write(&packet)
 	return future

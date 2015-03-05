@@ -184,7 +184,7 @@ func (self *Session) WritePacket() {
 	timeout := 100 * time.Millisecond
 	maxIdleCount := 10
 	idleCount := 1
-	timer := time.NewTimer(1 * time.Second)
+	timer := time.NewTimer(timeout)
 	for !self.isClose {
 
 		if idleCount >= maxIdleCount {
@@ -201,7 +201,7 @@ func (self *Session) WritePacket() {
 				self.write0(packet)
 				bcount++
 				//100个包统一flush一下
-				bcount = bcount % 1000
+				bcount = bcount % 100
 				if bcount == 0 {
 					self.flush()
 				}

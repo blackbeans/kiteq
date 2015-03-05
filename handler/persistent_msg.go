@@ -63,11 +63,10 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 			pevent.entity.Header,
 			pevent.entity)
 		ctx.SendForward(deliver)
-	} else {
-		// log.Printf("PersistentHandler|Process|%s|%t\n", self.GetName(), event)
+	} else if !succ {
 		//如果是commit消息先尝试投递一下，如果失败了持久化，因为大部分的消息都是直接投递成功的
 		//减少对store的多余的存储
-		log.Printf("PersistentHandler|Process|SAVE|FAIL|%t\n", pevent.entity.Header)
+		log.Printf("PersistentHandler|Process|SAVE|FAIL|%s\n", pevent.entity.Header)
 	}
 
 	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
