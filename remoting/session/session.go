@@ -17,6 +17,7 @@ type Session struct {
 	conn         *net.TCPConn //tcp的session
 	remoteAddr   string
 	br           *bufio.Reader
+	bw           *bufio.Writer
 	ReadChannel  chan protocol.Packet //request的channel
 	WriteChannel chan protocol.Packet //response的channel
 	isClose      bool
@@ -35,6 +36,7 @@ func NewSession(conn *net.TCPConn, rc *protocol.RemotingConfig) *Session {
 	session := &Session{
 		conn:         conn,
 		br:           bufio.NewReaderSize(conn, rc.ReadBufferSize),
+		bw:           bufio.NewWriterSize(conn, rc.WriteBufferSize),
 		ReadChannel:  make(chan protocol.Packet, rc.ReadChannelSize),
 		WriteChannel: make(chan protocol.Packet, rc.WriteChannelSize),
 		isClose:      false,
@@ -153,7 +155,7 @@ func (self *Session) Write(packet protocol.Packet) error {
 }
 
 //真正写入网络的流
-func (self *Session) write0(bw *bufio.Writer, tlv protocol.Packet) {
+func (self *Session) write0(tlv protocol.Packet) {
 
 	packet := protocol.MarshalPacket(&tlv)
 	if nil == packet || len(packet) <= 0 {
@@ -162,7 +164,7 @@ func (self *Session) write0(bw *bufio.Writer, tlv protocol.Packet) {
 		return
 	}
 
-	length, err := bw.Write(packet)
+	length, err := self.bw.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		//链接是关闭的
@@ -172,11 +174,11 @@ func (self *Session) write0(bw *bufio.Writer, tlv protocol.Packet) {
 			return
 		}
 
-		bw.Reset(self.conn)
+		self.bw.Reset(self.conn)
 
 		//如果没有写够则再写一次
 		if err == io.ErrShortWrite {
-			bw.Write(packet[length:])
+			self.bw.Write(packet[length:])
 		}
 	}
 
@@ -188,7 +190,7 @@ func (self *Session) write0(bw *bufio.Writer, tlv protocol.Packet) {
 
 //写入响应
 func (self *Session) WritePacket() {
-	bw := bufio.NewWriterSize(self.conn, self.rc.WriteBufferSize)
+
 	var packet protocol.Packet
 	for !self.isClose {
 		//写入网络
@@ -196,21 +198,21 @@ func (self *Session) WritePacket() {
 		//1.读取数据包
 		case packet = <-self.WriteChannel:
 			//写入网络
-			self.write0(bw, packet)
+			self.write0(packet)
 		default:
 			//处于IO空闲期间
-			self.flush(bw)
+			self.flush()
 		}
 
 	}
 }
 
-func (self *Session) flush(bw *bufio.Writer) {
-	if bw.Buffered() > 0 {
-		err := bw.Flush()
+func (self *Session) flush() {
+	if self.bw.Buffered() > 0 {
+		err := self.bw.Flush()
 		if nil != err {
 			log.Printf("Session|Write|FLUSH|FAIL|%t\n", err.Error())
-			bw.Reset(self.conn)
+			self.bw.Reset(self.conn)
 		}
 	}
 }

@@ -8,7 +8,6 @@ import (
 type RemotingConfig struct {
 	FlowStat         *stat.FlowStat
 	MaxDispatcherNum int //最大分发大小
-	MaxWriterNum     int //多少个写线程
 	MaxWorkerNum     int //最大处理协程数
 	ReadBufferSize   int //读取缓冲大小
 	WriteBufferSize  int //写入缓冲大小

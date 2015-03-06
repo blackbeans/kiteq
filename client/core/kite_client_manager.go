@@ -41,7 +41,6 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	rc := &protocol.RemotingConfig{
 		MaxDispatcherNum: 50,
 		MaxWorkerNum:     50000,
-		MaxWriterNum:     200,
 		ReadBufferSize:   16 * 1024,
 		WriteBufferSize:  16 * 1024,
 		WriteChannelSize: 10000,
