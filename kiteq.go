@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"kiteq/protocol"
 	"kiteq/server"
 	"log"
 	"net"
@@ -37,7 +38,14 @@ func main() {
 		}
 	}()
 
-	qserver := server.NewKiteQServer(*bindHost, *zkhost, strings.Split(*topics, ","), *db)
+	rc := &protocol.RemotingConfig{
+		ConnReadBufferSize:  2 * 1024,
+		ConnWriteBufferSize: 2 * 1024,
+		FlushThreshold:      1000,
+		MinPacketSize:       2 * 1024,
+		FlushTimeout:        10 * time.Millisecond}
+
+	qserver := server.NewKiteQServer(*bindHost, *zkhost, rc, strings.Split(*topics, ","), *db)
 
 	qserver.Start()
 

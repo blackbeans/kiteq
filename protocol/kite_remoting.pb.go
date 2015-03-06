@@ -242,7 +242,7 @@ type Header struct {
 	DeliverLimit     *int32  `protobuf:"varint,5,req,name=deliverLimit,def=100" json:"deliverLimit,omitempty"`
 	GroupId          *string `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
 	Commit           *bool   `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
-	Fly              *bool   `protobuf:"varint,8,req,name=fly,def=1" json:"fly,omitempty"`
+	Fly              *bool   `protobuf:"varint,8,req,name=fly,def=0" json:"fly,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -252,7 +252,7 @@ func (*Header) ProtoMessage()    {}
 
 const Default_Header_ExpiredTime int64 = -1
 const Default_Header_DeliverLimit int32 = 100
-const Default_Header_Fly bool = true
+const Default_Header_Fly bool = false
 
 func (m *Header) GetMessageId() string {
 	if m != nil && m.MessageId != nil {

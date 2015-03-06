@@ -39,8 +39,6 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 
 	//发起一个ping对应的响应
 	packet := protocol.NewRespPacket(hevent.Opaque, protocol.CMD_HEARTBEAT, protocol.MarshalHeartbeatPacket(hevent.Version))
-	//强制写出
-	packet.BlockingWrite()
 	//发起一个网络请求
 	remoteEvent := NewRemotingEvent(packet, []string{hevent.RemoteClient.RemoteAddr()})
 

@@ -26,6 +26,7 @@ type KiteQServer struct {
 	pipeline       *pipe.DefaultPipeline
 	recoverManager *RecoverManager
 	flowControl    *stat.FlowControl
+	rc             *protocol.RemotingConfig
 }
 
 //握手包
@@ -33,7 +34,7 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 	return false, nil
 }
 
-func NewKiteQServer(local, zkhost string, topics []string, db string) *KiteQServer {
+func NewKiteQServer(local, zkhost string, rc *protocol.RemotingConfig, topics []string, db string) *KiteQServer {
 
 	kitedb := parseDB(db)
 
@@ -83,7 +84,8 @@ func NewKiteQServer(local, zkhost string, topics []string, db string) *KiteQServ
 		exchanger:      exchanger,
 		pipeline:       pipeline,
 		flowControl:    flowControl,
-		recoverManager: recoverManager}
+		recoverManager: recoverManager,
+		rc:             rc}
 
 }
 
@@ -135,7 +137,7 @@ func parseDB(db string) store.IKiteStore {
 
 func (self *KiteQServer) Start() {
 
-	self.remotingServer = server.NewRemotionServer(self.local, 3*time.Second, self.flowControl,
+	self.remotingServer = server.NewRemotionServer(self.local, self.flowControl, self.rc,
 		func(rclient *client.RemotingClient, packet *protocol.Packet) {
 			self.flowControl.DispatcherFlow.Incr(1)
 			event := pipe.NewPacketEvent(rclient, packet)

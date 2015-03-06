@@ -14,6 +14,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
 	"sync"
 	"sync/atomic"
@@ -38,7 +39,7 @@ func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxRes
 var body []byte
 var rander = rand.Reader // random function
 func init() {
-	body = make([]byte, 256, 256)
+	body = make([]byte, 2048, 2048)
 	// randomBits completely fills slice b with random data.
 	if _, err := io.ReadFull(rander, body); err != nil {
 		panic(err.Error()) // rand should never fail
@@ -68,6 +69,8 @@ func main() {
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
+
+	runtime.GOMAXPROCS(8)
 
 	go func() {
 

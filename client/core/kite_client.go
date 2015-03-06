@@ -27,7 +27,7 @@ func newKitClient(hostport string, pipeline *pipe.DefaultPipeline) *kiteClient {
 func (self *kiteClient) sendTxAck(message *protocol.QMessage,
 	txstatus protocol.TxStatus, feedback string) error {
 	txpacket := protocol.MarshalTxACKPacket(message.GetHeader(), txstatus, feedback)
-	return self.innerSendMessage(protocol.CMD_TX_ACK, txpacket, -1)
+	return self.innerSendMessage(protocol.CMD_TX_ACK, txpacket, 0)
 }
 
 func (self *kiteClient) sendMessage(message *protocol.QMessage) error {
@@ -36,7 +36,12 @@ func (self *kiteClient) sendMessage(message *protocol.QMessage) error {
 	if nil != err {
 		return err
 	}
-	return self.innerSendMessage(message.GetMsgType(), data, 3*time.Second)
+	timeout := 3 * time.Second
+	//如果是fly消息不需要客户端等等
+	if message.GetHeader().GetFly() {
+		timeout = 0 * time.Second
+	}
+	return self.innerSendMessage(message.GetMsgType(), data, timeout)
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
@@ -47,8 +52,12 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 	remoteEvent := pipe.NewRemotingEvent(msgpacket, []string{self.hostport})
 	err := self.pipeline.FireWork(remoteEvent)
 	//如果是需要等待结果的则等待
-	if nil != err || timeout <= 0 {
+	if nil != err {
 		return err
+	}
+
+	if timeout <= 0 {
+		return nil
 	}
 
 	futures := remoteEvent.Wait()

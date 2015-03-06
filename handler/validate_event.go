@@ -5,7 +5,6 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/client"
 	"log"
-	"time"
 )
 
 //----------------鉴权handler
@@ -52,7 +51,7 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 		packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)
 
 		//直接写出去授权失败
-		remoteClient.WriteAndGet(*packet, 100*time.Millisecond)
+		remoteClient.Write(*packet)
 		//断开连接
 		remoteClient.Shutdown()
 	}

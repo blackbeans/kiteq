@@ -1,4 +1,4 @@
-package client
+package remoting
 
 import (
 	"kiteq/protocol"
@@ -39,7 +39,15 @@ func handshake(ga *GroupAuth, remoteClient *RemotingClient) (bool, error) {
 }
 
 func init() {
-	remoteServer = server.NewRemotionServer("localhost:28888", 3*time.Second, flow, packetDispatcher)
+
+	rc := &protocol.RemotingConfig{
+		ConnReadBufferSize:  16 * 1024,
+		ConnWriteBufferSize: 16 * 1024,
+		MinPacketSize:       1024,
+		FlushThreshold:      1000,
+		FlushTimeout:        1 * time.Second}
+
+	remoteServer = server.NewRemotionServer("localhost:28888", 3*time.Second, flow, packetDispatcher, rc)
 	remoteServer.ListenAndServer()
 
 	conn, _ := dial("localhost:28888")
@@ -49,7 +57,7 @@ func init() {
 
 	clientManager = NewClientManager(reconnManager)
 
-	remoteClient := NewRemotingClient(conn, clientPacketDispatcher)
+	remoteClient := NewRemotingClient(conn, clientPacketDispatcher, rc)
 	remoteClient.Start()
 
 	auth := &GroupAuth{}

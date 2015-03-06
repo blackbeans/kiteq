@@ -13,7 +13,8 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 //----------------持久化的handler
 type PersistentHandler struct {
 	BaseForwardHandler
-	kitestore store.IKiteStore
+	kitestore     store.IKiteStore
+	maxDeliverNum chan byte
 }
 
 //------创建persitehandler
@@ -21,6 +22,13 @@ func NewPersistentHandler(name string, kitestore store.IKiteStore) *PersistentHa
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
+	phandler.maxDeliverNum = make(chan byte, 100000)
+	for {
+		if len(phandler.maxDeliverNum) >= 100000 {
+			break
+		}
+		phandler.maxDeliverNum <- 1
+	}
 	return phandler
 }
 
@@ -42,58 +50,68 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	}
 
 	//如果是fly模式不做持久化
-	if nil != pevent.entity && (pevent.entity.Header.GetFly() && pevent.entity.Header.GetCommit()) {
+	if nil != pevent.entity && pevent.entity.Header.GetFly() {
 		self.sendFlyMessage(ctx, pevent)
 		return nil
-	} else {
+	} else if nil != pevent.entity {
 		self.sendUnFlyMessage(ctx, pevent)
 	}
 
 	return nil
 }
 
+//发送flymessage
+func (self *PersistentHandler) sendFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
+	//fly消息不存储不用发送storeack
+
+	//先尝试投递
+	deliver := NewDeliverPreEvent(
+		pevent.entity.Header.GetMessageId(),
+		pevent.entity.Header,
+		pevent.entity)
+	ctx.SendForward(deliver)
+
+}
+
 //发送非flymessage
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
+
+	<-self.maxDeliverNum
+	go func() {
+		defer func() {
+			self.maxDeliverNum <- 1
+		}()
+		//发送存储结果ack
+		remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+			pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
+		ctx.SendForward(remoteEvent)
+
+	}()
+
 	if succ && pevent.entity.Header.GetCommit() {
-		//启动投递当然会重投3次
-		deliver := NewDeliverPreEvent(
-			pevent.entity.Header.GetMessageId(),
-			pevent.entity.Header,
-			pevent.entity)
-		ctx.SendForward(deliver)
-	} else if !succ {
-		//如果是commit消息先尝试投递一下，如果失败了持久化，因为大部分的消息都是直接投递成功的
-		//减少对store的多余的存储
-		log.Printf("PersistentHandler|Process|SAVE|FAIL|%s\n", pevent.entity.Header)
-	}
+		<-self.maxDeliverNum
+		go func() {
+			defer func() {
+				self.maxDeliverNum <- 1
+			}()
+			//启动投递当然会重投3次
+			deliver := NewDeliverPreEvent(
+				pevent.entity.Header.GetMessageId(),
+				pevent.entity.Header,
+				pevent.entity)
+			ctx.SendForward(deliver)
 
-	//发送存储结果ack
-	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), succ), []string{pevent.remoteClient.RemoteAddr()})
-	ctx.SendForward(remoteEvent)
-
-	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
-	if succ && !pevent.entity.Header.GetCommit() {
+		}()
+	} else if succ {
+		//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 		remoteEvent := NewRemotingEvent(self.tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
+	} else if !succ {
+		log.Printf("PersistentHandler|Process|SAVE|FAIL|%s\n", pevent.entity.Header)
 	}
-
-}
-
-//发送flymessage
-func (self *PersistentHandler) sendFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
-
-	//发送存储结果ack
-	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), true), []string{pevent.remoteClient.RemoteAddr()})
-	ctx.SendForward(remoteEvent)
-
-	//先尝试投递
-	deliver := NewDeliverPreEvent(pevent.entity.Header.GetMessageId(), pevent.entity.Header, pevent.entity)
-	ctx.SendForward(deliver)
 
 }
 

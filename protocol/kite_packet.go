@@ -16,17 +16,13 @@ type Packet struct {
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
 	return &Packet{
-		Opaque:        -1,
-		CmdType:       cmdtype,
-		Data:          data,
-		blockingWrite: false}
+		Opaque:  -1,
+		CmdType: cmdtype,
+		Data:    data}
 }
 
 func (self *Packet) BlockingWrite() {
 	self.blockingWrite = true
-}
-func (self *Packet) IsBlockingWrite() bool {
-	return self.blockingWrite
 }
 
 func (self *Packet) Reset() {

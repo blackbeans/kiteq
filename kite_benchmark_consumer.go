@@ -11,6 +11,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/debug"
 	"sync/atomic"
 	"syscall"
@@ -49,6 +50,7 @@ func main() {
 
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
+	runtime.GOMAXPROCS(8)
 
 	go func() {
 

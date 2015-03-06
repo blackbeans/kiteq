@@ -52,7 +52,7 @@ message Header{
     required int32  deliverLimit = 5 [default = 100]; //投递次数限制，默认100次，但是随着投递的时间会慢慢衰减
     required string groupId = 6; // 消息发送来源
     required bool commit = 7; //本消息是否提交
-    required bool fly = 8 [default = false];//消息是否为fly模式   fly是先投递再持久化保证投递优先、否则相反是可靠优先
+    required bool fly = 8 [default = false];//消息是否为fly模式   true 为 不存储直接投递 false为存储并投递
 }
 
 //byte类消息

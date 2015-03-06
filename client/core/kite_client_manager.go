@@ -35,9 +35,17 @@ type KiteClientManager struct {
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
 	lock          sync.RWMutex
+	rc            *protocol.RemotingConfig
 }
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
+
+	rc := &protocol.RemotingConfig{
+		ConnReadBufferSize:  2 * 1024,
+		ConnWriteBufferSize: 2 * 1024,
+		MinPacketSize:       2 * 1024,
+		FlushThreshold:      1000,
+		FlushTimeout:        100 * time.Millisecond}
 
 	//重连管理器
 	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
@@ -57,7 +65,8 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		topics:        make([]string, 0, 10),
 		pipeline:      pipeline,
 		clientManager: clientm,
-		flowControl:   flowControl}
+		flowControl:   flowControl,
+		rc:            rc}
 	manager.zkManager = binding.NewZKManager(zkAddr, manager)
 
 	return manager
@@ -172,7 +181,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 					if nil != err {
 						log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
 					}
-				})
+				}, self.rc)
 			remoteClient.Start()
 			auth, err := handshake(self.ga, remoteClient)
 			if !auth || nil != err {

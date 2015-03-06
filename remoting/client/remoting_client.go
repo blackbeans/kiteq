@@ -39,13 +39,13 @@ type RemotingClient struct {
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
-
+	rc               *protocol.RemotingConfig
 }
 
 func NewRemotingClient(conn *net.TCPConn,
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingClient {
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet), rc *protocol.RemotingConfig) *RemotingClient {
 
-	remoteSession := session.NewSession(conn)
+	remoteSession := session.NewSession(conn, rc)
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
@@ -53,7 +53,8 @@ func NewRemotingClient(conn *net.TCPConn,
 		heartbeat:        0,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
-		remoteSession:    remoteSession}
+		remoteSession:    remoteSession,
+		rc:               rc}
 
 	return remotingClient
 }
@@ -106,7 +107,7 @@ func (self *RemotingClient) reconnect() (bool, error) {
 	//重新设置conn
 	self.conn = conn
 	//创建session
-	self.remoteSession = session.NewSession(self.conn)
+	self.remoteSession = session.NewSession(self.conn, self.rc)
 
 	//再次启动remoteClient
 	self.Start()

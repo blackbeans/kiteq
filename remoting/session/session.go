@@ -19,24 +19,27 @@ type Session struct {
 	ReadChannel  chan *protocol.Packet //request的channel
 	WriteChannel chan *protocol.Packet //response的channel
 	isClose      bool
+	rc           *protocol.RemotingConfig
 }
 
-func NewSession(conn *net.TCPConn) *Session {
+func NewSession(conn *net.TCPConn, rc *protocol.RemotingConfig) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
 	//禁用nagle
 	conn.SetNoDelay(true)
+	conn.SetReadBuffer(rc.ConnReadBufferSize)
+	conn.SetWriteBuffer(rc.ConnWriteBufferSize)
 
 	session := &Session{
 		conn:         conn,
-		br:           bufio.NewReaderSize(conn, 1024),
-		bw:           bufio.NewWriterSize(conn, 1024),
+		br:           bufio.NewReaderSize(conn, rc.MinPacketSize),
+		bw:           bufio.NewWriterSize(conn, rc.MinPacketSize),
 		ReadChannel:  make(chan *protocol.Packet, 1000),
 		WriteChannel: make(chan *protocol.Packet, 1000),
 		isClose:      false,
-		remoteAddr:   conn.RemoteAddr().String()}
-
+		remoteAddr:   conn.RemoteAddr().String(),
+		rc:           rc}
 	return session
 }
 
@@ -54,7 +57,7 @@ func (self *Session) ReadPacket() {
 	}()
 
 	//缓存本次包的数据
-	packetBuff := make([]byte, 0, 1024)
+	packetBuff := make([]byte, 0, self.rc.MinPacketSize)
 	buff := bytes.NewBuffer(packetBuff)
 
 	for !self.isClose {
@@ -112,7 +115,7 @@ func (self *Session) ReadPacket() {
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 
 			if nil != err || nil == packet {
-				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d\n", err, buff.Len())
+				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
 				buff.Reset()
 				continue
 			}
@@ -135,20 +138,12 @@ func (self *Session) Write(packet *protocol.Packet) {
 	}()
 
 	if !self.isClose {
-		//如果是异步写出的
-		if !packet.IsBlockingWrite() {
-			if !self.isClose {
-				self.WriteChannel <- packet
-			}
-		} else {
-			//如果是同步写出
-			self.write0(true, packet)
-		}
+		self.WriteChannel <- packet
 	}
 }
 
 //真正写入网络的流
-func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
+func (self *Session) write0(tlv *protocol.Packet) {
 
 	packet := protocol.MarshalPacket(tlv)
 	if nil == packet || len(packet) <= 0 {
@@ -157,12 +152,11 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 		return
 	}
 
-	var writer io.Writer = self.bw
-	if syncFlush {
-		writer = self.conn
+	if self.bw.Buffered()+len(packet) >= self.rc.MinPacketSize {
+		self.flush()
 	}
 
-	length, err := writer.Write(packet)
+	length, err := self.bw.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		//链接是关闭的
@@ -172,13 +166,11 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 			return
 		}
 
-		//只有syncflush才reset
-		if !syncFlush {
-			self.bw.Reset(self.conn)
-		}
+		self.bw.Reset(self.conn)
+
 		//如果没有写够则再写一次
 		if err == io.ErrShortWrite {
-			writer.Write(packet[length:])
+			self.bw.Write(packet[length:])
 		}
 	}
 
@@ -186,49 +178,31 @@ func (self *Session) write0(syncFlush bool, tlv *protocol.Packet) {
 
 //写入响应
 func (self *Session) WritePacket() {
-	ch := self.WriteChannel
 	pcount := 0
 	var packet *protocol.Packet
-	timeout := 10 * time.Millisecond
-	packetSize := 0
-	tick := time.NewTicker(timeout)
-	syncFlush := true //是否强制flush 包数比较小的时候直接开启强制flush
-	//如果1s中的包数小于1000个则直接syncFlush
+	tick := time.NewTicker(self.rc.FlushTimeout)
 	for !self.isClose {
 		//写入网络
 		select {
 		//1.读取数据包
-		case packet = <-ch:
+		case packet = <-self.WriteChannel:
 			//写入网络
 			if nil != packet {
 				pcount++
-				packetSize += len(packet.Data)
-
-				//每秒包大于512个字节
-				if packetSize/pcount < 512 {
-					syncFlush = true
-				} else {
-					syncFlush = false
-				}
-
-				self.write0(syncFlush, packet)
-				//10个包统一归零
-				pcount = pcount % 10
-				if pcount == 0 {
-					packetSize = 0
-				}
-
-			}
-			//如果超过1s没有要写的数据强制flush一下
-		case <-tick.C:
-			if packetSize > 0 {
+				self.write0(packet)
+			} else {
 				self.flush()
-				packetSize = 0
+			}
+
+		case <-tick.C:
+			if pcount >= self.rc.FlushThreshold ||
+				self.bw.Buffered() > 0 {
+				self.flush()
 				pcount = 0
 			}
 		}
+
 	}
-	tick.Stop()
 }
 
 func (self *Session) flush() {
