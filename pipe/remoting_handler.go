@@ -2,7 +2,6 @@ package pipe
 
 import (
 	"kiteq/remoting/client"
-	"kiteq/stat"
 	"log"
 	"math/rand"
 )
@@ -20,14 +19,12 @@ func init() {
 type RemotingHandler struct {
 	BaseForwardHandler
 	clientManager *client.ClientManager
-	flowControl   *stat.FlowControl
 }
 
-func NewRemotingHandler(name string, clientManager *client.ClientManager, flowControl *stat.FlowControl) *RemotingHandler {
+func NewRemotingHandler(name string, clientManager *client.ClientManager) *RemotingHandler {
 	remtingHandler := &RemotingHandler{}
 	remtingHandler.BaseForwardHandler = NewBaseForwardHandler(name, remtingHandler)
 	remtingHandler.clientManager = clientManager
-	remtingHandler.flowControl = flowControl
 	return remtingHandler
 }
 
@@ -82,8 +79,12 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			rclient := self.clientManager.FindRemoteClient(host)
 			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
-				futures[host] = rclient.Write(packet)
-				self.flowControl.WriteFlow.Incr(1)
+				f, err := rclient.Write(packet)
+				if nil != err {
+					futures[host] = QUICK_FAILGROUP_FUTURE
+				} else {
+					futures[host] = f
+				}
 
 			} else {
 				//记为失败的下次需要重新发送
@@ -109,8 +110,12 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 			}
 			idx := rand.Intn(len(c))
 			//克隆一份
-			futures[gid] = c[idx].Write(packet)
-			self.flowControl.WriteFlow.Incr(1)
+			f, err := c[idx].Write(packet)
+			if nil != err {
+				futures[gid] = QUICK_FAILGROUP_FUTURE
+			} else {
+				futures[gid] = f
+			}
 		}
 	}
 

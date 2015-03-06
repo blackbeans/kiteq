@@ -39,14 +39,17 @@ func main() {
 	}()
 
 	rc := &protocol.RemotingConfig{
-		ConnReadBufferSize:  2 * 1024,
-		ConnWriteBufferSize: 2 * 1024,
-		FlushThreshold:      1000,
-		MinPacketSize:       2 * 1024,
-		FlushTimeout:        10 * time.Millisecond}
+		MaxDispatcherNum: 50,
+		MaxWorkerNum:     50000,
+		MaxWriterNum:     200,
+		ReadBufferSize:   16 * 1024,
+		WriteBufferSize:  16 * 1024,
+		WriteChannelSize: 10000,
+		ReadChannelSize:  10000}
 
-	qserver := server.NewKiteQServer(*bindHost, *zkhost, rc, strings.Split(*topics, ","), *db)
+	kc := server.NewKiteQConfig(*bindHost, *zkhost, 100000, 1*time.Minute, strings.Split(*topics, ","), *db, rc)
 
+	qserver := server.NewKiteQServer(kc)
 	qserver.Start()
 
 	var s = make(chan os.Signal, 1)

@@ -13,8 +13,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"sort"
-	"strings"
+
 	"sync"
 	"time"
 )
@@ -30,7 +29,6 @@ type KiteClientManager struct {
 	topics        []string
 	binds         []*binding.Binding //订阅的关系
 	clientManager *rclient.ClientManager
-	flowControl   *stat.FlowControl
 	kiteClients   map[string] /*topic*/ []*kiteClient //topic对应的kiteclient
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
@@ -41,23 +39,25 @@ type KiteClientManager struct {
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
 	rc := &protocol.RemotingConfig{
-		ConnReadBufferSize:  2 * 1024,
-		ConnWriteBufferSize: 2 * 1024,
-		MinPacketSize:       2 * 1024,
-		FlushThreshold:      1000,
-		FlushTimeout:        100 * time.Millisecond}
+		MaxDispatcherNum: 50,
+		MaxWorkerNum:     50000,
+		MaxWriterNum:     200,
+		ReadBufferSize:   16 * 1024,
+		WriteBufferSize:  16 * 1024,
+		WriteChannelSize: 10000,
+		ReadChannelSize:  10000,
+		FlowStat:         stat.NewFlowStat("kiteclient-" + groupId)}
 
 	//重连管理器
 	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
-	//流量
-	flowControl := stat.NewFlowControl("kiteclient-" + groupId)
+
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()
 	clientm := rclient.NewClientManager(reconnManager)
-	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet", flowControl))
+	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
 	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat", 10*time.Second, 5*time.Second, clientm))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
-	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm, flowControl))
+	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	manager := &KiteClientManager{
 		ga:            rclient.NewGroupAuth(groupId, secretKey),
@@ -65,7 +65,6 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		topics:        make([]string, 0, 10),
 		pipeline:      pipeline,
 		clientManager: clientm,
-		flowControl:   flowControl,
 		rc:            rc}
 	manager.zkManager = binding.NewZKManager(zkAddr, manager)
 
@@ -116,7 +115,9 @@ outter:
 			log.Fatalf("KiteClientManager|PublishBindings|FAIL|%s|%s\n", err, self.binds)
 		}
 	}
-	self.flowControl.Start()
+
+	//开启流量统计
+	self.rc.FlowStat.Start()
 }
 
 //创建物理连接
@@ -134,95 +135,6 @@ func dial(hostport string) (*net.TCPConn, error) {
 	}
 
 	return conn, nil
-}
-
-func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent, children []string) {
-	// @todo关闭或者新增相应的pub/sub connections
-	//如果是订阅关系变更则处理
-	if strings.HasPrefix(path, binding.KITEQ_SERVER) {
-		//获取topic
-		split := strings.Split(path, "/")
-		if len(split) < 4 {
-			//不合法的订阅璐姐
-			log.Printf("KiteClientManager|ChildWatcher|INVALID SERVER PATH |%s|%t\n", path, children)
-			return
-		}
-		//获取topic
-		topic := split[3]
-		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-			log.Printf("BindExchanger|ChildWatcher|REFUSE SERVER PATH |%s|%t\n", path, children)
-			return
-		}
-		self.onQServerChanged(topic, children)
-	}
-}
-
-//当触发QServer地址发生变更
-func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
-
-	//重建一下topic下的kiteclient
-	clients := make([]*kiteClient, 0, 10)
-	for _, host := range hosts {
-		//如果能查到remoteClient 则直接复用
-		remoteClient := self.clientManager.FindRemoteClient(host)
-		if nil == remoteClient {
-			//这里就新建一个remote客户端连接
-			conn, err := dial(host)
-			if nil != err {
-				log.Printf("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
-				continue
-			}
-			remoteClient = rclient.NewRemotingClient(conn,
-				func(rc *rclient.RemotingClient, packet *protocol.Packet) {
-					self.flowControl.DispatcherFlow.Incr(1)
-					event := pipe.NewPacketEvent(rc, packet)
-					err := self.pipeline.FireWork(event)
-					if nil != err {
-						log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
-					}
-				}, self.rc)
-			remoteClient.Start()
-			auth, err := handshake(self.ga, remoteClient)
-			if !auth || nil != err {
-				remoteClient.Shutdown()
-				log.Printf("KiteClientManager|onQServerChanged|HANDSHAKE|FAIL|%s|%s\n", err, auth)
-				continue
-			}
-			self.clientManager.Auth(self.ga, remoteClient)
-		}
-
-		//创建kiteClient
-		kiteClient := newKitClient(remoteClient.RemoteAddr(), self.pipeline)
-		clients = append(clients, kiteClient)
-		log.Printf("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
-	}
-
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	//替换掉线的server
-	old, ok := self.kiteClients[topic]
-	self.kiteClients[topic] = clients
-	if ok {
-		del := make([]string, 0, 2)
-	outter:
-		for _, o := range old {
-			for _, c := range clients {
-				if c.hostport == o.hostport {
-					continue outter
-				}
-			}
-			del = append(del, o.hostport)
-		}
-
-		if len(del) > 0 {
-			self.clientManager.DeleteClients(del...)
-		}
-	}
-}
-
-func (self *KiteClientManager) DataChange(path string, binds []*binding.Binding) {
-	//IGNORE
 }
 
 func (self *KiteClientManager) SetPublishTopics(topics []string) {
@@ -288,7 +200,7 @@ func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteC
 
 	clients, ok := self.kiteClients[header.GetTopic()]
 	if !ok || len(clients) <= 0 {
-		log.Println("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		log.Printf("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
 		return nil, errors.New("NO KITE CLIENT ! [" + header.GetTopic() + "]")
 	}
 

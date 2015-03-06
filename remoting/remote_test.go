@@ -30,7 +30,7 @@ func packetDispatcher(rclient *RemotingClient, packet []byte) {
 
 	resp := protocol.NewRespPacket(p.Opaque, p.CmdType, p.Data)
 	//直接回写回去
-	rclient.Write(resp)
+	rclient.Write(*resp)
 	flow.WriteFlow.Incr(1)
 }
 
@@ -41,11 +41,10 @@ func handshake(ga *GroupAuth, remoteClient *RemotingClient) (bool, error) {
 func init() {
 
 	rc := &protocol.RemotingConfig{
-		ConnReadBufferSize:  16 * 1024,
-		ConnWriteBufferSize: 16 * 1024,
-		MinPacketSize:       1024,
-		FlushThreshold:      1000,
-		FlushTimeout:        1 * time.Second}
+		ReadBufferSize:   16 * 1024,
+		WriteBufferSize:  16 * 1024,
+		WriteChannelSize: 10000,
+		ReadChannelSize:  10000}
 
 	remoteServer = server.NewRemotionServer("localhost:28888", 3*time.Second, flow, packetDispatcher, rc)
 	remoteServer.ListenAndServer()

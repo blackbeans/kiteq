@@ -37,7 +37,11 @@ func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
 
 func (self *Packet) marshal() []byte {
 	//总长度	 1+ 4 字节+ 1字节 + 4字节 + var + \r + \n
-	length := PACKET_HEAD_LEN + len(self.Data) + 2
+	dl := 0
+	if nil != self.Data {
+		dl = len(self.Data)
+	}
+	length := PACKET_HEAD_LEN + dl + 2
 	buffer := make([]byte, 0, length)
 	buff := bytes.NewBuffer(buffer)
 	Write(buff, binary.BigEndian, self.Opaque) // 请求id

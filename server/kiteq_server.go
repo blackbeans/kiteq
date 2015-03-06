@@ -17,16 +17,13 @@ import (
 )
 
 type KiteQServer struct {
-	local          string
-	topics         []string
 	reconnManager  *client.ReconnectManager
 	clientManager  *client.ClientManager
 	exchanger      *binding.BindExchanger
 	remotingServer *server.RemotingServer
 	pipeline       *pipe.DefaultPipeline
 	recoverManager *RecoverManager
-	flowControl    *stat.FlowControl
-	rc             *protocol.RemotingConfig
+	kc             KiteQConfig
 }
 
 //握手包
@@ -34,14 +31,14 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 	return false, nil
 }
 
-func NewKiteQServer(local, zkhost string, rc *protocol.RemotingConfig, topics []string, db string) *KiteQServer {
+func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
-	kitedb := parseDB(db)
+	kitedb := parseDB(kc.db)
 
-	recoverPeriod := 1 * time.Minute
 	kiteqName, _ := os.Hostname()
 
-	flowControl := stat.NewFlowControl("KiteQ")
+	kc.rc.FlowStat = stat.NewFlowStat("KiteQ-" + kc.server)
+
 	//重连管理器
 	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
 
@@ -49,7 +46,7 @@ func NewKiteQServer(local, zkhost string, rc *protocol.RemotingConfig, topics []
 	clientManager := client.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger(zkhost, local)
+	exchanger := binding.NewBindExchanger(kc.zkhost, kc.server)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
@@ -60,32 +57,29 @@ func NewKiteQServer(local, zkhost string, rc *protocol.RemotingConfig, topics []
 
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()
-	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet", flowControl))
+	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kitedb))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.maxDeliverWorkers, kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
-	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager, flowControl))
+	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", 1*time.Second, kitedb, rw))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 
-	recoverManager := NewRecoverManager(kiteqName, recoverPeriod, pipeline, kitedb)
+	recoverManager := NewRecoverManager(kiteqName, kc.recoverPeriod, pipeline, kitedb)
 
 	return &KiteQServer{
-		local:          local,
-		topics:         topics,
 		reconnManager:  reconnManager,
 		clientManager:  clientManager,
 		exchanger:      exchanger,
 		pipeline:       pipeline,
-		flowControl:    flowControl,
 		recoverManager: recoverManager,
-		rc:             rc}
+		kc:             kc}
 
 }
 
@@ -137,9 +131,8 @@ func parseDB(db string) store.IKiteStore {
 
 func (self *KiteQServer) Start() {
 
-	self.remotingServer = server.NewRemotionServer(self.local, self.flowControl, self.rc,
+	self.remotingServer = server.NewRemotionServer(self.kc.server, self.kc.rc,
 		func(rclient *client.RemotingClient, packet *protocol.Packet) {
-			self.flowControl.DispatcherFlow.Incr(1)
 			event := pipe.NewPacketEvent(rclient, packet)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
@@ -151,17 +144,21 @@ func (self *KiteQServer) Start() {
 
 	err := self.remotingServer.ListenAndServer()
 	if nil != err {
-		log.Fatalf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.local)
+		log.Fatalf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.server)
 	} else {
-		log.Printf("KiteQServer|RemotionServer|START|SUCC|%s\n", self.local)
+		log.Printf("KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
 	}
 	//推送可发送的topic列表并且获取了对应topic下的订阅关系
-	succ := self.exchanger.PushQServer(self.local, self.topics)
+	succ := self.exchanger.PushQServer(self.kc.server, self.kc.topics)
 	if !succ {
-		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.topics)
+		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.topics)
 	} else {
-		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.topics)
+		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
 	}
+
+	//开启流量统计
+	self.kc.rc.FlowStat.Start()
+
 	//开启recover
 	self.recoverManager.Start()
 

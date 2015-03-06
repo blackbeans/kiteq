@@ -21,7 +21,6 @@ var holder map[int32]chan interface{}
 
 func init() {
 	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
-
 }
 
 //网络层的client
@@ -34,13 +33,19 @@ type RemotingClient struct {
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
+	WorkerNum        chan byte //工作线程的channel控制器
 	lock             sync.Mutex
 }
 
 func NewRemotingClient(conn *net.TCPConn,
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet), rc *protocol.RemotingConfig) *RemotingClient {
+	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet),
+	rc *protocol.RemotingConfig) *RemotingClient {
 
 	remoteSession := session.NewSession(conn, rc)
+	ch := make(chan byte, rc.MaxWorkerNum)
+	for i := 0; i < rc.MaxWorkerNum; i++ {
+		ch <- 1
+	}
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
@@ -49,7 +54,8 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		rc:               rc}
+		rc:               rc,
+		WorkerNum:        ch}
 
 	return remotingClient
 }
@@ -75,7 +81,7 @@ func (self *RemotingClient) Start() {
 	go self.remoteSession.WritePacket()
 
 	//开启多个派发goroutine
-	for i := 0; i < 10; i++ {
+	for i := 0; i < self.rc.MaxDispatcherNum; i++ {
 		//开启转发
 		go self.dispatcherPacket(self.remoteSession)
 	}
@@ -85,10 +91,6 @@ func (self *RemotingClient) Start() {
 
 	log.Printf("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
 }
-
-// func (self *RemotingClient) locker(id int32) sync.Locker {
-// 	return locks[id%CONCURRENT]
-// }
 
 //重连
 func (self *RemotingClient) reconnect() (bool, error) {
@@ -115,13 +117,22 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 	//解析包
 	for nil != self.remoteSession &&
 		!self.remoteSession.Closed() {
-		packet := <-self.remoteSession.ReadChannel
-		if nil == packet {
-			continue
-		}
 
-		//处理一下包
-		go self.packetDispatcher(self, packet)
+		packet := <-self.remoteSession.ReadChannel
+		//获取协程处理分发包
+		<-self.WorkerNum
+		go func() {
+			defer func() {
+				self.WorkerNum <- 1
+			}()
+			//处理一下包
+			self.packetDispatcher(self, &packet)
+
+		}()
+
+		if nil != self.rc.FlowStat {
+			self.rc.FlowStat.DispatcherFlow.Incr(1)
+		}
 	}
 
 }
@@ -185,19 +196,16 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 }
 
 //只是写出去
-func (self *RemotingClient) Write(packet protocol.Packet) chan interface{} {
+func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, error) {
 
 	tid, future := self.fillOpaque(&packet)
-	// locker := self.locker(tid)
-	// locker.Lock()
-	// defer locker.Unlock()
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	delete(holder, tid)
 	holder[tid] = future
-	self.remoteSession.Write(&packet)
-	return future
+	return future, self.remoteSession.Write(packet)
+
 }
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
@@ -207,7 +215,11 @@ func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	//同步写出
-	future := self.Write(packet)
+	future, err := self.Write(packet)
+	if nil != err {
+		return nil, err
+	}
+
 	var resp interface{}
 	select {
 	case <-time.After(timeout):

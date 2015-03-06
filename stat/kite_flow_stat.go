@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type FlowControl struct {
+type FlowStat struct {
 	name           string
 	ReadFlow       *flow
 	DispatcherFlow *flow
@@ -15,8 +15,8 @@ type FlowControl struct {
 	stop           bool
 }
 
-func NewFlowControl(name string) *FlowControl {
-	return &FlowControl{
+func NewFlowStat(name string) *FlowStat {
+	return &FlowStat{
 		name:           name,
 		ReadFlow:       &flow{},
 		DispatcherFlow: &flow{},
@@ -24,7 +24,7 @@ func NewFlowControl(name string) *FlowControl {
 		stop:           false}
 }
 
-func (self *FlowControl) Start() {
+func (self *FlowStat) Start() {
 
 	go func() {
 		for !self.stop {
@@ -36,7 +36,7 @@ func (self *FlowControl) Start() {
 	}()
 }
 
-func (self *FlowControl) Stop() {
+func (self *FlowStat) Stop() {
 	self.stop = true
 }
 

@@ -4,7 +4,6 @@ import (
 	"errors"
 	. "kiteq/pipe"
 	"kiteq/protocol"
-	"kiteq/stat"
 	// "log"
 )
 
@@ -12,13 +11,11 @@ import (
 
 type PacketHandler struct {
 	BaseForwardHandler
-	flowControl *stat.FlowControl
 }
 
-func NewPacketHandler(name string, flowControl *stat.FlowControl) *PacketHandler {
+func NewPacketHandler(name string) *PacketHandler {
 	packetHandler := &PacketHandler{}
 	packetHandler.BaseForwardHandler = NewBaseForwardHandler(name, packetHandler)
-	packetHandler.flowControl = flowControl
 	return packetHandler
 
 }
@@ -43,8 +40,6 @@ func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
 	}
-
-	self.flowControl.ReadFlow.Incr(1)
 
 	cevent, err := self.handlePacket(pevent)
 	if nil != err {

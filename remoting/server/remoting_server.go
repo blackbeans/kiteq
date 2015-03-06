@@ -3,7 +3,6 @@ package server
 import (
 	"kiteq/protocol"
 	. "kiteq/remoting/client"
-	"kiteq/stat"
 	"log"
 	"net"
 	"time"
@@ -15,11 +14,10 @@ type RemotingServer struct {
 	stopChan         chan bool
 	isShutdown       bool
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)
-	flowControl      *stat.FlowControl
 	rc               *protocol.RemotingConfig
 }
 
-func NewRemotionServer(hostport string, flowControl *stat.FlowControl, rc *protocol.RemotingConfig,
+func NewRemotionServer(hostport string, rc *protocol.RemotingConfig,
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingServer {
 
 	//设置为8个并发
@@ -30,16 +28,13 @@ func NewRemotionServer(hostport string, flowControl *stat.FlowControl, rc *proto
 		stopChan:         make(chan bool, 1),
 		packetDispatcher: packetDispatcher,
 		isShutdown:       false,
-		flowControl:      flowControl,
-		rc:               rc}
+		rc:               rc,
+		keepalive:        5 * time.Second}
 	return server
 }
 
 func (self *RemotingServer) ListenAndServer() error {
 
-	//开启流控
-
-	self.flowControl.Start()
 	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
 	if nil != err {
 		log.Fatalf("RemotingServer|ADDR|FAIL|%s\n", self.hostport)
@@ -81,5 +76,4 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 func (self *RemotingServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
-	self.flowControl.Stop()
 }
