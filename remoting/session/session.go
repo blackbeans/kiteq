@@ -192,19 +192,20 @@ func (self *Session) write0(tlv protocol.Packet) {
 func (self *Session) WritePacket() {
 
 	var packet protocol.Packet
+	tick := time.NewTicker(5 * time.Millisecond)
 	for !self.isClose {
+
 		//写入网络
 		select {
 		//1.读取数据包
 		case packet = <-self.WriteChannel:
 			//写入网络
 			self.write0(packet)
-		default:
-			//处于IO空闲期间
+		case <-tick.C:
 			self.flush()
 		}
-
 	}
+	tick.Stop()
 }
 
 func (self *Session) flush() {
