@@ -14,19 +14,15 @@ import (
 
 const (
 	MAX_WATER_MARK int = 100000
-	LOCK_NUM           = 16
 )
 
 //全局唯一的Hodler
 var holder map[int32]chan interface{}
-var locks []*sync.Mutex
+var lock sync.Mutex
 
 func init() {
 	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
-	locks = make([]*sync.Mutex, 0, LOCK_NUM)
-	for i := 0; i < LOCK_NUM; i++ {
-		locks = append(locks, &sync.Mutex{})
-	}
+
 }
 
 //网络层的client
@@ -185,10 +181,6 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	return tid, make(chan interface{}, 1)
 }
 
-func (self *RemotingClient) locker(hash int32) *sync.Mutex {
-	return locks[hash%LOCK_NUM]
-}
-
 //将结果attach到当前的等待回调chan
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer func() {
@@ -197,7 +189,6 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 		}
 	}()
 
-	lock := self.locker(opaque)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -214,7 +205,6 @@ func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, err
 
 	tid, future := self.fillOpaque(&packet)
 
-	lock := self.locker(tid)
 	lock.Lock()
 	defer lock.Unlock()
 
@@ -244,7 +234,6 @@ func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	case resp = <-future:
 		return resp, nil
 	}
-
 }
 
 func (self *RemotingClient) IsClosed() bool {
