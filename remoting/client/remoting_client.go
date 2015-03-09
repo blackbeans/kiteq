@@ -28,6 +28,7 @@ func init() {
 		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
 		holders = append(holders, splitMap)
 		locks = append(locks, &sync.Mutex{})
+
 	}
 }
 
