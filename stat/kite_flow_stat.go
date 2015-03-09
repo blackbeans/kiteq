@@ -27,7 +27,7 @@ func NewFlowStat(name string) *FlowStat {
 func (self *FlowStat) Start() {
 
 	go func() {
-		t := time.NewTimer(1 * time.Second)
+		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
 			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d", self.name, self.ReadFlow.changes(),
 				self.DispatcherFlow.changes(), self.WriteFlow.changes())

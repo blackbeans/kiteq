@@ -46,7 +46,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	entity := pevent.entity
 	if nil == entity {
 		//查询消息
-		entity := self.kitestore.Query(pevent.messageId)
+		entity = self.kitestore.Query(pevent.messageId)
 		if nil == entity {
 			return nil
 		}
