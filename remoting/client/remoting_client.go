@@ -13,16 +13,22 @@ import (
 )
 
 const (
-	MAX_WATER_MARK int = 100000
+	MAX_WATER_MARK   int = 100000
+	CONCURRENT_LEVEL     = 16
 )
 
-//全局唯一的Hodler
-var holder map[int32]chan interface{}
-var lock sync.Mutex
+//全局唯一的分拆hodler
+var holders []map[int32]chan interface{}
+var locks []*sync.Mutex
 
 func init() {
-	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
-
+	holders = make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
+	locks = make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
+	for i := 0; i < CONCURRENT_LEVEL; i++ {
+		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
+		holders = append(holders, splitMap)
+		locks = append(locks, &sync.Mutex{})
+	}
 }
 
 //网络层的client
@@ -181,6 +187,10 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	return tid, make(chan interface{}, 1)
 }
 
+func (self *RemotingClient) locker(id int32) (*sync.Mutex, map[int32]chan interface{}) {
+	return locks[id%CONCURRENT_LEVEL], holders[id%CONCURRENT_LEVEL]
+}
+
 //将结果attach到当前的等待回调chan
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer func() {
@@ -189,12 +199,13 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 		}
 	}()
 
-	lock.Lock()
-	defer lock.Unlock()
+	l, m := self.locker(opaque)
+	l.Lock()
+	defer l.Unlock()
 
-	ch, ok := holder[opaque]
+	ch, ok := m[opaque]
 	if ok {
-		delete(holder, opaque)
+		delete(m, opaque)
 		ch <- obj
 		close(ch)
 	}
@@ -203,13 +214,12 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 //只是写出去
 func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, error) {
 
-	tid, future := self.fillOpaque(&packet)
+	opaque, future := self.fillOpaque(&packet)
 
-	lock.Lock()
-	defer lock.Unlock()
-
-	delete(holder, tid)
-	holder[tid] = future
+	l, m := self.locker(opaque)
+	l.Lock()
+	defer l.Unlock()
+	m[opaque] = future
 	return future, self.remoteSession.Write(packet)
 
 }
