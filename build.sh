@@ -8,18 +8,18 @@ go get -u github.com/sutoo/gorp
 
 protoc --go_out=. ./protocol/*.proto
 
-go build kiteq/stat
-go build kiteq/protocol
-go build kiteq/binding
-go build kiteq/store
-go build kiteq/pipe
-go build kiteq/handler
-go build kiteq/remoting/session
-go build kiteq/remoting/server
-go build kiteq/remoting/client
-go build kiteq/client/chandler
-go build kiteq/server
-go build kiteq/client
+go build -a kiteq/stat
+go build -a kiteq/protocol
+go build -a kiteq/binding
+go build -a kiteq/store
+go build -a kiteq/pipe
+go build -a kiteq/handler
+go build -a kiteq/remoting/session
+go build -a kiteq/remoting/server
+go build -a kiteq/remoting/client
+go build -a kiteq/client/chandler
+go build -a kiteq/server
+go build -a kiteq/client
 
 
 #########
@@ -44,10 +44,10 @@ echo "------------ compoments  installing is finished!-------------"
 PROJ=`pwd | awk -F'/' '{print $(NF)}'`
 #VERSION=$1
 #go build  -o ./$PROJ-$VERSION $PROJ.go
-go build  -o ./$PROJ $PROJ.go
+go build  -a -o ./$PROJ $PROJ.go
 
-go build kite_benchmark_producer.go
-go build kite_benchmark_consumer.go
+go build -a kite_benchmark_producer.go
+go build -a kite_benchmark_consumer.go
 
 
 
