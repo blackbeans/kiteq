@@ -14,13 +14,19 @@ import (
 
 const (
 	MAX_WATER_MARK int = 100000
+	LOCK_NUM           = 16
 )
 
 //全局唯一的Hodler
 var holder map[int32]chan interface{}
+var locks []*sync.Mutex
 
 func init() {
 	holder = make(map[int32]chan interface{}, MAX_WATER_MARK)
+	locks = make([]*sync.Mutex, 0, LOCK_NUM)
+	for i := 0; i < LOCK_NUM; i++ {
+		locks = append(locks, &sync.Mutex{})
+	}
 }
 
 //网络层的client
@@ -34,7 +40,6 @@ type RemotingClient struct {
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
 	WorkerNum        chan byte //工作线程的channel控制器
-	lock             sync.Mutex
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -180,6 +185,10 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	return tid, make(chan interface{}, 1)
 }
 
+func (self *RemotingClient) locker(hash int32) *sync.Mutex {
+	return locks[hash%LOCK_NUM]
+}
+
 //将结果attach到当前的等待回调chan
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer func() {
@@ -188,8 +197,9 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 		}
 	}()
 
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	lock := self.locker(opaque)
+	lock.Lock()
+	defer lock.Unlock()
 
 	ch, ok := holder[opaque]
 	if ok {
@@ -203,8 +213,10 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, error) {
 
 	tid, future := self.fillOpaque(&packet)
-	self.lock.Lock()
-	defer self.lock.Unlock()
+
+	lock := self.locker(tid)
+	lock.Lock()
+	defer lock.Unlock()
 
 	delete(holder, tid)
 	holder[tid] = future
