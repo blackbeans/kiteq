@@ -18,6 +18,7 @@ type Session struct {
 	remoteAddr   string
 	br           *bufio.Reader
 	bw           *bufio.Writer
+	idleTimer    *time.Timer          //空闲timer
 	ReadChannel  chan protocol.Packet //request的channel
 	WriteChannel chan protocol.Packet //response的channel
 	isClose      bool
@@ -41,12 +42,24 @@ func NewSession(conn *net.TCPConn, rc *protocol.RemotingConfig) *Session {
 		WriteChannel: make(chan protocol.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
-		rc:           rc}
+		rc:           rc,
+		idleTimer:    time.NewTimer(rc.IdleTime)}
 	return session
 }
 
 func (self *Session) RemotingAddr() string {
 	return self.remoteAddr
+}
+
+func (self *Session) Idle() bool {
+	select {
+	case <-self.idleTimer.C:
+		//超时，暂时IO处于空闲
+		return true
+	default:
+		//没有超时则是一直有读写
+		return false
+	}
 }
 
 //读取
@@ -126,7 +139,7 @@ func (self *Session) ReadPacket() {
 			self.ReadChannel <- *packet
 			//重置buffer
 			buff.Reset()
-
+			self.idleTimer.Reset(self.rc.IdleTime)
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
 			}
@@ -192,7 +205,7 @@ func (self *Session) write0(tlv protocol.Packet) {
 func (self *Session) WritePacket() {
 
 	var packet protocol.Packet
-	tick := time.NewTicker(5 * time.Millisecond)
+	ticker := time.NewTicker(5 * time.Millisecond)
 	for !self.isClose {
 
 		//写入网络
@@ -201,11 +214,13 @@ func (self *Session) WritePacket() {
 		case packet = <-self.WriteChannel:
 			//写入网络
 			self.write0(packet)
-		case <-tick.C:
+			self.idleTimer.Reset(self.rc.IdleTime)
+		case <-ticker.C:
 			self.flush()
+
 		}
 	}
-	tick.Stop()
+	ticker.Stop()
 }
 
 func (self *Session) flush() {

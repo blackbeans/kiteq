@@ -68,6 +68,10 @@ func (self *RemotingClient) LocalAddr() string {
 	return self.localAddr
 }
 
+func (self *RemotingClient) Idle() bool {
+	return self.remoteSession.Idle()
+}
+
 //启动当前的client
 func (self *RemotingClient) Start() {
 

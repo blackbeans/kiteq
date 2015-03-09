@@ -45,6 +45,7 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		WriteBufferSize:  16 * 1024,
 		WriteChannelSize: 10000,
 		ReadChannelSize:  10000,
+		IdleTime:         10 * time.Second,
 		FlowStat:         stat.NewFlowStat("kiteclient-" + groupId)}
 
 	//重连管理器

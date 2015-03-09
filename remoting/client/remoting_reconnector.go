@@ -2,6 +2,7 @@ package client
 
 import (
 	"log"
+	"math"
 	"sync"
 	"time"
 )
@@ -75,8 +76,9 @@ func (self *ReconnectManager) submit(c *RemotingClient, ga *GroupAuth, finishHoo
 
 func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 	addr := task.remoteClient.RemoteAddr()
+
 	//创建定时的timer
-	timer := time.AfterFunc(time.Duration(task.retryCount*10)*time.Second, func() {
+	timer := time.AfterFunc(self.reconnectTimeout, func() {
 		log.Printf("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
 		succ, err := task.reconnect(self.handshake)
 		if nil != err || !succ {
@@ -94,8 +96,9 @@ func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 				return
 			}
 
+			connTime := time.Duration(int64(math.Pow(2, float64(task.retryCount))) * int64(self.reconnectTimeout))
 			//继续提交重试任务,如果成功那么就不用再重建
-			timer.Reset(time.Duration(task.retryCount*10) * time.Second)
+			timer.Reset(connTime)
 		} else {
 			_, ok := self.timers[addr]
 			if ok {

@@ -43,19 +43,21 @@ func (self *HeartbeatHandler) keepAlive() {
 					if c.IsClosed() {
 						i = 3
 					} else {
-						for ; i < 3; i++ {
-							hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
-							err := c.Ping(hp, time.Duration(int64(self.heartbeatTimeout)*int64(i+1)))
-							//如果有错误则需要记录
-							if nil != err {
-								log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
-								continue
-							} else {
-								log.Printf("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
-								break
+						//如果是空闲的则发起心跳
+						if c.Idle() {
+							for ; i < 3; i++ {
+								hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
+								err := c.Ping(hp, time.Duration(self.heartbeatTimeout))
+								//如果有错误则需要记录
+								if nil != err {
+									log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
+									continue
+								} else {
+									log.Printf("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
+									break
+								}
 							}
 						}
-
 					}
 					if i >= 3 {
 						//说明连接有问题需要重连

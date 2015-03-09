@@ -44,7 +44,8 @@ func main() {
 		ReadBufferSize:   16 * 1024,
 		WriteBufferSize:  16 * 1024,
 		WriteChannelSize: 10000,
-		ReadChannelSize:  10000}
+		ReadChannelSize:  10000,
+		IdleTime:         10 * time.Second}
 
 	kc := server.NewKiteQConfig(*bindHost, *zkhost, 100000, 1*time.Minute, strings.Split(*topics, ","), *db, rc)
 
