@@ -140,9 +140,8 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 
 //查找匹配的groupids
 func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string, rc *RemotingClient) bool) map[string][]*RemotingClient {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
 	clients := make(map[string][]*RemotingClient, 10)
+	var closedClients []*RemotingClient
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
 			continue
@@ -153,20 +152,33 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 			gclient = make([]*RemotingClient, 0, 10)
 		}
 
+		self.lock.RLock()
 		for _, c := range self.groupClients[gid] {
 
 			if c.IsClosed() {
-				//提交到重连
+				if nil == clients {
+					closedClients = make([]*RemotingClient, 0, 2)
+				}
+				closedClients = append(closedClients, c)
 				continue
 			}
 			//如果当前client处于非关闭状态并且没有过滤则入选
 			if !filter(gid, c) {
 				gclient = append(gclient, c)
 			}
-
 		}
+		self.lock.RUnlock()
+
 		clients[gid] = gclient
 	}
+
+	//删除掉关掉的clients
+	if nil != closedClients && len(closedClients) > 0 {
+		for _, c := range closedClients {
+			self.SubmitReconnect(c)
+		}
+	}
+
 	// log.Printf("Find clients result |%s|%s\n", clients, self.groupClients)
 	return clients
 }
