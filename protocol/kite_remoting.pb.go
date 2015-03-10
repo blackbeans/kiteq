@@ -15,6 +15,7 @@ It has these top-level messages:
 	MessageStoreAck
 	DeliverAck
 	TxACKPacket
+	Entry
 	Header
 	BytesMessage
 	StringMessage
@@ -186,10 +187,11 @@ func (m *DeliverAck) GetStatus() bool {
 // 事务确认数据包
 type TxACKPacket struct {
 	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
-	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
-	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
-	Status           *int32  `protobuf:"varint,4,req,name=status,def=0" json:"status,omitempty"`
-	Feedback         *string `protobuf:"bytes,5,req,name=feedback" json:"feedback,omitempty"`
+	Header           *Header `protobuf:"bytes,2,req,name=header" json:"header,omitempty"`
+	Topic            *string `protobuf:"bytes,3,req,name=topic" json:"topic,omitempty"`
+	MessageType      *string `protobuf:"bytes,4,req,name=messageType" json:"messageType,omitempty"`
+	Status           *int32  `protobuf:"varint,5,req,name=status,def=0" json:"status,omitempty"`
+	Feedback         *string `protobuf:"bytes,6,req,name=feedback" json:"feedback,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -204,6 +206,13 @@ func (m *TxACKPacket) GetMessageId() string {
 		return *m.MessageId
 	}
 	return ""
+}
+
+func (m *TxACKPacket) GetHeader() *Header {
+	if m != nil {
+		return m.Header
+	}
+	return nil
 }
 
 func (m *TxACKPacket) GetTopic() string {
@@ -234,16 +243,41 @@ func (m *TxACKPacket) GetFeedback() string {
 	return ""
 }
 
-type Header struct {
-	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
-	Topic            *string `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
-	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
-	ExpiredTime      *int64  `protobuf:"varint,4,req,name=expiredTime,def=-1" json:"expiredTime,omitempty"`
-	DeliverLimit     *int32  `protobuf:"varint,5,req,name=deliverLimit,def=100" json:"deliverLimit,omitempty"`
-	GroupId          *string `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
-	Commit           *bool   `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
-	Fly              *bool   `protobuf:"varint,8,req,name=fly,def=0" json:"fly,omitempty"`
+type Entry struct {
+	Key              *string `protobuf:"bytes,1,req,name=key" json:"key,omitempty"`
+	Value            *string `protobuf:"bytes,2,req,name=value" json:"value,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
+}
+
+func (m *Entry) Reset()         { *m = Entry{} }
+func (m *Entry) String() string { return proto.CompactTextString(m) }
+func (*Entry) ProtoMessage()    {}
+
+func (m *Entry) GetKey() string {
+	if m != nil && m.Key != nil {
+		return *m.Key
+	}
+	return ""
+}
+
+func (m *Entry) GetValue() string {
+	if m != nil && m.Value != nil {
+		return *m.Value
+	}
+	return ""
+}
+
+type Header struct {
+	MessageId        *string  `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
+	Topic            *string  `protobuf:"bytes,2,req,name=topic" json:"topic,omitempty"`
+	MessageType      *string  `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
+	ExpiredTime      *int64   `protobuf:"varint,4,req,name=expiredTime,def=-1" json:"expiredTime,omitempty"`
+	DeliverLimit     *int32   `protobuf:"varint,5,req,name=deliverLimit,def=100" json:"deliverLimit,omitempty"`
+	GroupId          *string  `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
+	Commit           *bool    `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
+	Fly              *bool    `protobuf:"varint,8,req,name=fly,def=0" json:"fly,omitempty"`
+	Property         []*Entry `protobuf:"bytes,9,rep,name=property" json:"property,omitempty"`
+	XXX_unrecognized []byte   `json:"-"`
 }
 
 func (m *Header) Reset()         { *m = Header{} }
@@ -308,6 +342,13 @@ func (m *Header) GetFly() bool {
 		return *m.Fly
 	}
 	return Default_Header_Fly
+}
+
+func (m *Header) GetProperty() []*Entry {
+	if m != nil {
+		return m.Property
+	}
+	return nil
 }
 
 // byte类消息

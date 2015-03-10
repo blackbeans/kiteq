@@ -140,10 +140,6 @@ func TestSubscribeTopic(t *testing.T) {
 		t.Fail()
 	}
 
-	//删除掉一个订阅关系
-	// zkmanager.session.Delete("path", version)
-	// zkmanager.session.Delete("/kiteq", -1)
-
 	cleanUp(t, zkmanager, "/kiteq")
 
 	time.Sleep(10 * time.Second)

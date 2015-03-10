@@ -81,14 +81,14 @@ func (self *ZKManager) listenEvent() {
 		switch change.Type {
 		case zk.Deleted:
 			self.watcher.NodeChange(path, ZkEvent(change.Type), []string{})
-			log.Printf("ZKManager|Notify|%s|%s\n", path, change)
+			log.Printf("ZKManager|listenEvent|%s|%s\n", path, change)
 		case zk.Created, zk.Child:
 			childnodes, _, err := self.session.Children(path, self.zkwatcher)
 			if nil != err {
-				log.Printf("ZKManager|addWatch|CD|%s|%s|%t\n", err, path, change.Type)
+				log.Printf("ZKManager|listenEvent|CD|%s|%s|%t\n", err, path, change.Type)
 			} else {
 				self.watcher.NodeChange(path, ZkEvent(change.Type), childnodes)
-				log.Printf("ZKManager|Notify|%s|%s|%s\n", path, change, childnodes)
+				log.Printf("ZKManager|listenEvent|%s|%s|%s\n", path, change, childnodes)
 			}
 
 		case zk.Changed:
@@ -101,12 +101,12 @@ func (self *ZKManager) listenEvent() {
 			//获取一下数据
 			binds, err := self.getBindData(path, self.zkwatcher)
 			if nil != err {
-				log.Printf("ZKManager|addWatch|Changed|Get DATA|FAIL|%s|%s\n", err, path)
+				log.Printf("ZKManager|listenEvent|Changed|Get DATA|FAIL|%s|%s\n", err, path)
 				//忽略
 				continue
 			}
 			self.watcher.DataChange(path, binds)
-			log.Printf("ZKManager|Notify|%s|%s|%s\n", path, change, binds)
+			log.Printf("ZKManager|listenEvent|%s|%s|%s\n", path, change, binds)
 
 		}
 
@@ -253,7 +253,7 @@ func (self *ZKManager) traverseCreatePath(path string, data []byte, createType z
 
 //内部创建节点的方法
 func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType zk.CreateType) error {
-	exist, _, err := self.session.Exists(tmppath, nil)
+	exist, _, err := self.session.Exists(tmppath, self.zkwatcher)
 	if nil == err && !exist {
 		_, err := self.session.Create(tmppath, data, createType, zk.AclOpen)
 		if nil != err {
@@ -263,7 +263,7 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 
 		//做一下校验等待
 		for i := 0; i < 5; i++ {
-			exist, _, _ = self.session.Exists(tmppath, nil)
+			exist, _, _ = self.session.Exists(tmppath, self.zkwatcher)
 			if !exist {
 				time.Sleep(time.Duration(i*100) * time.Millisecond)
 			} else {
@@ -328,6 +328,7 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, err
 		tmppath := path + "/" + groupId
 		binds, err := self.getBindData(tmppath, self.zkwatcher)
 		if nil != err {
+			log.Printf("GetBindAndWatch|getBindData|FAIL|%s|%s\n", tmppath, err)
 			continue
 		}
 
@@ -349,13 +350,17 @@ func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Bin
 	}
 
 	// log.Printf("ZKManager|getBindData|Binding|SUCC|%s|%s\n", path, string(bindData))
+	if nil == bindData || len(bindData) <= 0 {
+		return []*Binding{}, nil
+	} else {
+		binding, err := UmarshalBinds(bindData)
+		if nil != err {
+			log.Printf("ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
 
-	binding, err := UmarshalBinds(bindData)
-	if nil != err {
-		log.Printf("ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
-
+		}
+		return binding, err
 	}
-	return binding, err
+
 }
 
 func (self *ZKManager) addWatch(path string) {

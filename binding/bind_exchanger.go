@@ -54,7 +54,7 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 		} else {
 			for groupId, bs := range binds {
 				self.onBindChanged(topic, groupId, bs)
-				log.Printf("BindExchanger|SubscribeBinds|SUCC|%s\n", binds)
+				log.Printf("BindExchanger|SubscribeBinds|SUCC|%s|%s\n", topic, binds)
 			}
 		}
 	}
@@ -118,8 +118,14 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 				log.Printf("BindExchanger|NodeChange|获取订阅关系失败|%s|%s\n", path, childNode)
 			}
 
-			for groupId, bs := range bm {
-				self.onBindChanged(topic, groupId, bs)
+			//如果topic下没有订阅关系分组则青琉璃
+			if len(bm) > 0 {
+				for groupId, bs := range bm {
+					self.onBindChanged(topic, groupId, bs)
+				}
+			} else {
+				//删除具体某个分组
+				self.onBindChanged(topic, "", nil)
 			}
 		}
 
@@ -167,7 +173,12 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Bind
 		v = make(map[string][]*Binding, 10)
 		self.exchanger[topic] = v
 	}
-	v[groupId] = newbinds
+
+	if len(newbinds) > 0 {
+		v[groupId] = newbinds
+	} else {
+		delete(v, groupId)
+	}
 }
 
 //关闭掉exchanger
