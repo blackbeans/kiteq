@@ -65,6 +65,8 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 }
 
 func main() {
+
+	k := flag.Int("k", 1, "-k=1  //kiteclient num ")
 	c := flag.Int("c", 10, "-c=10")
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
@@ -76,10 +78,6 @@ func main() {
 
 		log.Println(http.ListenAndServe(":28000", nil))
 	}()
-
-	kite := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
-	kite.SetTopics([]string{"trade"})
-	kite.Start()
 
 	count := int32(0)
 	lc := int32(0)
@@ -101,34 +99,41 @@ func main() {
 	}()
 
 	wg := &sync.WaitGroup{}
-
 	stop := false
-	for i := 0; i < *c; i++ {
-		go func() {
-			wg.Add(1)
-			for !stop {
-				if *tx {
-					msg := buildBytesMessage(false)
-					err := kite.SendTxBytesMessage(msg, doTranscation)
-					if nil != err {
-						fmt.Printf("SEND TxMESSAGE |FAIL|%s\n", err)
-						atomic.AddInt32(&fc, 1)
+	clients := make([]*client.KiteQClient, 0, *k)
+	for j := 0; j < *k; j++ {
+
+		kiteClient := client.NewKiteQClient(*zkhost, "pb-mts-test", "123456", &defualtListener{})
+		kiteClient.SetTopics([]string{"trade"})
+		kiteClient.Start()
+		clients = append(clients, kiteClient)
+		for i := 0; i < *c; i++ {
+			go func(kite *client.KiteQClient) {
+				wg.Add(1)
+				for !stop {
+					if *tx {
+						msg := buildBytesMessage(false)
+						err := kite.SendTxBytesMessage(msg, doTranscation)
+						if nil != err {
+							fmt.Printf("SEND TxMESSAGE |FAIL|%s\n", err)
+							atomic.AddInt32(&fc, 1)
+						} else {
+							atomic.AddInt32(&count, 1)
+						}
 					} else {
-						atomic.AddInt32(&count, 1)
+						err := kite.SendBytesMessage(buildBytesMessage(true))
+						if nil != err {
+							fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
+							atomic.AddInt32(&fc, 1)
+						} else {
+							atomic.AddInt32(&count, 1)
+						}
 					}
-				} else {
-					err := kite.SendBytesMessage(buildBytesMessage(true))
-					if nil != err {
-						fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
-						atomic.AddInt32(&fc, 1)
-					} else {
-						atomic.AddInt32(&count, 1)
-					}
+					// stop = true
 				}
-				// stop = true
-			}
-			wg.Done()
-		}()
+				wg.Done()
+			}(kiteClient)
+		}
 	}
 
 	var s = make(chan os.Signal, 1)
@@ -152,7 +157,10 @@ func main() {
 	}
 
 	wg.Wait()
-	kite.Destory()
+
+	for _, k := range clients {
+		k.Destory()
+	}
 }
 
 func doTranscation(message *protocol.QMessage) (bool, error) {

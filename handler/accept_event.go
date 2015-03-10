@@ -11,6 +11,7 @@ import (
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
 	BaseForwardHandler
+	topics []string
 }
 
 func NewAcceptHandler(name string) *AcceptHandler {
