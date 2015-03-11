@@ -67,13 +67,19 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 			//如果是fly模式不做持久化
 			if pevent.entity.Header.GetFly() {
-				//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
-				//发送存储结果ack
-				remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-					pevent.entity.Header.GetMessageId(), true, ""), []string{pevent.remoteClient.RemoteAddr()})
-				ctx.SendForward(remoteEvent)
+				if pevent.entity.Header.GetCommit() {
+					//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+					//发送存储结果ack
+					remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+						pevent.entity.Header.GetMessageId(), true, "FLY NO NEED SAVE"), []string{pevent.remoteClient.RemoteAddr()})
+					ctx.SendForward(remoteEvent)
+					self.send(ctx, pevent)
+				} else {
+					remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+						pevent.entity.Header.GetMessageId(), false, "FLY MUST BE COMMITTED !"), []string{pevent.remoteClient.RemoteAddr()})
+					ctx.SendForward(remoteEvent)
+				}
 
-				self.send(ctx, pevent)
 			} else {
 				self.sendUnFlyMessage(ctx, pevent)
 			}

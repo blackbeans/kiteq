@@ -65,10 +65,13 @@ func (self *MockListener) OnMessageCheck(messageId string, tx *protocol.TxRespon
 	return nil
 }
 
-func TestNewManager(t *testing.T) {
+var rc = make(chan string, 1)
+var txc = make(chan string, 1)
+var kiteQ *server.KiteQServer
+var manager *KiteClientManager
 
-	rc := make(chan string, 1)
-	txc := make(chan string, 1)
+func init() {
+
 	l := &MockListener{rc: rc, txc: txc}
 
 	rconf := &protocol.RemotingConfig{
@@ -81,13 +84,10 @@ func TestNewManager(t *testing.T) {
 		IdleTime:         10 * time.Second}
 
 	kc := server.NewKiteQConfig("127.0.0.1:13800", "localhost:2181", 100000, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rconf)
+	kiteQ = server.NewKiteQServer(kc)
 
-	kiteQ := server.NewKiteQServer(kc)
-	kiteQ.Start()
-
-	time.Sleep(10 * time.Second)
 	// 创建客户端
-	manager := NewKiteClientManager("localhost:2181", "ps-trade-a", "123456", l)
+	manager = NewKiteClientManager("localhost:2181", "ps-trade-a", "123456", l)
 	manager.SetPublishTopics([]string{"trade"})
 
 	// 设置接收类型
@@ -97,7 +97,12 @@ func TestNewManager(t *testing.T) {
 		},
 	)
 
+	kiteQ.Start()
+	time.Sleep(10 * time.Second)
 	manager.Start()
+}
+
+func TestStringMesage(t *testing.T) {
 
 	m := buildStringMessage(true)
 	// 发送数据
@@ -120,9 +125,13 @@ func TestNewManager(t *testing.T) {
 
 	}
 
+}
+
+func TestBytesMessage(t *testing.T) {
+
 	bm := buildBytesMessage(true)
 	// 发送数据
-	err = manager.SendMessage(protocol.NewQMessage(m))
+	err := manager.SendMessage(protocol.NewQMessage(bm))
 	if nil != err {
 		log.Println("SEND BytesMESSAGE |FAIL|", err)
 	} else {
@@ -131,7 +140,7 @@ func TestNewManager(t *testing.T) {
 
 	select {
 	case mid := <-rc:
-		if mid != m.GetHeader().GetMessageId() {
+		if mid != bm.GetHeader().GetMessageId() {
 			t.Fail()
 		}
 		log.Println("RECIEVE BytesMESSAGE |SUCCESS")
@@ -141,10 +150,13 @@ func TestNewManager(t *testing.T) {
 
 	}
 
-	bm = buildBytesMessage(false)
+}
 
+func TestTxBytesMessage(t *testing.T) {
+
+	bm := buildBytesMessage(false)
 	// 发送数据
-	err = manager.SendMessage(protocol.NewQMessage(bm))
+	err := manager.SendMessage(protocol.NewQMessage(bm))
 	if nil != err {
 		log.Println("SEND TxBytesMESSAGE |FAIL|", err)
 	} else {
@@ -164,25 +176,8 @@ func TestNewManager(t *testing.T) {
 		}
 
 	case <-time.After(10 * time.Second):
-		log.Println("WAIT TxBytesMESSAGE |TIMEOUT|", err)
+		log.Println("WAIT TxBytesMESSAGE |TIMEOUT")
 		t.Fail()
 
 	}
-
-	select {
-	case mid := <-rc:
-		if mid != bm.GetHeader().GetMessageId() {
-			t.Fail()
-		}
-		log.Println("RECIEVE TXBytesMESSAGE |SUCCESS")
-	case <-time.After(10 * time.Second):
-		log.Println("WAIT BytesMESSAGE |TIMEOUT|", err)
-		t.Fail()
-
-	}
-
-	time.Sleep(time.Second * 10)
-	manager.Destory()
-	kiteQ.Shutdown()
-
 }

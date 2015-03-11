@@ -114,6 +114,7 @@ func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
 
 func MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
 	data, _ := MarshalPbMessage(&TxACKPacket{
+		Header:      header,
 		MessageId:   proto.String(header.GetMessageId()),
 		Topic:       proto.String(header.GetTopic()),
 		MessageType: proto.String(header.GetMessageType()),

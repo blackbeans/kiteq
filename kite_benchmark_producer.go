@@ -67,7 +67,7 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 func main() {
 
 	k := flag.Int("k", 1, "-k=1  //kiteclient num ")
-	c := flag.Int("c", 10, "-c=10")
+	c := flag.Int("c", 10, "-c=100")
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
