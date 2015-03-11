@@ -276,7 +276,7 @@ type Header struct {
 	GroupId          *string  `protobuf:"bytes,6,req,name=groupId" json:"groupId,omitempty"`
 	Commit           *bool    `protobuf:"varint,7,req,name=commit" json:"commit,omitempty"`
 	Fly              *bool    `protobuf:"varint,8,req,name=fly,def=0" json:"fly,omitempty"`
-	Property         []*Entry `protobuf:"bytes,9,rep,name=property" json:"property,omitempty"`
+	Properties       []*Entry `protobuf:"bytes,9,rep,name=properties" json:"properties,omitempty"`
 	XXX_unrecognized []byte   `json:"-"`
 }
 
@@ -344,9 +344,9 @@ func (m *Header) GetFly() bool {
 	return Default_Header_Fly
 }
 
-func (m *Header) GetProperty() []*Entry {
+func (m *Header) GetProperties() []*Entry {
 	if m != nil {
-		return m.Property
+		return m.Properties
 	}
 	return nil
 }

@@ -68,6 +68,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 			pevent.RemoteClient.Attach(packet.Opaque, &auth)
 			event = &SunkEvent{}
 		}
+
 	//心跳
 	case protocol.CMD_HEARTBEAT:
 		var hearbeat protocol.HeartBeat

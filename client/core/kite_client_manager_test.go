@@ -2,7 +2,6 @@ package core
 
 import (
 	"kiteq/binding"
-	"kiteq/client/listener"
 	"kiteq/protocol"
 	"kiteq/server"
 	"kiteq/store"
@@ -13,7 +12,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-func buildStringMessage() *protocol.StringMessage {
+func buildStringMessage(commit bool) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
 	entity.Header = &protocol.Header{
@@ -22,14 +21,15 @@ func buildStringMessage() *protocol.StringMessage {
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
-		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		GroupId:      proto.String("ps-trade-a"),
+		Commit:       proto.Bool(commit),
+		Fly:          proto.Bool(false)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
 }
 
-func buildBytesMessage() *protocol.BytesMessage {
+func buildBytesMessage(commit bool) *protocol.BytesMessage {
 	//创建消息
 	entity := &protocol.BytesMessage{}
 	entity.Header = &protocol.Header{
@@ -38,60 +38,147 @@ func buildBytesMessage() *protocol.BytesMessage {
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
-		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		GroupId:      proto.String("ps-trade-a"),
+		Commit:       proto.Bool(commit),
+		Fly:          proto.Bool(false)}
 	entity.Body = []byte("helloworld")
 
 	return entity
 }
 
+type MockListener struct {
+	rc  chan string
+	txc chan string
+}
+
+func (self *MockListener) OnMessage(msg *protocol.QMessage) bool {
+	log.Println("MockListener|OnMessage", msg.GetHeader(), msg.GetBody())
+	self.rc <- msg.GetHeader().GetMessageId()
+
+	return true
+}
+
+func (self *MockListener) OnMessageCheck(messageId string, tx *protocol.TxResponse) error {
+	log.Println("MockListener|OnMessageCheck", messageId)
+	self.txc <- messageId
+	tx.Commit()
+	return nil
+}
+
 func TestNewManager(t *testing.T) {
 
-	kiteQ := server.NewKiteQServer("127.0.0.1:13800", "localhost:2181", []string{"trade"}, "mock")
+	rc := make(chan string, 1)
+	txc := make(chan string, 1)
+	l := &MockListener{rc: rc, txc: txc}
+
+	rconf := &protocol.RemotingConfig{
+		MaxDispatcherNum: 50,
+		MaxWorkerNum:     50000,
+		ReadBufferSize:   16 * 1024,
+		WriteBufferSize:  16 * 1024,
+		WriteChannelSize: 10000,
+		ReadChannelSize:  10000,
+		IdleTime:         10 * time.Second}
+
+	kc := server.NewKiteQConfig("127.0.0.1:13800", "localhost:2181", 100000, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rconf)
+
+	kiteQ := server.NewKiteQServer(kc)
 	kiteQ.Start()
+
+	time.Sleep(10 * time.Second)
 	// 创建客户端
-	manager := NewKiteClientManager("localhost:2181", "s-trade-a", "123456", &listener.MockListener{})
+	manager := NewKiteClientManager("localhost:2181", "ps-trade-a", "123456", l)
 	manager.SetPublishTopics([]string{"trade"})
 
 	// 设置接收类型
 	manager.SetBindings(
 		[]*binding.Binding{
-			binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
+			binding.Bind_Direct("ps-trade-a", "trade", "pay-succ", 1000, true),
 		},
 	)
 
 	manager.Start()
 
+	m := buildStringMessage(true)
 	// 发送数据
-	err := manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
+	err := manager.SendMessage(protocol.NewQMessage(m))
 	if nil != err {
-		log.Println("SEND MESSAGE |FAIL|", err)
+		log.Println("SEND StringMESSAGE |FAIL|", err)
 	} else {
-		log.Println("SEND MESSAGE |SUCCESS")
+		log.Println("SEND StringMESSAGE |SUCCESS")
 	}
 
-	// 发送数据
-	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
-	if nil != err {
-		log.Println("SEND MESSAGE |FAIL|", err)
-	} else {
-		log.Println("SEND MESSAGE |SUCCESS")
+	select {
+	case mid := <-rc:
+		if mid != m.GetHeader().GetMessageId() {
+			t.Fail()
+		}
+		log.Println("RECIEVE StringMESSAGE |SUCCESS")
+	case <-time.After(10 * time.Second):
+		log.Println("WAIT StringMESSAGE |TIMEOUT|", err)
+		t.Fail()
+
 	}
 
+	bm := buildBytesMessage(true)
 	// 发送数据
-	err = manager.SendMessage(protocol.NewQMessage(buildStringMessage()))
+	err = manager.SendMessage(protocol.NewQMessage(m))
 	if nil != err {
-		log.Println("SEND MESSAGE |FAIL|", err)
+		log.Println("SEND BytesMESSAGE |FAIL|", err)
 	} else {
-		log.Println("SEND MESSAGE |SUCCESS")
+		log.Println("SEND BytesMESSAGE |SUCCESS")
 	}
 
+	select {
+	case mid := <-rc:
+		if mid != m.GetHeader().GetMessageId() {
+			t.Fail()
+		}
+		log.Println("RECIEVE BytesMESSAGE |SUCCESS")
+	case <-time.After(10 * time.Second):
+		log.Println("WAIT BytesMESSAGE |TIMEOUT|", err)
+		t.Fail()
+
+	}
+
+	bm = buildBytesMessage(false)
+
 	// 发送数据
-	err = manager.SendMessage(protocol.NewQMessage(buildBytesMessage()))
+	err = manager.SendMessage(protocol.NewQMessage(bm))
 	if nil != err {
-		log.Println("SEND MESSAGE |FAIL|", err)
+		log.Println("SEND TxBytesMESSAGE |FAIL|", err)
 	} else {
-		log.Println("SEND MESSAGE |SUCCESS")
+		log.Println("SEND TxBytesMESSAGE |SUCCESS")
+	}
+
+	select {
+	case mid := <-rc:
+		if mid != bm.GetHeader().GetMessageId() {
+			t.Fail()
+		}
+		log.Println("RECIEVE TxBytesMESSAGE |SUCCESS")
+	case txid := <-txc:
+		if txid != bm.GetHeader().GetMessageId() {
+			t.Fail()
+			log.Println("SEND TxBytesMESSAGE |RECIEVE TXACK SUCC")
+		}
+
+	case <-time.After(10 * time.Second):
+		log.Println("WAIT TxBytesMESSAGE |TIMEOUT|", err)
+		t.Fail()
+
+	}
+
+	select {
+	case mid := <-rc:
+		if mid != bm.GetHeader().GetMessageId() {
+			t.Fail()
+		}
+		log.Println("RECIEVE TXBytesMESSAGE |SUCCESS")
+	case <-time.After(10 * time.Second):
+		log.Println("WAIT BytesMESSAGE |TIMEOUT|", err)
+		t.Fail()
+
 	}
 
 	time.Sleep(time.Second * 10)

@@ -74,6 +74,9 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 //启动
 func (self *KiteClientManager) Start() {
 
+	//开启流量统计
+	self.rc.FlowStat.Start()
+
 	hostname, _ := os.Hostname()
 	//推送本机到
 	err := self.zkManager.PublishTopics(self.topics, self.ga.GroupId, hostname)
@@ -116,8 +119,6 @@ outter:
 		}
 	}
 
-	//开启流量统计
-	self.rc.FlowStat.Start()
 }
 
 //创建物理连接
@@ -151,7 +152,6 @@ func (self *KiteClientManager) SetBindings(bindings []*binding.Binding) {
 
 //发送事务消息
 func (self *KiteClientManager) SendTxMessage(msg *protocol.QMessage, doTranscation DoTranscation) (err error) {
-
 	//路由选择策略
 	c, err := self.selectKiteClient(msg.GetHeader())
 	if nil != err {

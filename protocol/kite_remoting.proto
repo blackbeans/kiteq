@@ -59,7 +59,7 @@ message Header{
     required string groupId = 6; // 消息发送来源
     required bool commit = 7; //本消息是否提交
     required bool fly = 8 [default = false];//消息是否为fly模式   true 为 不存储直接投递 false为存储并投递
-    repeated Entry property =9; //用户自定义的消息属性其实就是Map
+    repeated Entry properties =9; //用户自定义的消息属性其实就是Map
 }
 
 //byte类消息

@@ -13,24 +13,9 @@ import (
 )
 
 const (
-	MAX_WATER_MARK   int = 100000
-	CONCURRENT_LEVEL     = 16
+	MAX_WATER_MARK   int = 50000
+	CONCURRENT_LEVEL     = 4
 )
-
-//全局唯一的分拆hodler
-var holders []map[int32]chan interface{}
-var locks []*sync.Mutex
-
-func init() {
-	holders = make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
-	locks = make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
-	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
-		holders = append(holders, splitMap)
-		locks = append(locks, &sync.Mutex{})
-
-	}
-}
 
 //网络层的client
 type RemotingClient struct {
@@ -43,6 +28,8 @@ type RemotingClient struct {
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
 	WorkerNum        chan byte //工作线程的channel控制器
+	holders          []map[int32]chan interface{}
+	locks            []*sync.Mutex
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -55,6 +42,14 @@ func NewRemotingClient(conn *net.TCPConn,
 		ch <- 1
 	}
 
+	holders := make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
+	locks := make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
+	for i := 0; i < CONCURRENT_LEVEL; i++ {
+		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
+		holders = append(holders, splitMap)
+		locks = append(locks, &sync.Mutex{})
+	}
+
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
 		id:               0,
@@ -63,7 +58,9 @@ func NewRemotingClient(conn *net.TCPConn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
 		rc:               rc,
-		WorkerNum:        ch}
+		WorkerNum:        ch,
+		holders:          holders,
+		locks:            locks}
 
 	return remotingClient
 }
@@ -189,7 +186,7 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 }
 
 func (self *RemotingClient) locker(id int32) (*sync.Mutex, map[int32]chan interface{}) {
-	return locks[id%CONCURRENT_LEVEL], holders[id%CONCURRENT_LEVEL]
+	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
 }
 
 //将结果attach到当前的等待回调chan
@@ -236,7 +233,6 @@ func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
 	if nil != err {
 		return nil, err
 	}
-
 	var resp interface{}
 	select {
 	case <-time.After(timeout):

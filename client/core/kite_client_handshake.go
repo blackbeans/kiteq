@@ -18,17 +18,17 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 		if nil != err {
 			//两秒后重试
 			time.Sleep(2 * time.Second)
-			log.Printf("KiteQServer|handShake|FAIL|%s|%s\n", ga.GroupId, err)
+			log.Printf("kiteClient|handShake|FAIL|%s|%s\n", ga.GroupId, err)
 		} else {
 			authAck, ok := resp.(*protocol.ConnAuthAck)
 			if !ok {
 				return false, errors.New("Unmatches Handshake Ack Type! ")
 			} else {
 				if authAck.GetStatus() {
-					log.Printf("KiteQServer|handShake|SUCC|%s|%s\n", ga.GroupId, authAck.GetFeedback())
+					log.Printf("kiteClient|handShake|SUCC|%s|%s\n", ga.GroupId, authAck.GetFeedback())
 					return true, nil
 				} else {
-					log.Printf("KiteQServer|handShake|FAIL|%s|%s\n", ga.GroupId, authAck.GetFeedback())
+					log.Printf("kiteClient|handShake|FAIL|%s|%s\n", ga.GroupId, authAck.GetFeedback())
 					return false, errors.New("Auth FAIL![" + authAck.GetFeedback() + "]")
 				}
 			}
