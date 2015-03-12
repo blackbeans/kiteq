@@ -40,12 +40,11 @@ type KiteMysqlStore struct {
 }
 
 func NewKiteMysql(addr string) *KiteMysqlStore {
-	log.Println("[kite_mysql]NewKiteMysql", addr)
 	db, err := sql.Open("mysql", addr)
 	db.SetMaxIdleConns(100)
 	db.SetMaxOpenConns(1024)
 	if err != nil {
-		log.Fatal("mysql can not connect")
+		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
 	}
 
 	// construct a gorp DbMap
@@ -54,13 +53,13 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 	// add a table, setting the table name and
 	// specifying that the Id property is an auto incrementing PK
 	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").SetKeys(false, "MessageId").SetHashKey("MessageId")
-	dbmap.TypeConverter = CustomTypeConverter{}
+	dbmap.TypeConverter = Convertor{}
 
 	// create the table. in a production system you'd generally
 	// use a migration tool, or create the tables via scripts
 	err = dbmap.CreateTablesIfNotExists()
 	if err != nil {
-		log.Println("CreateTablesIfNotExists failed.")
+		log.Panicf("NewKiteMysql|CreateTablesIfNotExists|FAIL|%s\n", err)
 	}
 	ins := &KiteMysqlStore{
 		addr:  addr,
@@ -69,11 +68,9 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 	return ins
 }
 
-//Converter for []string
-type CustomTypeConverter struct {
-}
+type Convertor struct{}
 
-func (me CustomTypeConverter) ToDb(val interface{}, fieldName string) (interface{}, error) {
+func (self Convertor) ToDb(val interface{}, fieldName string) (interface{}, error) {
 	if val == nil {
 		return nil, nil
 	}
@@ -109,7 +106,7 @@ func (me CustomTypeConverter) ToDb(val interface{}, fieldName string) (interface
 	return val, nil
 }
 
-func (me CustomTypeConverter) FromDb(target interface{}, fieldName string) (gorp.CustomScanner, bool) {
+func (self Convertor) FromDb(target interface{}, fieldName string) (gorp.CustomScanner, bool) {
 	if fieldName == "Body" {
 		binder := func(holder, target interface{}) error {
 			s, stringOk := holder.(*string)
@@ -126,7 +123,7 @@ func (me CustomTypeConverter) FromDb(target interface{}, fieldName string) (gorp
 						*t = b
 					}
 				} else {
-					log.Printf("FromDb: unsported type %T\n", holder)
+					log.Printf("FromDb: unspported type %T\n", holder)
 					return errors.New("FromDb: unsported type.")
 				}
 			}
@@ -138,30 +135,29 @@ func (me CustomTypeConverter) FromDb(target interface{}, fieldName string) (gorp
 
 	switch target.(type) {
 	case *[]string:
-		binder := func(holder, target interface{}) error {
+		binder := func(holder, t interface{}) error {
 			s, ok := holder.(*string)
 			if !ok {
 				return errors.New("FromDb: Unable to convert to *string")
 			}
 			b := []byte(*s)
-			return json.Unmarshal(b, target)
+			return json.Unmarshal(b, t)
 		}
 		return gorp.CustomScanner{new(string), target, binder}, true
-	case **protocol.Header:
-		binder := func(holder, target interface{}) error {
+	case *protocol.Header:
+		binder := func(holder, t interface{}) error {
 
 			s, ok := holder.(*string)
 			if !ok {
 				return errors.New("FromDb: Unable to convert to string")
 			}
 			b := []byte(*s)
-			tmp := &protocol.Header{}
-			if err := proto.Unmarshal(b, tmp); err != nil {
+			var header protocol.Header
+			if err := proto.Unmarshal(b, &header); err != nil {
 				return err
 			}
-			targetP, ok := target.(**protocol.Header)
-			*targetP = tmp
-
+			targetP, ok := t.(*protocol.Header)
+			*targetP = header
 			return nil
 		}
 		return gorp.CustomScanner{new(string), target, binder}, true
@@ -172,7 +168,7 @@ func (me CustomTypeConverter) FromDb(target interface{}, fieldName string) (gorp
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	obj, err := self.dbmap.Get(MessageEntity{}, messageId, messageId)
 	if err != nil {
-		log.Println(err)
+		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
 	}
 	if obj == nil {
@@ -190,14 +186,14 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	err := self.dbmap.Insert(entity)
 	if err != nil {
-		log.Println(err)
+		log.Printf("KiteMysqlStore|Save|FAIL|%s\n", err)
 		return false
 	}
 	return true
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
-	values := make(map[string]interface{})
+	values := make(map[string]interface{}, 1)
 	values["Commit"] = true
 	cond := make([]gorp.Cond, 1)
 	cond[0] = gorp.Cond{
@@ -212,7 +208,7 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 	}
 	_, err := self.dbmap.UpdateByColumn(messageId, messageId, updateCond)
 	if err != nil {
-		log.Println(err)
+		log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
 		return false
 	}
 	return true
@@ -222,7 +218,7 @@ func (self *KiteMysqlStore) Delete(messageId string) bool {
 	entity := &MessageEntity{MessageId: messageId}
 	_, err := self.dbmap.Delete(entity)
 	if err != nil {
-		log.Println(err)
+		log.Printf("KiteMysqlStore|Delete|FAIL|%s|%s\n", err, messageId)
 		return false
 	}
 
@@ -234,25 +230,64 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
-	_, err := self.dbmap.Update(entity)
-	if err != nil {
-		log.Println(err)
+
+	values := make(map[string]interface{}, 1)
+	values["MessageId"] = entity.MessageId
+	values["DeliverCount"] = entity.DeliverCount
+
+	sg, err := json.Marshal(entity.SuccGroups)
+	if nil == err {
+		values["SuccGroups"] = string(sg)
+	} else {
+		log.Printf("KiteMysqlStore|UpdateEntity|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, entity.MessageId, entity.SuccGroups)
 		return false
 	}
+
+	fg, err := json.Marshal(entity.FailGroups)
+	if nil == err {
+		values["FailGroups"] = string(fg)
+	} else {
+		log.Printf("KiteMysqlStore|UpdateEntity|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, entity.MessageId, entity.FailGroups)
+		return false
+	}
+
+	//设置一下下一次投递时间
+	values["NextDeliverTime"] = entity.NextDeliverTime
+
+	cond := make([]gorp.Cond, 1)
+	cond[0] = gorp.Cond{
+		Field:    "MessageId",
+		Value:    entity.MessageId,
+		Operator: "=",
+	}
+
+	updateCond := gorp.UpdateCond{
+		Values: values,
+		Cond:   cond,
+		Ptr:    entity,
+	}
+
+	idx, err := self.dbmap.UpdateByColumn(entity.MessageId, entity.MessageId, updateCond)
+	if err != nil || idx <= 0 {
+		log.Printf("KiteMysqlStore|UpdateEntity|FAIL|%s|%s\n", err, entity)
+		return false
+	}
+
 	return true
 }
 
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 	cond := make([]*gorp.Cond, 2)
 	cond[0] = &gorp.Cond{Field: "KiteServer", Operator: "=", Value: kiteServer}
-	cond[1] = &gorp.Cond{Field: "NextDeliverTime", Operator: "<", Value: nextDeliveryTime}
+	cond[1] = &gorp.Cond{Field: "NextDeliverTime", Operator: "<=", Value: nextDeliveryTime}
 
-	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit, MessageEntity{}, cond)
+	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit+1, MessageEntity{}, cond)
 	if err != nil {
-		log.Println(err)
+		log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
 		return false, nil
 	}
-	results := make([]*MessageEntity, len(rawResults))
+
+	results := make([]*MessageEntity, 0, len(rawResults))
 	for _, v := range rawResults {
 		results = append(results, v.(*MessageEntity))
 	}

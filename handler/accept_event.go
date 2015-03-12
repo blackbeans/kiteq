@@ -6,17 +6,21 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
+	"os"
 )
 
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
 	BaseForwardHandler
-	topics []string
+	topics     []string
+	kiteserver string
 }
 
 func NewAcceptHandler(name string) *AcceptHandler {
 	ahandler := &AcceptHandler{}
 	ahandler.BaseForwardHandler = NewBaseForwardHandler(name, ahandler)
+	hn, _ := os.Hostname()
+	ahandler.kiteserver = hn
 	return ahandler
 }
 
@@ -62,6 +66,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	if nil != msg {
+		msg.KiteServer = self.kiteserver
 		deliver := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
 		ctx.SendForward(deliver)
 		return nil
