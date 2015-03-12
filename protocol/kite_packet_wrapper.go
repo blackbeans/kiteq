@@ -114,12 +114,9 @@ func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
 
 func MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
 	data, _ := MarshalPbMessage(&TxACKPacket{
-		Header:      header,
-		MessageId:   proto.String(header.GetMessageId()),
-		Topic:       proto.String(header.GetTopic()),
-		MessageType: proto.String(header.GetMessageType()),
-		Status:      proto.Int32(int32(txstatus)),
-		Feedback:    proto.String(feedback)})
+		Header:   header,
+		Status:   proto.Int32(int32(txstatus)),
+		Feedback: proto.String(feedback)})
 	return data
 }
 
@@ -141,15 +138,36 @@ func MarshalDeliverAckPacket(header *Header, status bool) []byte {
 
 //事务处理类型
 type TxResponse struct {
-	messageId string
-	status    TxStatus //事务状态 0; //未知  1;  //已提交 2; //回滚
-	feedback  string   //回馈
+	MessageId   string
+	Topic       string
+	MessageType string
+	properties  map[string]string
+	status      TxStatus //事务状态 0; //未知  1;  //已提交 2; //回滚
+	feedback    string   //回馈
 }
 
-func NewTxResponse(messageId string) *TxResponse {
-	return &TxResponse{
-		messageId: messageId,
+func NewTxResponse(header *Header) *TxResponse {
+
+	props := header.GetProperties()
+	var properties map[string]string
+	if nil != props && len(props) <= 0 {
+		properties = make(map[string]string, len(props))
+		for _, v := range props {
+			properties[v.GetKey()] = v.GetValue()
+		}
 	}
+
+	return &TxResponse{
+		MessageId:   header.GetMessageId(),
+		Topic:       header.GetTopic(),
+		MessageType: header.GetMessageType(),
+		properties:  properties}
+}
+
+//获取属性
+func (self *TxResponse) GetProperty(key string) (string, bool) {
+	k, v := self.properties[key]
+	return k, v
 }
 
 func (self *TxResponse) Unknown(feedback string) {

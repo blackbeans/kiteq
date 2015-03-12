@@ -186,12 +186,9 @@ func (m *DeliverAck) GetStatus() bool {
 
 // 事务确认数据包
 type TxACKPacket struct {
-	MessageId        *string `protobuf:"bytes,1,req,name=messageId" json:"messageId,omitempty"`
-	Header           *Header `protobuf:"bytes,2,req,name=header" json:"header,omitempty"`
-	Topic            *string `protobuf:"bytes,3,req,name=topic" json:"topic,omitempty"`
-	MessageType      *string `protobuf:"bytes,4,req,name=messageType" json:"messageType,omitempty"`
-	Status           *int32  `protobuf:"varint,5,req,name=status,def=0" json:"status,omitempty"`
-	Feedback         *string `protobuf:"bytes,6,req,name=feedback" json:"feedback,omitempty"`
+	Header           *Header `protobuf:"bytes,1,req,name=header" json:"header,omitempty"`
+	Status           *int32  `protobuf:"varint,2,req,name=status,def=0" json:"status,omitempty"`
+	Feedback         *string `protobuf:"bytes,3,req,name=feedback" json:"feedback,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -201,32 +198,11 @@ func (*TxACKPacket) ProtoMessage()    {}
 
 const Default_TxACKPacket_Status int32 = 0
 
-func (m *TxACKPacket) GetMessageId() string {
-	if m != nil && m.MessageId != nil {
-		return *m.MessageId
-	}
-	return ""
-}
-
 func (m *TxACKPacket) GetHeader() *Header {
 	if m != nil {
 		return m.Header
 	}
 	return nil
-}
-
-func (m *TxACKPacket) GetTopic() string {
-	if m != nil && m.Topic != nil {
-		return *m.Topic
-	}
-	return ""
-}
-
-func (m *TxACKPacket) GetMessageType() string {
-	if m != nil && m.MessageType != nil {
-		return *m.MessageType
-	}
-	return ""
 }
 
 func (m *TxACKPacket) GetStatus() int32 {

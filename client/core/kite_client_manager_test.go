@@ -58,9 +58,9 @@ func (self *MockListener) OnMessage(msg *protocol.QMessage) bool {
 	return true
 }
 
-func (self *MockListener) OnMessageCheck(messageId string, tx *protocol.TxResponse) error {
-	log.Println("MockListener|OnMessageCheck", messageId)
-	self.txc <- messageId
+func (self *MockListener) OnMessageCheck(tx *protocol.TxResponse) error {
+	log.Println("MockListener|OnMessageCheck", tx.MessageId)
+	self.txc <- tx.MessageId
 	tx.Commit()
 	return nil
 }

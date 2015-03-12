@@ -87,7 +87,7 @@ kiteq
             //接收事务回调
             // 除非明确提交成功、其余都为不成功
             // 有异常或者返回值为false均为不提交
-            OnMessageCheck(messageId string, tx *protocol.TxResponse) error
+            OnMessageCheck(tx *protocol.TxResponse) error
         }
 
     启动Producer :

@@ -36,12 +36,9 @@ message DeliverAck{
 
 //事务确认数据包
 message TxACKPacket{    
-     required string messageId = 1; //消息Id
-     required Header header  = 2; //消息头部
-     required string topic =3;
-     required string messageType = 4;
-     required int32 status = 5 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
-     required string feedback = 6; //回馈
+     required Header header  = 1; //消息头部
+     required int32 status = 2 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
+     required string feedback = 3; //回馈
 }
 
 

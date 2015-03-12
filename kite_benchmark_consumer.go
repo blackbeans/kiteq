@@ -40,7 +40,7 @@ func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
 	return true
 }
 
-func (self *defualtListener) OnMessageCheck(messageId string, tx *protocol.TxResponse) error {
+func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 	// log.Println("defualtListener|OnMessageCheck", messageId)
 	tx.Commit()
 	return nil

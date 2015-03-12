@@ -65,9 +65,9 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//回调事务完成的监听器
 		// log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
 		txPacket := acceptEvent.msg.(*protocol.TxACKPacket)
-		messageId := txPacket.GetMessageId()
-		tx := protocol.NewTxResponse(messageId)
-		err := self.listener.OnMessageCheck(messageId, tx)
+		header := txPacket.GetHeader()
+		tx := protocol.NewTxResponse(header)
+		err := self.listener.OnMessageCheck(tx)
 		if nil != err {
 			tx.Unknown(err.Error())
 		}
