@@ -13,13 +13,26 @@ import (
 )
 
 const (
-	MAX_WATER_MARK   int = 50000
-	CONCURRENT_LEVEL     = 4
+	MAX_WATER_MARK   int = 100000
+	CONCURRENT_LEVEL     = 16
 )
+
+var holders []map[int32]chan interface{}
+var locks []*sync.Mutex
+var opaque uint32 = 0
+
+func init() {
+	holders = make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
+	locks = make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
+	for i := 0; i < CONCURRENT_LEVEL; i++ {
+		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
+		holders = append(holders, splitMap)
+		locks = append(locks, &sync.Mutex{})
+	}
+}
 
 //网络层的client
 type RemotingClient struct {
-	id               uint32
 	conn             *net.TCPConn
 	localAddr        string
 	remoteAddr       string
@@ -28,8 +41,7 @@ type RemotingClient struct {
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
 	WorkerNum        chan byte //工作线程的channel控制器
-	holders          []map[int32]chan interface{}
-	locks            []*sync.Mutex
+
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -42,25 +54,14 @@ func NewRemotingClient(conn *net.TCPConn,
 		ch <- 1
 	}
 
-	holders := make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
-	locks := make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
-	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
-		holders = append(holders, splitMap)
-		locks = append(locks, &sync.Mutex{})
-	}
-
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
-		id:               0,
 		heartbeat:        0,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
 		rc:               rc,
-		WorkerNum:        ch,
-		holders:          holders,
-		locks:            locks}
+		WorkerNum:        ch}
 
 	return remotingClient
 }
@@ -177,7 +178,7 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	tid := packet.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
-		id := int32((atomic.AddUint32(&self.id, 1) % uint32(MAX_WATER_MARK)))
+		id := int32((atomic.AddUint32(&opaque, 1) % uint32(MAX_WATER_MARK)))
 		packet.Opaque = id
 		tid = id
 	}
@@ -186,7 +187,7 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 }
 
 func (self *RemotingClient) locker(id int32) (*sync.Mutex, map[int32]chan interface{}) {
-	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
+	return locks[id%CONCURRENT_LEVEL], holders[id%CONCURRENT_LEVEL]
 }
 
 //将结果attach到当前的等待回调chan
