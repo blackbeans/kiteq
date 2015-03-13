@@ -138,15 +138,16 @@ func (self Convertor) FromDb(target interface{}, fieldName string) (gorp.CustomS
 	if fieldName == "Body" {
 		return gorp.CustomScanner{new(string), target, stringOrBytes}, true
 	}
+	log.Printf("Convertor|FromDb|%s|%s\n", target, fieldName)
 
 	switch target.(type) {
 	case *[]string:
 		binder := func(holder, t interface{}) error {
-			b, ok := holder.([]byte)
+			s, ok := holder.(*string)
 			if !ok {
 				return errors.New("FromDb: Unable to convert to *string")
 			}
-			// b := []byte(*s)
+			b := []byte(*s)
 			return json.Unmarshal(b, t)
 		}
 		return gorp.CustomScanner{new(string), target, binder}, true
@@ -157,17 +158,17 @@ func (self Convertor) FromDb(target interface{}, fieldName string) (gorp.CustomS
 			if !ok {
 				return errors.New("FromDb: Unable to convert to string")
 			}
-			var header protocol.Header
-			if err := proto.Unmarshal(*b, &header); err != nil {
+			header := new(protocol.Header)
+			if err := proto.Unmarshal(*b, header); err != nil {
 				log.Printf("Convertor|Header|%s|%s\n", err, holder)
 				return err
 			}
 
-			targetP, ok := t.(*protocol.Header)
+			targetP, ok := t.(**protocol.Header)
 			*targetP = header
 			return nil
 		}
-		return gorp.CustomScanner{&protocol.Header{}, target, binder}, true
+		return gorp.CustomScanner{new([]byte), target, binder}, true
 	default:
 		log.Printf("Convertor|FromDb|%s|%s\n", target, fieldName)
 	}

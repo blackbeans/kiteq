@@ -39,7 +39,8 @@ func TestSave(t *testing.T) {
 
 	ret := kiteMysql.Query("26c03f00665862591f696a980b5a6c40")
 	t.Logf("Query|%s\n", ret)
-	if ret.GetBody().(string) != msg.GetBody() || ret.Commit {
+	if ret.GetBody().(string) != msg.GetBody() {
+		t.Logf("Body not equals.|expeted:%s actual:%s\n", msg.GetBody(), ret.GetBody())
 		t.Fail()
 	}
 
