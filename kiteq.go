@@ -27,8 +27,6 @@ func main() {
 	db := flag.String("db", "mmap://file:///data/kiteq", "-db=mysql://root:root@tcp(localhost:3306)/kite")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 
-	v := strings.TrimPrefix("mysql://momo:momo1602@tcp(96-1u-a129-001.m6.momo.com:3306)/kit", "mysql://")
-	log.Println(v)
 	flag.Parse()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
