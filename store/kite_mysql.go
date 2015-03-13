@@ -65,6 +65,8 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 		addr:  addr,
 		dbmap: dbmap,
 	}
+
+	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s...\n", addr)
 	return ins
 }
 
