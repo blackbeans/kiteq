@@ -88,7 +88,7 @@ func parseDB(db string) store.IKiteStore {
 	if strings.HasPrefix(db, "mock://") {
 		kitedb = &store.MockKiteStore{}
 	} else if strings.HasPrefix(db, "mmap://") {
-		url := strings.TrimLeft(db, "mmap://")
+		url := strings.TrimPrefix(db, "mmap://")
 		split := strings.Split(url, "&")
 		params := make(map[string]string, len(split))
 		for _, v := range split {
@@ -120,7 +120,7 @@ func parseDB(db string) store.IKiteStore {
 		}
 		kitedb = store.NewKiteMMapStore(file, initval, max)
 	} else if strings.HasPrefix(db, "mysql://") {
-		mysql := strings.TrimLeft(db, "mysql://")
+		mysql := strings.TrimPrefix(db, "mysql://")
 		kitedb = store.NewKiteMysql(mysql)
 	} else {
 		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)

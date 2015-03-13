@@ -94,7 +94,7 @@ func MarshalPacket(packet *Packet) []byte {
 
 //解码packet
 func UnmarshalTLV(packet []byte) (*Packet, error) {
-	packet = bytes.TrimRight(packet, CMD_STR_CRLF)
+	packet = bytes.TrimSuffix(packet, CMD_CRLF)
 	r := bytes.NewReader(packet)
 
 	tlv := &Packet{}
