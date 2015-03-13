@@ -52,7 +52,11 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 
 	// add a table, setting the table name and
 	// specifying that the Id property is an auto incrementing PK
-	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").SetKeys(false, "MessageId").SetHashKey("MessageId")
+	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").
+		SetKeys(false, "MessageId").
+		SetHashKey("MessageId").
+		SetShardStrategy(&HashShard{})
+
 	dbmap.TypeConverter = Convertor{}
 
 	// create the table. in a production system you'd generally
@@ -108,61 +112,64 @@ func (self Convertor) ToDb(val interface{}, fieldName string) (interface{}, erro
 	return val, nil
 }
 
+func stringOrBytes(holder, target interface{}) error {
+	s, stringOk := holder.(*string)
+	if stringOk {
+		t, ok := target.(*interface{})
+		if ok {
+			*t = (*s)
+		}
+	} else {
+		b, byteOk := holder.(*[]byte)
+		if byteOk {
+			t, ok := target.(*interface{})
+			if ok {
+				*t = b
+			}
+		} else {
+			log.Printf("FromDb: unspported type %T\n", holder)
+			return errors.New("FromDb: unsported type.")
+		}
+	}
+	return nil
+}
+
 func (self Convertor) FromDb(target interface{}, fieldName string) (gorp.CustomScanner, bool) {
 	if fieldName == "Body" {
-		binder := func(holder, target interface{}) error {
-			s, stringOk := holder.(*string)
-			if stringOk {
-				t, ok := target.(*interface{})
-				if ok {
-					*t = (*s)
-				}
-			} else {
-				b, byteOk := holder.(*[]byte)
-				if byteOk {
-					t, ok := target.(*interface{})
-					if ok {
-						*t = b
-					}
-				} else {
-					log.Printf("FromDb: unspported type %T\n", holder)
-					return errors.New("FromDb: unsported type.")
-				}
-			}
-			return nil
-		}
-		return gorp.CustomScanner{new(string), target, binder}, true
-
+		return gorp.CustomScanner{new(string), target, stringOrBytes}, true
 	}
 
 	switch target.(type) {
 	case *[]string:
 		binder := func(holder, t interface{}) error {
-			s, ok := holder.(*string)
+			b, ok := holder.([]byte)
 			if !ok {
 				return errors.New("FromDb: Unable to convert to *string")
 			}
-			b := []byte(*s)
+			// b := []byte(*s)
 			return json.Unmarshal(b, t)
 		}
 		return gorp.CustomScanner{new(string), target, binder}, true
-	case *protocol.Header:
+	case **protocol.Header:
 		binder := func(holder, t interface{}) error {
 
-			s, ok := holder.(*string)
+			b, ok := holder.(*[]byte)
 			if !ok {
 				return errors.New("FromDb: Unable to convert to string")
 			}
-			b := []byte(*s)
 			var header protocol.Header
-			if err := proto.Unmarshal(b, &header); err != nil {
+			if err := proto.Unmarshal(*b, &header); err != nil {
+				log.Printf("Convertor|Header|%s|%s\n", err, holder)
 				return err
 			}
+
 			targetP, ok := t.(*protocol.Header)
 			*targetP = header
 			return nil
 		}
-		return gorp.CustomScanner{new(string), target, binder}, true
+		return gorp.CustomScanner{&protocol.Header{}, target, binder}, true
+	default:
+		log.Printf("Convertor|FromDb|%s|%s\n", target, fieldName)
 	}
 	return gorp.CustomScanner{}, false
 }

@@ -4,46 +4,71 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"kiteq/protocol"
+	"os"
 	"testing"
 	"time"
 )
 
 func TestSave(t *testing.T) {
-	//kiteMysql := NewKiteMysql("root:@/kite")
+
+	//创建消息
+	msg := &protocol.StringMessage{}
+	msg.Header = &protocol.Header{
+		MessageId:    proto.String("26c03f00665862591f696a980b5a6c40"),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+		DeliverLimit: proto.Int32(100),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(false),
+		Fly:          proto.Bool(false)}
+
+	msg.Body = proto.String("hello world")
+
+	entity := NewMessageEntity(protocol.NewQMessage(msg))
+
 	kiteMysql := NewKiteMysql("root:@tcp(localhost:3306)/kite")
-	kiteMysql.Save(&MessageEntity{
-		Header: &protocol.Header{
-			MessageId:    proto.String("123"),
-			Topic:        proto.String("trade"),
-			MessageType:  proto.String("pay-succ"),
-			ExpiredTime:  proto.Int64(time.Now().Unix()),
-			DeliverLimit: proto.Int32(-1),
-			GroupId:      proto.String("go-kite-test"),
-			Commit:       proto.Bool(true)},
+	kiteMysql.dbmap.DropTablesIfExists()
 
-		MessageId:       "001011",
-		Topic:           "test",
-		KiteServer:      "sutao",
-		Body:            []byte("abc"),
-		NextDeliverTime: 1,
-	})
+	succ := kiteMysql.Save(entity)
+	if !succ {
+		t.Fail()
+	} else {
+		t.Logf("SAVE|SUCC|%s\n", entity)
+	}
 
-	//for i := 0; i < 1000; i++ {
-	//	kiteMysql.Save(&MessageEntity{
-	//		MessageId:       strconv.Itoa(i),
-	//		KiteServer:      "sutao",
-	//		Topic:           fmt.Sprintf("topic %s", i),
-	//		Body:            []byte("abc222:w2"),
-	//		NextDeliverTime: 2,
-	//	})
-	//}
 	ret := kiteMysql.Query("26c03f00665862591f696a980b5a6c40")
-	fmt.Println("Query")
-	fmt.Printf("Query dump %v\n", ret)
+	t.Logf("Query|%s\n", ret)
+	if ret.GetBody().(string) != msg.GetBody() || ret.Commit {
+		t.Fail()
+	}
 
 	fmt.Println("Commint BEGIN")
 	kiteMysql.Commit("26c03f00665862591f696a980b5a6c40")
 	fmt.Println("Commint END")
+
+	ret = kiteMysql.Query("26c03f00665862591f696a980b5a6c40")
+	if !ret.Commit {
+		t.Fail()
+	}
+
+	hn, _ := os.Hostname()
+
+	hasNext, entities := kiteMysql.PageQueryEntity("26c03f00665862591f696a980b5a6c40", hn, time.Now().Unix(), 0, 10)
+
+	if !hasNext {
+		t.Fail()
+	} else {
+		if len(entities) != 1 {
+			t.Fail()
+		} else {
+			if entities[0].GetBody() != msg.GetBody() {
+				t.Fail()
+			} else {
+				t.Logf("PageQueryEntity|SUCC|%s\n", entities)
+			}
+		}
+	}
 
 }
 
