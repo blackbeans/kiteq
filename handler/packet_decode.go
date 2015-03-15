@@ -56,14 +56,21 @@ var sunkEvent = &SunkEvent{}
 func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	var err error
 	var event IEvent
-
+	var marshaler protocol.MarshalHelper
 	packet := pevent.Packet
+	if packet.CmdType&0x80 == 0 {
+		marshaler = protocol.PbMarshaler
+	} else {
+		marshaler = protocol.JsonMarshaler
+	}
+	packet.CmdType = packet.CmdType & 0x7F
 	//根据类型反解packet
 	switch packet.CmdType {
 	//连接的元数据
 	case protocol.CMD_CONN_META:
 		var connMeta protocol.ConnMeta
-		err = protocol.UnmarshalPbMessage(packet.Data, &connMeta)
+		err = marshaler.UnmarshalMessage(packet.Data, &connMeta)
+
 		if nil == err {
 			meta := &connMeta
 			event = newAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Opaque)
@@ -72,14 +79,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	//心跳
 	case protocol.CMD_HEARTBEAT:
 		var hearbeat protocol.HeartBeat
-		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
+		err = marshaler.UnmarshalMessage(packet.Data, &hearbeat)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_HEARTBEAT, &hearbeat, pevent.RemoteClient, packet.Opaque)
 		}
 		//投递结果确认
 	case protocol.CMD_DELIVER_ACK:
 		var delAck protocol.DeliverAck
-		err = protocol.UnmarshalPbMessage(packet.Data, &delAck)
+		err = marshaler.UnmarshalMessage(packet.Data, &delAck)
 
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_DELIVER_ACK, &delAck, pevent.RemoteClient, packet.Opaque)
@@ -87,7 +94,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket
-		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
+		err = marshaler.UnmarshalMessage(packet.Data, &txAck)
 		if nil == err {
 			event = newTxAckEvent(&txAck, packet.Opaque, pevent.RemoteClient)
 		}
@@ -95,14 +102,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	//发送的是bytesmessage
 	case protocol.CMD_BYTES_MESSAGE:
 		var msg protocol.BytesMessage
-		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
+		err = marshaler.UnmarshalMessage(packet.Data, &msg)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_STRING_MESSAGE:
 		var msg protocol.StringMessage
-		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
+		err = marshaler.UnmarshalMessage(packet.Data, &msg)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}

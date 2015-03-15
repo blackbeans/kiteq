@@ -49,8 +49,8 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
 
 	log.Printf("accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
-
-	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
+	var cmd []byte
+	cmd = aevent.remoteClient.Marshaler.MarshalConnAuthAck(true, "授权成功")
 	//响应包
 	packet := protocol.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
 	//立即写出

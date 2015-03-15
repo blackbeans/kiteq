@@ -36,9 +36,8 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 
 	//处理本地的pong
 	hevent.RemoteClient.Pong(hevent.Opaque, hevent.Version)
-
-	//发起一个ping对应的响应
-	packet := protocol.NewRespPacket(hevent.Opaque, protocol.CMD_HEARTBEAT, protocol.MarshalHeartbeatPacket(hevent.Version))
+	var packet *protocol.Packet
+	packet = protocol.NewRespPacket(hevent.Opaque, protocol.CMD_HEARTBEAT, hevent.RemoteClient.Marshaler.MarshalHeartbeatPacket(hevent.Version))
 	//发起一个网络请求
 	remoteEvent := NewRemotingEvent(packet, []string{hevent.RemoteClient.RemoteAddr()})
 

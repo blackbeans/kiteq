@@ -41,7 +41,7 @@ type RemotingClient struct {
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
 	WorkerNum        chan byte //工作线程的channel控制器
-
+	Marshaler        protocol.MarshalHelper //序列化的收发方式
 }
 
 func NewRemotingClient(conn *net.TCPConn,
