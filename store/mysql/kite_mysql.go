@@ -180,7 +180,7 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 		Ptr:    entity,
 	}
 
-	_, err := self.dbmap.UpdateByColumn(entity.MessageId, entity.MessageId, updateCond)
+	_, err = self.dbmap.UpdateByColumn(entity.MessageId, entity.MessageId, updateCond)
 	if err != nil {
 		log.Printf("KiteMysqlStore|UpdateEntity|FAIL|%s|%s\n", err, entity)
 		return false
