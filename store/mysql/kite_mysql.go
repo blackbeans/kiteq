@@ -47,7 +47,6 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 
 	// construct a gorp DbMap
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-
 	// add a table, setting the table name and
 	// specifying that the Id property is an auto incrementing PK
 	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").

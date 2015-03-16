@@ -80,13 +80,16 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
 
-	//存储投递结果
-	self.saveDeliverResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+	//如果不为fly消息那么需要存储投递结果
+	if !fevent.fly {
+		//存储投递结果
+		self.saveDeliverResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+	}
 
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
-	if len(fevent.deliveryFailGroups) <= 0 {
+	if !fevent.fly && len(fevent.deliveryFailGroups) <= 0 {
 		self.kitestore.Delete(fevent.messageId)
 	} else {
 		//重投策略

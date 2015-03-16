@@ -123,6 +123,7 @@ func (self *DeliverPreHandler) fillDeliverExt(pevent *deliverEvent, entity *stor
 	pevent.topic = entity.Header.GetTopic()
 	pevent.messageType = entity.Header.GetMessageType()
 	pevent.expiredTime = entity.Header.GetExpiredTime()
+	pevent.fly = entity.Header.GetFly()
 	pevent.succGroups = entity.SuccGroups
 	pevent.deliverLimit = entity.DeliverLimit
 	pevent.deliverCount = entity.DeliverCount

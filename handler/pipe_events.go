@@ -112,6 +112,7 @@ type deliverEvent struct {
 	topic         string
 	messageType   string
 	expiredTime   int64
+	fly           bool             //是否为fly模式的消息
 	packet        *protocol.Packet //消息包
 	succGroups    []string         //已经投递成功的分组
 	deliverGroups []string         //需要投递的群组
