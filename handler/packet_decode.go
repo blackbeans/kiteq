@@ -63,6 +63,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	} else {
 		marshaler = protocol.JsonMarshaler
 	}
+	pevent.RemoteClient.Marshaler = marshaler
 	packet.CmdType = packet.CmdType & 0x7F
 	//根据类型反解packet
 	switch packet.CmdType {
