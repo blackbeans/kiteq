@@ -4,7 +4,7 @@ go get github.com/golang/protobuf/{proto,protoc-gen-go}
 go get github.com/blackbeans/go-uuid
 go get github.com/go-sql-driver/mysql
 go get github.com/blackbeans/zk
-go get -u github.com/sutoo/gorp
+go get -u github.com/blackbeans/gorp
 
 protoc --go_out=. ./protocol/*.proto
 
@@ -12,6 +12,8 @@ go build -a kiteq/stat
 go build -a kiteq/protocol
 go build -a kiteq/binding
 go build -a kiteq/store
+go build -a kiteq/store/mysql
+go build -a kiteq/store/mmap
 go build -a kiteq/pipe
 go build -a kiteq/handler
 go build -a kiteq/remoting/session
@@ -27,6 +29,8 @@ go install kiteq/stat
 go install kiteq/protocol
 go install kiteq/binding
 go install kiteq/store
+go install kiteq/store/mysql
+go install kiteq/store/mmap
 go install kiteq/pipe
 go install kiteq/handler
 go install kiteq/remoting/session

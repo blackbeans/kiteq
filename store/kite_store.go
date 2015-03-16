@@ -39,9 +39,9 @@ type MessageEntity struct {
 
 }
 
-func (self *MessageEntity) String() string {
-	return fmt.Sprintf("id:%s Topic:%s Commit:%t Body:%s", self.MessageId, self.Topic, self.Commit, self.Body)
-}
+// func (self *MessageEntity) String() string {
+// 	return fmt.Sprintf("id:%s Topic:%s Commit:%t Body:%s", self.MessageId, self.Topic, self.Commit, self.Body)
+// }
 
 func (self *MessageEntity) GetBody() interface{} {
 	return self.Body

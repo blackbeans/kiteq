@@ -91,25 +91,26 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 //发送非flymessage
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
+
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
-
 	//发送存储结果ack
 	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
 		pevent.entity.Header.GetMessageId(), succ, ""), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 
+	//如果是commit的消息先尝试投递、再做持久化
 	if succ && pevent.entity.Header.GetCommit() {
 		self.send(ctx, pevent)
-	} else if succ {
-		//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+	}
+
+	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+	if succ && !pevent.entity.Header.GetCommit() {
+
 		remoteEvent := NewRemotingEvent(self.tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
-	} else if !succ {
-		log.Printf("PersistentHandler|Process|SAVE|FAIL|%s\n", pevent.entity.Header)
 	}
-
 }
 
 func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persistentEvent) {

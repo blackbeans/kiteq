@@ -1,9 +1,10 @@
-package store
+package mysql
 
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"kiteq/protocol"
+	"kiteq/store"
 	"os"
 	"testing"
 	"time"
@@ -47,13 +48,21 @@ func TestBytesSave(t *testing.T) {
 
 func innerT(msg interface{}, msgid string, t *testing.T) {
 	qm := protocol.NewQMessage(msg)
-	entity := NewMessageEntity(protocol.NewQMessage(msg))
+	entity := store.NewMessageEntity(protocol.NewQMessage(msg))
 	entity.SuccGroups = []string{"go-kite-test"}
 	hn, _ := os.Hostname()
 	entity.KiteServer = hn
 
 	kiteMysql := NewKiteMysql("root:@tcp(localhost:3306)/kite")
-	kiteMysql.dbmap.DropTablesIfExists()
+	cerr := kiteMysql.dbmap.CreateTablesIfNotExists()
+	if nil != cerr {
+		t.Logf("innerT|CreateTablesIfNotExists|FAIL|%s\n", cerr)
+	}
+
+	err := kiteMysql.dbmap.TruncateTables()
+	if nil != err {
+		t.Logf("innerT|TruncateTables|FAIL|%s\n", err)
+	}
 
 	succ := kiteMysql.Save(entity)
 	if !succ {
@@ -74,8 +83,8 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 		}
 	} else {
 		bs, _ := qm.GetBody().(string)
-		rs, _ := ret.GetBody().([]byte)
-		if bs != string(rs) {
+		rs, _ := ret.GetBody().(string)
+		if bs != rs {
 			t.Fail()
 		} else {
 			t.Logf("PageQueryEntity|SUCC|%s\n", ret)
@@ -93,7 +102,7 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 	}
 
 	hasNext, entities := kiteMysql.PageQueryEntity(msgid, hn, time.Now().Unix(), 0, 10)
-
+	t.Logf("PageQueryEntity|%s\n", entities)
 	if hasNext {
 		t.Logf("PageQueryEntity|FAIL|HasNext|%s\n", entities)
 		t.Fail()
@@ -102,24 +111,8 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 			t.Logf("PageQueryEntity|FAIL|%s\n", entities)
 			t.Fail()
 		} else {
-			bb, ok := qm.GetBody().([]byte)
-			if ok {
-				rb, _ := entities[0].GetBody().([]byte)
-				if string(rb) != string(bb) {
-					t.Logf("PageQueryEntity|FAIL|%s|%s\n", string(rb), string(bb))
-					t.Fail()
-				} else {
-					t.Logf("PageQueryEntity|SUCC|%s\n", entities[0])
-				}
-			} else {
-				bs, _ := qm.GetBody().(string)
-				rs, _ := entities[0].GetBody().([]byte)
-				if bs != string(rs) {
-					t.Logf("PageQueryEntity|FAIL|%s|%s\n", bs, entities[0].GetBody())
-					t.Fail()
-				} else {
-					t.Logf("PageQueryEntity|SUCC|%s\n", entities[0])
-				}
+			if entities[0].Header.GetMessageId() != qm.GetHeader().GetMessageId() {
+				t.Fail()
 			}
 		}
 	}

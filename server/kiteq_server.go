@@ -9,6 +9,8 @@ import (
 	"kiteq/remoting/server"
 	"kiteq/stat"
 	"kiteq/store"
+	smm "kiteq/store/mmap"
+	smq "kiteq/store/mysql"
 	"log"
 	"os"
 	"strconv"
@@ -118,10 +120,10 @@ func parseDB(db string) store.IKiteStore {
 			}
 			max = int(v)
 		}
-		kitedb = store.NewKiteMMapStore(file, initval, max)
+		kitedb = smm.NewKiteMMapStore(file, initval, max)
 	} else if strings.HasPrefix(db, "mysql://") {
 		mysql := strings.TrimPrefix(db, "mysql://")
-		kitedb = store.NewKiteMysql(mysql)
+		kitedb = smq.NewKiteMysql(mysql)
 	} else {
 		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}

@@ -88,7 +88,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
 		self.kitestore.Delete(fevent.messageId)
-
 	} else {
 		//重投策略
 		if self.checkRedelivery(fevent) {

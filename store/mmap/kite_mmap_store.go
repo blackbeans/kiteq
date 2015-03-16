@@ -1,7 +1,8 @@
-package store
+package mmap
 
 import (
 	"container/list"
+	. "kiteq/store"
 	"log"
 	"sync"
 )
@@ -31,8 +32,8 @@ func (self *KiteMMapStore) Query(messageId string) *MessageEntity {
 	}
 	//将当前节点放到最前面
 	return e.Value.(*MessageEntity)
-
 }
+
 func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()

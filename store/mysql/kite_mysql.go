@@ -1,10 +1,12 @@
-package store
+package mysql
 
 import (
 	"database/sql"
 	"encoding/json"
+	"github.com/blackbeans/gorp"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/sutoo/gorp"
+	"kiteq/protocol"
+	. "kiteq/store"
 	"log"
 )
 
@@ -81,6 +83,12 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		return nil
 	}
 	entity := obj.(*MessageEntity)
+	switch entity.MsgType {
+	case protocol.CMD_BYTES_MESSAGE:
+		//do nothing
+	case protocol.CMD_STRING_MESSAGE:
+		entity.Body = string(entity.GetBody().([]byte))
+	}
 	return entity
 
 	// 是否需要额外设置头部的状态i?????
@@ -182,12 +190,16 @@ func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
 	return true
 }
 
+//没有body的entity
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 	cond := make([]*gorp.Cond, 2)
 	cond[0] = &gorp.Cond{Field: "KiteServer", Operator: "=", Value: kiteServer}
 	cond[1] = &gorp.Cond{Field: "NextDeliverTime", Operator: "<=", Value: nextDeliveryTime}
 
-	rawResults, err := self.dbmap.BatchGet(hashKey, startIdx, limit+1, MessageEntity{}, cond)
+	rawResults, err := self.dbmap.BatchQuery(hashKey, startIdx, limit+1, MessageEntity{}, cond, func(col string) bool {
+		return col == "body"
+	})
+
 	if err != nil {
 		log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
 		return false, nil
@@ -195,7 +207,14 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 
 	results := make([]*MessageEntity, 0, len(rawResults))
 	for _, v := range rawResults {
-		results = append(results, v.(*MessageEntity))
+		entity := v.(*MessageEntity)
+		switch entity.MsgType {
+		case protocol.CMD_BYTES_MESSAGE:
+			//do nothing
+		case protocol.CMD_STRING_MESSAGE:
+			entity.Body = string(entity.GetBody().([]byte))
+		}
+		results = append(results, entity)
 	}
 
 	if len(results) > int(limit) {

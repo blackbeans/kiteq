@@ -101,12 +101,3 @@ func (self *RecoverManager) txAck(entity *store.MessageEntity) {
 	event := NewRemotingEvent(packet, nil, groupId)
 	self.pipeline.FireWork(event)
 }
-
-func (self *RecoverManager) TypeAssert(event IEvent) bool {
-	return false
-}
-
-func (self *RecoverManager) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	ctx.SendForward(event)
-	return nil
-}

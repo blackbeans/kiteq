@@ -1,12 +1,12 @@
-package store
+package mysql
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/blackbeans/gorp"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/protobuf/proto"
-	"github.com/sutoo/gorp"
 	"kiteq/protocol"
 	"log"
 )
