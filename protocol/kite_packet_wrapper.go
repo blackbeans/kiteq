@@ -101,6 +101,17 @@ type PbMarshalHelper struct {
 var JsonMarshaler = &JsonMarshalHelper{}
 var PbMarshaler = &PbMarshalHelper{}
 
+func GetMarshaler(cmdType *uint8) MarshalHelper {
+	var marshaler MarshalHelper
+	if *cmdType&0x80 == 0 {
+		marshaler = PbMarshaler
+	} else {
+		marshaler = JsonMarshaler
+	}
+	*cmdType = *cmdType & 0x7F
+	return marshaler
+}
+
 func (self *PbMarshalHelper) UnmarshalMessage(data []byte, msg proto.Message) error {
 	return proto.Unmarshal(data, msg)
 }

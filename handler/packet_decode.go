@@ -58,13 +58,8 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	var event IEvent
 	var marshaler protocol.MarshalHelper
 	packet := pevent.Packet
-	if packet.CmdType&0x80 == 0 {
-		marshaler = protocol.PbMarshaler
-	} else {
-		marshaler = protocol.JsonMarshaler
-	}
+	marshaler = protocol.GetMarshaler(&packet.CmdType)
 	pevent.RemoteClient.Marshaler = marshaler
-	packet.CmdType = packet.CmdType & 0x7F
 	//根据类型反解packet
 	switch packet.CmdType {
 	//连接的元数据
