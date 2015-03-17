@@ -11,7 +11,7 @@ type HashShard struct {
 func (s *HashShard) FindForKey(key interface{}) int {
 	hashId, ok := key.(string)
 	if ok {
-		i, err := strconv.ParseInt(string(hashId[len(hashId)-1]), 16, 32)
+		i, err := strconv.ParseInt(string(hashId[len(hashId)-1]), 16, 8)
 		if nil != err {
 			log.Printf("HashShard|FindForKey|INVALID HASHKEY|%s\n", key)
 		}

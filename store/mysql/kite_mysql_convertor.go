@@ -2,92 +2,90 @@ package mysql
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
-	"github.com/blackbeans/gorp"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang/protobuf/proto"
 	"kiteq/protocol"
+	"kiteq/store"
 	"log"
+	"reflect"
 )
 
-type Convertor struct{}
-
-func (self Convertor) ToDb(val interface{}, fieldName string) (interface{}, error) {
-	if val == nil {
-		return nil, nil
-	}
-	//first bind by field name
-	if fieldName == "Body" {
-		s, stringOk := val.(string)
-		if stringOk {
-			return []byte(s), nil
-		} else {
-			b, byteOk := val.([]byte)
-			if byteOk {
-				return b, nil
-			} else {
-				return nil, errors.New("ToDb: unsuppoted type")
-			}
-		}
-	}
-	switch t := val.(type) {
-	case []string:
-		b, err := json.Marshal(t)
-		if err != nil {
-			return "", err
-		}
-		return string(b), nil
-	case *protocol.Header:
-		data, err := proto.Marshal(t)
-		if err != nil {
-			fmt.Printf("ToDB proto.Marshal failed.%T, %v \n", val, val)
-			return "", err
-		}
-		return data, nil
-	}
-	return val, nil
+type convertor struct {
+	columns []column
 }
 
-var cs = gorp.CustomScanner{}
-
-func (self Convertor) FromDb(target interface{}, fieldName string) (gorp.CustomScanner, bool) {
-	if fieldName == "Body" {
-		// var bodyArr []byte
-		return cs, false
-	}
-
-	switch target.(type) {
-	case *[]string:
-		binder := func(holder, t interface{}) error {
-			s, ok := holder.(*string)
-			if !ok {
-				return errors.New("FromDb: Unable to convert to *string")
-			}
-			b := []byte(*s)
-			return json.Unmarshal(b, t)
-		}
-		return gorp.CustomScanner{new(string), target, binder}, true
-	case **protocol.Header:
-		binder := func(holder, t interface{}) error {
-
-			b, ok := holder.(*[]byte)
-			if !ok {
-				return errors.New("FromDb: Unable to convert to string")
-			}
-			header := new(protocol.Header)
-			if err := proto.Unmarshal(*b, header); err != nil {
-				log.Printf("Convertor|Header|%s|%s\n", err, holder)
-				return err
+func (self convertor) Convert2Entity(fv []interface{}) *store.MessageEntity {
+	entity := &store.MessageEntity{}
+	val := reflect.ValueOf(entity)
+	for i, v := range fv {
+		c := self.columns[i]
+		fn := val.FieldByName(c.fieldName)
+		k := fn.Kind()
+		if (k == reflect.Int) || (k == reflect.Int16) || (k == reflect.Int32) || (k == reflect.Int64) {
+			fn.SetInt(v.(int64))
+		} else if (k == reflect.Uint) || (k == reflect.Uint16) || (k == reflect.Uint32) || (k == reflect.Uint64) {
+			fn.SetUint(v.(uint64))
+		} else if k == reflect.Bool {
+			fn.SetBool(v.(bool))
+		} else if k == reflect.String {
+			fn.SetString(v.(string))
+		} else if k == reflect.Slice {
+			hd, ok := v.([]byte)
+			if ok && c.columnName == "header" {
+				err := proto.Unmarshal(hd, entity.Header)
+				if nil != err {
+					log.Printf("convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
+				}
+			} else if ok {
+				fn.SetBytes(hd)
 			}
 
-			targetP, ok := t.(**protocol.Header)
-			*targetP = header
+		} else {
+			log.Printf("convertor|Convert2Entity|FAIL|UnSupport DataType|%s\n", c.fieldName)
 			return nil
 		}
-		return gorp.CustomScanner{new([]byte), target, binder}, true
-	default:
-		// log.Printf("Convertor|FromDb|%s|%s\n", target, fieldName)
 	}
-	return cs, false
+	return entity
+}
+
+func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} {
+
+	val := reflect.ValueOf(entity)
+	fvs := make([]interface{}, 0, len(self.columns))
+	for _, v := range self.columns {
+		f := val.FieldByName(v.fieldName)
+		var fv interface{}
+		if v.columnName == "body" && entity.MsgType == protocol.CMD_STRING_MESSAGE {
+			fv = []byte(entity.GetBody().(string))
+		}
+
+		switch f.Kind() {
+		case reflect.Ptr:
+			header, ok := f.Addr().Interface().(*protocol.Header)
+			if ok {
+				data, err := proto.Marshal(header)
+				if err != nil {
+					log.Printf("convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
+					return nil
+				}
+				fv = data
+			} else {
+				log.Printf("convertor|Convert2Params|Not protocol.Header Point |FAIL|%s\n", f.Addr())
+				return nil
+			}
+
+		case reflect.Slice:
+			data, err := json.Marshal(f.Addr().Interface())
+			if nil != err {
+				log.Printf("convertor|Convert2Params|Marshal|Slice|FAIL||%s\n", err)
+				return nil
+			}
+			fv = data
+		default:
+			fv = f.Interface()
+		}
+		fvs = append(fvs, fv)
+	}
+
+	return fvs
+
 }

@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"encoding/json"
-	_ "github.com/go-sql-driver/mysql"
 	. "kiteq/store"
 	"log"
 	"strconv"
@@ -15,7 +14,7 @@ var SQL_BATCH_DELETE = "delete from kite_msg_{} where message_id=?"
 
 func (self *KiteMysqlStore) start() {
 
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	for i := 0; i < self.sqlwrapper.hashshard.ShardCnt(); i++ {
 
 		sqld := strings.Replace(SQL_BATCH_DELETE, "{}", strconv.Itoa(i), -1)
 		sqlu := strings.Replace(SQL_BATCH_UPDATE, "{}", strconv.Itoa(i), -1)
@@ -55,11 +54,11 @@ func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL string, chu c
 }
 
 func (self *KiteMysqlStore) AsyncUpdate(entity *MessageEntity) {
-	idx := self.hashshard.FindForKey(entity.MessageId)
+	idx := self.sqlwrapper.hashshard.FindForKey(entity.MessageId)
 	self.batchUpChan[idx] <- entity
 }
 func (self *KiteMysqlStore) AsyncDelete(messageid string) {
-	idx := self.hashshard.FindForKey(messageid)
+	idx := self.sqlwrapper.hashshard.FindForKey(messageid)
 	self.batchDelChan[idx] <- messageid
 }
 
@@ -69,7 +68,7 @@ func (self *KiteMysqlStore) batchDelete(prepareSQL string, messageId []string) b
 		return true
 	}
 
-	tx, err := self.dbmap.Begin()
+	tx, err := self.db.Begin()
 	if nil != err {
 		log.Printf("KiteMysqlStore|batchDelete|Tx|Begin|FAIL|%s\n", err)
 		return false
@@ -103,7 +102,7 @@ func (self *KiteMysqlStore) batchUpdate(prepareSQL string, entity []*MessageEnti
 		return true
 	}
 
-	tx, err := self.dbmap.Begin()
+	tx, err := self.db.Begin()
 	if nil != err {
 		log.Printf("KiteMysqlStore|batchUpdate|Tx|Begin|FAIL|%s\n", err)
 		return false

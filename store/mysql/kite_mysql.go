@@ -2,125 +2,122 @@ package mysql
 
 import (
 	"database/sql"
-	"encoding/json"
-	"github.com/blackbeans/gorp"
-	_ "github.com/go-sql-driver/mysql"
 	"kiteq/protocol"
 	. "kiteq/store"
 	"log"
 	"time"
 )
 
+//mysql的参数
+type MysqlOptions struct {
+	Addr                      string
+	BatchUpSize, BatchDelSize int
+	FlushPeriod               time.Duration
+	MaxIdleConn               int
+	MaxOpenConn               int
+}
+
 type KiteMysqlStore struct {
-	addr         string
-	dbmap        *gorp.DbMap
+	convertor    convertor
+	sqlwrapper   *sqlwrapper
+	db           *sql.DB
 	batchUpChan  []chan *MessageEntity
 	batchDelChan []chan string
 	batchUpSize  int
 	batchDelSize int
-	hashshard    *HashShard
 	flushPeriod  time.Duration
 }
 
-func NewKiteMysql(addr string, batchUpSize, batchDelSize int, flushPeriod time.Duration) *KiteMysqlStore {
-	db, err := sql.Open("mysql", addr)
-	db.SetMaxIdleConns(100)
-	db.SetMaxOpenConns(1024)
+func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
+
+	db, err := sql.Open("mysql", options.Addr)
+	db.SetMaxIdleConns(options.MaxIdleConn)
+	db.SetMaxOpenConns(options.MaxOpenConn)
+
 	if err != nil {
-		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, options.Addr)
 	}
 
-	hashshard := &HashShard{}
-	// construct a gorp DbMap
-	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-	// add a table, setting the table name and
-	// specifying that the Id property is an auto incrementing PK
-	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").
-		SetKeys(false, "MessageId").
-		SetHashKey("MessageId").
-		SetShardStrategy(hashshard)
-
-	dbmap.TypeConverter = Convertor{}
-
-	// create the table. in a production system you'd generally
-	// use a migration tool, or create the tables via scripts
-	err = dbmap.CreateTablesIfNotExists()
-	if err != nil {
-		log.Panicf("NewKiteMysql|CreateTablesIfNotExists|FAIL|%s\n", err)
-	}
+	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, MessageEntity{})
 
 	//创建Hash的channel
-	batchDelChan := make([]chan string, 0, hashshard.ShardCnt())
-	batchUpChan := make([]chan *MessageEntity, 0, hashshard.ShardCnt())
-	for i := 0; i < hashshard.ShardCnt(); i++ {
-		batchUpChan = append(batchUpChan, make(chan *MessageEntity, batchDelSize/hashshard.ShardCnt()))
-		batchDelChan = append(batchDelChan, make(chan string, batchDelSize/hashshard.ShardCnt()))
+	batchDelChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
+	batchUpChan := make([]chan *MessageEntity, 0, sqlwrapper.hashshard.ShardCnt())
+	for i := 0; i < sqlwrapper.hashshard.ShardCnt(); i++ {
+		batchUpChan = append(batchUpChan, make(chan *MessageEntity, options.BatchUpSize/sqlwrapper.hashshard.ShardCnt()))
+		batchDelChan = append(batchDelChan, make(chan string, options.BatchDelSize/sqlwrapper.hashshard.ShardCnt()))
 	}
 
 	ins := &KiteMysqlStore{
-		addr:         addr,
-		dbmap:        dbmap,
-		hashshard:    hashshard,
+		db:           db,
+		convertor:    convertor{columns: sqlwrapper.columns},
+		sqlwrapper:   sqlwrapper,
 		batchUpChan:  batchUpChan,
-		batchUpSize:  batchUpSize / hashshard.ShardCnt(),
+		batchUpSize:  cap(batchDelChan),
 		batchDelChan: batchDelChan,
-		batchDelSize: batchDelSize / hashshard.ShardCnt(),
-		flushPeriod:  flushPeriod}
+		batchDelSize: cap(batchDelChan),
+		flushPeriod:  options.FlushPeriod}
 
-	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s...\n", addr)
+	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s...\n", options.Addr)
 	ins.start()
 	return ins
 }
 
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
-	var e MessageEntity
-	obj, err := self.dbmap.Get(&e, messageId, messageId)
+
+	s := self.sqlwrapper.hashQuerySQL(messageId)
+	rows, err := self.db.Query(s, messageId)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
 	}
-	if obj == nil {
-		return nil
-	}
-	entity := obj.(*MessageEntity)
-	switch entity.MsgType {
-	case protocol.CMD_BYTES_MESSAGE:
-		//do nothing
-	case protocol.CMD_STRING_MESSAGE:
-		entity.Body = string(entity.GetBody().([]byte))
+	defer rows.Close()
+
+	var entity *MessageEntity
+
+	if rows.Next() {
+		fc := make([]interface{}, 0, len(self.sqlwrapper.columns))
+		err := rows.Scan(fc...)
+		if nil != err {
+			log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
+			return nil
+		} else {
+			entity = self.convertor.Convert2Entity(fc)
+			switch entity.MsgType {
+			case protocol.CMD_BYTES_MESSAGE:
+				//do nothing
+			case protocol.CMD_STRING_MESSAGE:
+				entity.Body = string(entity.GetBody().([]byte))
+			}
+		}
 	}
 	return entity
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
-	err := self.dbmap.Insert(entity)
+	fvs := self.convertor.Convert2Params(entity)
+	s := self.sqlwrapper.hashSaveSQL(entity.MessageId)
+	result, err := self.db.Exec(s, fvs...)
 	if err != nil {
-		log.Printf("KiteMysqlStore|Save|FAIL|%s\n", err)
+		log.Printf("KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
 		return false
 	}
-	return true
+
+	num, _ := result.RowsAffected()
+
+	return num == 1
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
-	values := make(map[string]interface{}, 1)
-	values["Commit"] = true
-	cond := make([]gorp.Cond, 1)
-	cond[0] = gorp.Cond{
-		Field:    "MessageId",
-		Value:    messageId,
-		Operator: "=",
-	}
-	updateCond := gorp.UpdateCond{
-		Values: values,
-		Cond:   cond,
-		Ptr:    &MessageEntity{},
-	}
-	_, err := self.dbmap.UpdateByColumn(messageId, messageId, updateCond)
+
+	s := self.sqlwrapper.hashCommitSQL(messageId)
+	result, err := self.db.Exec(s, messageId)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
 		return false
 	}
-	return true
+	num, _ := result.RowsAffected()
+	return num == 1
 }
 
 func (self *KiteMysqlStore) Rollback(messageId string) bool {
@@ -128,88 +125,41 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) Delete(messageId string) bool {
-	entity := &MessageEntity{MessageId: messageId}
-	_, err := self.dbmap.Delete(entity)
+
+	s := self.sqlwrapper.hashDeleteSQL(messageId)
+	result, err := self.db.Exec(s, messageId)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Delete|FAIL|%s|%s\n", err, messageId)
 		return false
 	}
-
-	return true
-}
-
-func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
-
-	values := make(map[string]interface{}, 1)
-	values["MessageId"] = entity.MessageId
-	values["DeliverCount"] = entity.DeliverCount
-
-	sg, err := json.Marshal(entity.SuccGroups)
-	if nil == err {
-		values["SuccGroups"] = string(sg)
-	} else {
-		log.Printf("KiteMysqlStore|UpdateEntity|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, entity.MessageId, entity.SuccGroups)
-		return false
-	}
-
-	fg, err := json.Marshal(entity.FailGroups)
-	if nil == err {
-		values["FailGroups"] = string(fg)
-	} else {
-		log.Printf("KiteMysqlStore|UpdateEntity|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, entity.MessageId, entity.FailGroups)
-		return false
-	}
-
-	//设置一下下一次投递时间
-	values["NextDeliverTime"] = entity.NextDeliverTime
-
-	cond := make([]gorp.Cond, 1)
-	cond[0] = gorp.Cond{
-		Field:    "MessageId",
-		Value:    entity.MessageId,
-		Operator: "=",
-	}
-
-	updateCond := gorp.UpdateCond{
-		Values: values,
-		Cond:   cond,
-		Ptr:    entity,
-	}
-
-	_, err = self.dbmap.UpdateByColumn(entity.MessageId, entity.MessageId, updateCond)
-	if err != nil {
-		log.Printf("KiteMysqlStore|UpdateEntity|FAIL|%s|%s\n", err, entity)
-		return false
-	}
-
-	return true
+	num, _ := result.RowsAffected()
+	return num == 1
 }
 
 //没有body的entity
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
-	cond := make([]*gorp.Cond, 2)
-	cond[0] = &gorp.Cond{Field: "KiteServer", Operator: "=", Value: kiteServer}
-	cond[1] = &gorp.Cond{Field: "NextDeliverTime", Operator: "<=", Value: nextDeliveryTime}
 
-	rawResults, err := self.dbmap.BatchQuery(hashKey, startIdx, limit+1, MessageEntity{}, cond, func(col string) bool {
-		return col == "body"
-	})
+	s := self.sqlwrapper.hashPQSQL(hashKey)
 
+	rows, err := self.db.Query(s, kiteServer, nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
-		log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
+		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil
 	}
+	defer rows.Close()
 
-	results := make([]*MessageEntity, 0, len(rawResults))
-	for _, v := range rawResults {
-		entity := v.(*MessageEntity)
-		switch entity.MsgType {
-		case protocol.CMD_BYTES_MESSAGE:
-			//do nothing
-		case protocol.CMD_STRING_MESSAGE:
-			entity.Body = string(entity.GetBody().([]byte))
+	results := make([]*MessageEntity, 0, limit)
+	for rows.Next() {
+		fc := make([]interface{}, 0, len(self.sqlwrapper.columns))
+		err := rows.Scan(fc...)
+		if err != nil {
+			log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
+		} else {
+			entity := self.convertor.Convert2Entity(fc)
+			if nil != entity {
+				results = append(results, entity)
+			}
 		}
-		results = append(results, entity)
 	}
 
 	if len(results) > int(limit) {

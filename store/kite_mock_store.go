@@ -42,10 +42,6 @@ func (self *MockKiteStore) BatchUpdate(entity []*MessageEntity) bool {
 	return true
 }
 
-func (self *MockKiteStore) UpdateEntity(entity *MessageEntity) bool {
-	return true
-}
-
 func (self *MockKiteStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 	recoverMessage := buildStringMessage(MessageId())
 	entity := NewMessageEntity(protocol.NewQMessage(recoverMessage))

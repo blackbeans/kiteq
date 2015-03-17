@@ -19,12 +19,11 @@ func MessageId() string {
 
 //用于持久化的messageEntity
 type MessageEntity struct {
-	Header *protocol.Header `kiteq:"header" db:"header"`
-	Body   interface{}      `kiteq:"body" db:"body"` //序列化后的消息
+	MessageId string           `kiteq:"messageId" db:"message_id,pk"`
+	Header    *protocol.Header `kiteq:"header" db:"header"`
+	Body      interface{}      `kiteq:"body" db:"body"` //序列化后的消息
 	//-----------------
-	MsgType uint8 `kiteq:"msg_type" db:"msg_type"` //消息类型
-
-	MessageId       string   `kiteq:"messageId" db:"message_id"`
+	MsgType         uint8    `kiteq:"msg_type" db:"msg_type"`                   //消息类型
 	Topic           string   `kiteq:"topic" db:"topic"`                         //Topic
 	MessageType     string   `kiteq:"messageType" db:"message_type"`            //MessageType
 	PublishGroup    string   `kiteq:"publish_group" db:"publish_group"`         //发布的groupId
@@ -77,8 +76,6 @@ type IKiteStore interface {
 	Save(entity *MessageEntity) bool
 	Commit(messageId string) bool
 	Rollback(messageId string) bool
-
-	UpdateEntity(entity *MessageEntity) bool
 	Delete(messageId string) bool
 
 	//根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果

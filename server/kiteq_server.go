@@ -161,7 +161,14 @@ func parseDB(db string) store.IKiteStore {
 			flushPeriod = time.Duration(v * int64(1*time.Millisecond))
 		}
 
-		kitedb = smq.NewKiteMysql(mp[0], bus, bds, flushPeriod)
+		options := smq.MysqlOptions{
+			Addr:         mp[0],
+			BatchUpSize:  bus,
+			BatchDelSize: bds,
+			FlushPeriod:  flushPeriod,
+			MaxIdleConn:  1024,
+			MaxOpenConn:  1024}
+		kitedb = smq.NewKiteMysql(options)
 	} else {
 		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
