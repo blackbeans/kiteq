@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"database/sql"
+	_ "github.com/go-sql-driver/mysql"
 	"kiteq/protocol"
 	. "kiteq/store"
 	"log"
@@ -31,12 +32,12 @@ type KiteMysqlStore struct {
 func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 
 	db, err := sql.Open("mysql", options.Addr)
-	db.SetMaxIdleConns(options.MaxIdleConn)
-	db.SetMaxOpenConns(options.MaxOpenConn)
-
 	if err != nil {
 		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, options.Addr)
 	}
+
+	db.SetMaxIdleConns(options.MaxIdleConn)
+	db.SetMaxOpenConns(options.MaxOpenConn)
 
 	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, MessageEntity{})
 

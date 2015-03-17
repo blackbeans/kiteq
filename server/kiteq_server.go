@@ -124,11 +124,13 @@ func parseDB(db string) store.IKiteStore {
 	} else if strings.HasPrefix(db, "mysql://") {
 		url := strings.TrimPrefix(db, "mysql://")
 		mp := strings.Split(url, "?")
-		split := strings.Split(mp[1], "&")
-		params := make(map[string]string, len(split))
-		for _, v := range split[1:] {
-			p := strings.SplitN(v, "=", 2)
-			params[p[0]] = p[1]
+		params := make(map[string]string, 5)
+		if len(mp) > 1 {
+			split := strings.Split(mp[1], "&")
+			for _, v := range split[1:] {
+				p := strings.SplitN(v, "=", 2)
+				params[p[0]] = p[1]
+			}
 		}
 
 		bus := 1000
