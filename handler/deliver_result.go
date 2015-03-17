@@ -40,6 +40,8 @@ type DeliverResultHandler struct {
 	kitestore      store.IKiteStore
 	rw             redeliveryWindows //多个恢复的windows
 	deliverTimeout time.Duration
+	updateChan     chan store.MessageEntity
+	deleteChan     chan string
 }
 
 //------创建投递结果处理器
@@ -49,6 +51,7 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	dhandler.kitestore = kitestore
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
+
 	//排好序
 	sort.Sort(dhandler.rw)
 	log.Printf("DeliverResultHandler|SORT RedeliveryWindows|%s\n ", dhandler.rw)
@@ -90,7 +93,8 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 	//都投递成功
 	if !fevent.fly && len(fevent.deliveryFailGroups) <= 0 {
-		self.kitestore.Delete(fevent.messageId)
+		//async batch remove
+		self.kitestore.AsyncDelete(fevent.messageId)
 	} else {
 		//重投策略
 		if self.checkRedelivery(fevent) {
@@ -131,8 +135,8 @@ func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCou
 		FailGroups:   failGroups,
 		//设置一下下一次投递时间
 		NextDeliverTime: self.nextDeliveryTime(deliverCount)}
-	//更新当前消息的数据
-	self.kitestore.UpdateEntity(entity)
+	//异步更新当前消息的数据
+	self.kitestore.AsyncUpdate(entity)
 }
 
 func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {

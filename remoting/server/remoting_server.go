@@ -58,7 +58,7 @@ func (self *RemotingServer) ListenAndServer() error {
 
 func (self *RemotingServer) serve(l *StoppedListener) error {
 	for !self.isShutdown {
-		conn, err := l.AcceptTCP()
+		conn, err := l.Accept()
 		if nil != err {
 			log.Printf("RemotingServer|serve|AcceptTCP|FAIL|%s\n", err)
 			continue

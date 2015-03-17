@@ -8,36 +8,21 @@ import (
 	"kiteq/protocol"
 	. "kiteq/store"
 	"log"
+	"time"
 )
 
-/**
-CREATE DATABASE IF NOT EXISTS `kite` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci ;
-USE `kite` ;
-
-CREATE TABLE IF NOT EXISTS `kite`.`kite_msg` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `messageId` CHAR(32) NOT NULL,
-  `topic` VARCHAR(45) NULL DEFAULT 'default',
-  `messageType` CHAR(4) NULL DEFAULT 0,
-  `msgType` int(3) NOT NULL,
-  `expiredTime` BIGINT NULL,
-  `deliverCount` int(10) NOT NULL DEFAULT 0,
-  `publishGroup` VARCHAR(45) NULL,
-  `commit` TINYINT NULL DEFAULT 0 COMMENT '提交状态',
-  `header` BLOB NOT NULL,
-  `body` BLOB NOT NULL,
-  `kiteq_server` char(32) NULL DEFAULT 0 COMMENT '在哪个拓扑里',
-  INDEX `idx_commit` (`commit` ASC),
-  INDEX `idx_msgId` (`messageId` ASC),
-  PRIMARY KEY (`id`))
-ENGINE = InnoDB;
-*/
 type KiteMysqlStore struct {
-	addr  string
-	dbmap *gorp.DbMap
+	addr         string
+	dbmap        *gorp.DbMap
+	batchUpChan  []chan *MessageEntity
+	batchDelChan []chan string
+	batchUpSize  int
+	batchDelSize int
+	hashshard    *HashShard
+	flushPeriod  time.Duration
 }
 
-func NewKiteMysql(addr string) *KiteMysqlStore {
+func NewKiteMysql(addr string, batchUpSize, batchDelSize int, flushPeriod time.Duration) *KiteMysqlStore {
 	db, err := sql.Open("mysql", addr)
 	db.SetMaxIdleConns(100)
 	db.SetMaxOpenConns(1024)
@@ -45,6 +30,7 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
 	}
 
+	hashshard := &HashShard{}
 	// construct a gorp DbMap
 	dbmap := &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 	// add a table, setting the table name and
@@ -52,7 +38,7 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 	dbmap.AddTableWithName(MessageEntity{}, "kite_msg").
 		SetKeys(false, "MessageId").
 		SetHashKey("MessageId").
-		SetShardStrategy(&HashShard{})
+		SetShardStrategy(hashshard)
 
 	dbmap.TypeConverter = Convertor{}
 
@@ -62,12 +48,27 @@ func NewKiteMysql(addr string) *KiteMysqlStore {
 	if err != nil {
 		log.Panicf("NewKiteMysql|CreateTablesIfNotExists|FAIL|%s\n", err)
 	}
-	ins := &KiteMysqlStore{
-		addr:  addr,
-		dbmap: dbmap,
+
+	//创建Hash的channel
+	batchDelChan := make([]chan string, 0, hashshard.ShardCnt())
+	batchUpChan := make([]chan *MessageEntity, 0, hashshard.ShardCnt())
+	for i := 0; i < hashshard.ShardCnt(); i++ {
+		batchUpChan = append(batchUpChan, make(chan *MessageEntity, batchDelSize/hashshard.ShardCnt()))
+		batchDelChan = append(batchDelChan, make(chan string, batchDelSize/hashshard.ShardCnt()))
 	}
 
+	ins := &KiteMysqlStore{
+		addr:         addr,
+		dbmap:        dbmap,
+		hashshard:    hashshard,
+		batchUpChan:  batchUpChan,
+		batchUpSize:  batchUpSize / hashshard.ShardCnt(),
+		batchDelChan: batchDelChan,
+		batchDelSize: batchDelSize / hashshard.ShardCnt(),
+		flushPeriod:  flushPeriod}
+
 	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s...\n", addr)
+	ins.start()
 	return ins
 }
 
@@ -89,11 +90,6 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		entity.Body = string(entity.GetBody().([]byte))
 	}
 	return entity
-
-	// 是否需要额外设置头部的状态i?????
-	// //设置一下头部的状态
-	// entity.Header.Commit = proto.Bool(entity.Commit)
-	// return entity
 }
 
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
@@ -127,6 +123,10 @@ func (self *KiteMysqlStore) Commit(messageId string) bool {
 	return true
 }
 
+func (self *KiteMysqlStore) Rollback(messageId string) bool {
+	return self.Delete(messageId)
+}
+
 func (self *KiteMysqlStore) Delete(messageId string) bool {
 	entity := &MessageEntity{MessageId: messageId}
 	_, err := self.dbmap.Delete(entity)
@@ -136,10 +136,6 @@ func (self *KiteMysqlStore) Delete(messageId string) bool {
 	}
 
 	return true
-}
-
-func (self *KiteMysqlStore) Rollback(messageId string) bool {
-	return self.Delete(messageId)
 }
 
 func (self *KiteMysqlStore) UpdateEntity(entity *MessageEntity) bool {
@@ -221,5 +217,4 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 	} else {
 		return false, results
 	}
-
 }

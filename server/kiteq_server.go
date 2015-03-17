@@ -122,8 +122,46 @@ func parseDB(db string) store.IKiteStore {
 		}
 		kitedb = smm.NewKiteMMapStore(file, initval, max)
 	} else if strings.HasPrefix(db, "mysql://") {
-		mysql := strings.TrimPrefix(db, "mysql://")
-		kitedb = smq.NewKiteMysql(mysql)
+		url := strings.TrimPrefix(db, "mysql://")
+		mp := strings.Split(url, "?")
+		split := strings.Split(mp[1], "&")
+		params := make(map[string]string, len(split))
+		for _, v := range split[1:] {
+			p := strings.SplitN(v, "=", 2)
+			params[p[0]] = p[1]
+		}
+
+		bus := 1000
+		u, ok := params["batchUpdateSize"]
+		if ok {
+			v, e := strconv.ParseInt(u, 10, 32)
+			if nil != e {
+				log.Fatalf("NewKiteQServer|INVALID|batchUpdateSize|%s\n", db)
+			}
+			bus = int(v)
+		}
+
+		bds := 1000
+		d, ok := params["batchDelSize"]
+		if ok {
+			v, e := strconv.ParseInt(d, 10, 32)
+			if nil != e {
+				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+			}
+			bds = int(v)
+		}
+
+		flushPeriod := 1 * time.Second
+		fp, ok := params["flushPeriod"]
+		if ok {
+			v, e := strconv.ParseInt(fp, 10, 32)
+			if nil != e {
+				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+			}
+			flushPeriod = time.Duration(v * int64(1*time.Millisecond))
+		}
+
+		kitedb = smq.NewKiteMysql(mp[0], bus, bds, flushPeriod)
 	} else {
 		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}

@@ -9,6 +9,13 @@ import (
 type MockKiteStore struct {
 }
 
+func NewMockKiteStore() *MockKiteStore {
+	return &MockKiteStore{}
+}
+
+func (self *MockKiteStore) AsyncUpdate(entity *MessageEntity) {}
+func (self *MockKiteStore) AsyncDelete(messgeid string)       {}
+
 func (self *MockKiteStore) Query(messageId string) *MessageEntity {
 	entity := NewMessageEntity(protocol.NewQMessage(buildBytesMessage(messageId)))
 	return entity
@@ -24,9 +31,17 @@ func (self *MockKiteStore) Commit(messageId string) bool {
 func (self *MockKiteStore) Delete(messageId string) bool {
 	return true
 }
+func (self *MockKiteStore) BatchDelete(messageId []string) bool {
+	return true
+}
 func (self *MockKiteStore) Rollback(messageId string) bool {
 	return true
 }
+
+func (self *MockKiteStore) BatchUpdate(entity []*MessageEntity) bool {
+	return true
+}
+
 func (self *MockKiteStore) UpdateEntity(entity *MessageEntity) bool {
 	return true
 }
