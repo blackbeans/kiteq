@@ -53,10 +53,8 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包
 	packet := protocol.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
-	//立即写出
-	packet.BlockingWrite()
 
-	//向当前连接写入一个存储成功的response
+	//向当前连接写入当前包
 	remoteEvent := NewRemotingEvent(packet, []string{aevent.remoteClient.RemoteAddr()})
 
 	//向后走网络传输

@@ -21,7 +21,8 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		Commit:       proto.Bool(true),
+		Fly:          proto.Bool(false)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
@@ -52,7 +53,18 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 
 func init() {
 
-	kiteQServer = NewKiteQServer("localhost:13800", "localhost:2181", []string{"trade"}, "mock")
+	rc := &protocol.RemotingConfig{
+		MaxDispatcherNum: 50,
+		MaxWorkerNum:     50000,
+		ReadBufferSize:   16 * 1024,
+		WriteBufferSize:  16 * 1024,
+		WriteChannelSize: 10000,
+		ReadChannelSize:  10000,
+		IdleTime:         10 * time.Second}
+
+	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 10, 1*time.Minute, []string{"trade"}, "mock://", rc)
+
+	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 

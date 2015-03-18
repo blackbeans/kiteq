@@ -8,10 +8,9 @@ import (
 
 //请求的packet
 type Packet struct {
-	Opaque        int32
-	CmdType       uint8 //类型
-	Data          []byte
-	blockingWrite bool
+	Opaque  int32
+	CmdType uint8 //类型
+	Data    []byte
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
@@ -19,10 +18,6 @@ func NewPacket(cmdtype uint8, data []byte) *Packet {
 		Opaque:  -1,
 		CmdType: cmdtype,
 		Data:    data}
-}
-
-func (self *Packet) BlockingWrite() {
-	self.blockingWrite = true
 }
 
 func (self *Packet) Reset() {

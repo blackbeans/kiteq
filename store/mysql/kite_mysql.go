@@ -151,7 +151,7 @@ var filterbody = func(colname string) bool {
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
-	log.Println(s)
+	// log.Println(s)
 	rows, err := self.db.Query(s, kiteServer, nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)

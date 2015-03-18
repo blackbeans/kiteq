@@ -176,7 +176,6 @@ func (self *Session) write0(tlv protocol.Packet) {
 		//如果是同步写出
 		return
 	}
-
 	length, err := self.bw.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))

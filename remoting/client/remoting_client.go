@@ -207,7 +207,9 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 		delete(m, opaque)
 		ch <- obj
 		close(ch)
+		// log.Printf("RemotingClient|Attach|%s|%s\n", opaque, obj)
 	}
+
 }
 
 //只是写出去
