@@ -5,6 +5,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"kiteq/protocol"
 	"kiteq/store"
+	"log"
 	"os"
 	"strconv"
 	"testing"
@@ -13,19 +14,20 @@ import (
 
 func TestBatch(t *testing.T) {
 
-	kiteMysql := NewKiteMysql("root:@tcp(localhost:3306)/kite", 100, 100, 10*time.Millisecond)
-	cerr := kiteMysql.dbmap.CreateTablesIfNotExists()
-	if nil != cerr {
-		t.Logf("TestBatch|CreateTablesIfNotExists|FAIL|%s\n", cerr)
-	}
+	options := MysqlOptions{
+		Addr:         "root:@tcp(localhost:3306)/kite",
+		BatchUpSize:  100,
+		BatchDelSize: 100,
+		FlushPeriod:  10 * time.Millisecond,
+		MaxIdleConn:  10,
+		MaxOpenConn:  10}
 
-	err := kiteMysql.dbmap.TruncateTables()
-	if nil != err {
-		t.Logf("TestBatch|TruncateTables|FAIL|%s\n", err)
-	}
+	kiteMysql := NewKiteMysql(options)
 
-	mids := make([]string, 0, 10)
-	for i := 0; i < 10; i++ {
+	truncate(kiteMysql)
+
+	mids := make([]string, 0, 16)
+	for i := 0; i < 16; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -61,12 +63,13 @@ func TestBatch(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 	for _, v := range mids {
-		entity := kiteMysql.Query(v)
-		if len(entity.SuccGroups) < 1 {
-			t.Fatalf("TestBatch|COMMIT FAIL|%s\n", entity)
+		e := kiteMysql.Query(v)
+		if nil == e || len(e.SuccGroups) < 1 {
+			t.Fatalf("TestBatch|Update FAIL|%s\n", e)
 			t.Fail()
 			return
 		}
+		t.Logf("Query|%s\n", e)
 	}
 
 	//测试批量删除
@@ -83,7 +86,17 @@ func TestBatch(t *testing.T) {
 		}
 	}
 
-	kiteMysql.dbmap.TruncateTables()
+	truncate(kiteMysql)
+}
+
+func truncate(k *KiteMysqlStore) {
+	for i := 0; i < 16; i++ {
+		_, err := k.db.Exec(fmt.Sprintf("truncate table kite_msg_%d", i))
+		if nil != err {
+			log.Printf("truncate table kite_msg_%d|%s\n", i, err)
+			return
+		}
+	}
 }
 
 func TestStringSave(t *testing.T) {
@@ -124,21 +137,22 @@ func TestBytesSave(t *testing.T) {
 
 func innerT(msg interface{}, msgid string, t *testing.T) {
 	qm := protocol.NewQMessage(msg)
-	entity := store.NewMessageEntity(protocol.NewQMessage(msg))
+	entity := store.NewMessageEntity(qm)
 	entity.SuccGroups = []string{"go-kite-test"}
 	hn, _ := os.Hostname()
 	entity.KiteServer = hn
 
-	kiteMysql := NewKiteMysql("root:@tcp(localhost:3306)/kite", 100, 100, 6*time.Second)
-	cerr := kiteMysql.dbmap.CreateTablesIfNotExists()
-	if nil != cerr {
-		t.Logf("innerT|CreateTablesIfNotExists|FAIL|%s\n", cerr)
-	}
+	options := MysqlOptions{
+		Addr:         "root:@tcp(localhost:3306)/kite",
+		BatchUpSize:  100,
+		BatchDelSize: 100,
+		FlushPeriod:  10 * time.Millisecond,
+		MaxIdleConn:  10,
+		MaxOpenConn:  10}
 
-	err := kiteMysql.dbmap.TruncateTables()
-	if nil != err {
-		t.Logf("innerT|TruncateTables|FAIL|%s\n", err)
-	}
+	kiteMysql := NewKiteMysql(options)
+
+	truncate(kiteMysql)
 
 	succ := kiteMysql.Save(entity)
 	if !succ {
@@ -155,7 +169,7 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 		if string(rb) != string(bb) {
 			t.Fail()
 		} else {
-			t.Logf("PageQueryEntity|SUCC|%s\n", ret)
+			t.Logf("Query|SUCC|%s\n", ret)
 		}
 	} else {
 		bs, _ := qm.GetBody().(string)
@@ -163,7 +177,7 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 		if bs != rs {
 			t.Fail()
 		} else {
-			t.Logf("PageQueryEntity|SUCC|%s\n", ret)
+			t.Logf("Query|SUCC|%s\n", ret)
 		}
 	}
 

@@ -70,6 +70,6 @@ message BytesMessage{
 message StringMessage{
     required Header header = 1;
     required string body = 2;
-
 }
+
 

@@ -64,34 +64,39 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	return ins
 }
 
+var filternothing = func(colname string) bool {
+	return false
+}
+
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 
+	var entity *MessageEntity
 	s := self.sqlwrapper.hashQuerySQL(messageId)
 	rows, err := self.db.Query(s, messageId)
-	if err != nil {
+	if nil != err {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
 	}
 	defer rows.Close()
 
-	var entity *MessageEntity
-
 	if rows.Next() {
-		fc := make([]interface{}, 0, len(self.sqlwrapper.columns))
+
+		entity = &MessageEntity{}
+		fc := self.convertor.convertFields(entity, filternothing)
 		err := rows.Scan(fc...)
 		if nil != err {
-			log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
+			log.Printf("KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
 			return nil
-		} else {
-			entity = self.convertor.Convert2Entity(fc)
-			switch entity.MsgType {
-			case protocol.CMD_BYTES_MESSAGE:
-				//do nothing
-			case protocol.CMD_STRING_MESSAGE:
-				entity.Body = string(entity.GetBody().([]byte))
-			}
+		}
+		self.convertor.Convert2Entity(fc, entity, filternothing)
+		switch entity.MsgType {
+		case protocol.CMD_BYTES_MESSAGE:
+			//do nothing
+		case protocol.CMD_STRING_MESSAGE:
+			entity.Body = string(entity.GetBody().([]byte))
 		}
 	}
+
 	return entity
 }
 
@@ -105,14 +110,14 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	}
 
 	num, _ := result.RowsAffected()
-
 	return num == 1
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
 
 	s := self.sqlwrapper.hashCommitSQL(messageId)
-	result, err := self.db.Exec(s, messageId)
+	log.Println(s)
+	result, err := self.db.Exec(s, true, messageId)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
 		return false
@@ -137,11 +142,16 @@ func (self *KiteMysqlStore) Delete(messageId string) bool {
 	return num == 1
 }
 
+var filterbody = func(colname string) bool {
+	//不需要查询body
+	return colname == "body"
+}
+
 //没有body的entity
 func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
-
+	log.Println(s)
 	rows, err := self.db.Query(s, kiteServer, nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
@@ -151,15 +161,16 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 
 	results := make([]*MessageEntity, 0, limit)
 	for rows.Next() {
-		fc := make([]interface{}, 0, len(self.sqlwrapper.columns))
+
+		entity := &MessageEntity{}
+		fc := self.convertor.convertFields(entity, filterbody)
 		err := rows.Scan(fc...)
 		if err != nil {
 			log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
 		} else {
-			entity := self.convertor.Convert2Entity(fc)
-			if nil != entity {
-				results = append(results, entity)
-			}
+
+			self.convertor.Convert2Entity(fc, entity, filterbody)
+			results = append(results, entity)
 		}
 	}
 

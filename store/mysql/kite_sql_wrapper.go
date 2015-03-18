@@ -12,6 +12,7 @@ type column struct {
 	fieldName  string
 	isPK       bool
 	isHashKey  bool
+	fieldKind  reflect.Kind
 }
 
 type sqlwrapper struct {
@@ -35,6 +36,7 @@ func newSqlwrapper(tablename string, hashshard HashShard, i interface{}) *sqlwra
 		tag := f.Tag.Get("db")
 		c := column{}
 		c.fieldName = f.Name
+		c.fieldKind = f.Type.Kind()
 		//使用字段名称
 		if len(tag) <= 0 {
 			c.columnName = f.Name
@@ -75,7 +77,7 @@ func (self *sqlwrapper) initSQL() {
 	//query
 	buff := make([]byte, 0, 128)
 	s := bytes.NewBuffer(buff)
-	s.WriteString("SELECT ")
+	s.WriteString("select ")
 	for i, v := range self.columns {
 		s.WriteString(v.columnName)
 		if i < len(self.columns)-1 {
@@ -86,7 +88,6 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
-	// s.WriteByte(byte(self.hashshard.FindForKey(messageId)))
 	s.WriteString(" where message_id=?")
 	sql := s.String()
 
@@ -98,7 +99,9 @@ func (self *sqlwrapper) initSQL() {
 
 	//save
 	s.Reset()
-	s.WriteString("insert into (")
+	s.WriteString("insert into ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} (")
 	for i, v := range self.columns {
 		s.WriteString(v.columnName)
 		if i < len(self.columns)-1 {
@@ -106,8 +109,7 @@ func (self *sqlwrapper) initSQL() {
 		}
 	}
 	s.WriteString(") ")
-	s.WriteString(self.tablename)
-	s.WriteString("_{} ")
+
 	s.WriteString(" values (")
 	for i, _ := range self.columns {
 		s.WriteString("?")
@@ -117,6 +119,9 @@ func (self *sqlwrapper) initSQL() {
 
 	}
 	s.WriteString(" )")
+
+	sql = s.String()
+
 	self.savePrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
 	for i := 0; i < self.hashshard.ShardCnt(); i++ {
 		st := strconv.Itoa(i)
@@ -129,7 +134,9 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
 	s.WriteString(" set commit=? ")
-	s.WriteString(" where messgage_id=?")
+	s.WriteString(" where message_id=?")
+
+	sql = s.String()
 
 	self.commitPrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
 	for i := 0; i < self.hashshard.ShardCnt(); i++ {
@@ -142,7 +149,9 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString("delete from  ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
-	s.WriteString(" where messgage_id=?")
+	s.WriteString(" where message_id=?")
+
+	sql = s.String()
 
 	self.deletePrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
 	for i := 0; i < self.hashshard.ShardCnt(); i++ {
@@ -155,17 +164,20 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString("select  ")
 	for i, v := range self.columns {
 		//如果为Body字段则不用于查询
-		if v.columnName != "body" {
-			s.WriteString(v.columnName)
-			if i < len(self.columns)-2 {
-				s.WriteString(",")
-			}
+		if v.columnName == "body" {
+			continue
+		}
+		s.WriteString(v.columnName)
+		if i < len(self.columns)-1 {
+			s.WriteString(",")
 		}
 	}
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
 	s.WriteString(" where kite_server=? and next_deliver_time<=? limit ?,?")
+
+	sql = s.String()
 
 	self.pageQueryPrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
 	for i := 0; i < self.hashshard.ShardCnt(); i++ {
