@@ -45,6 +45,7 @@ func TestBatch(t *testing.T) {
 		entity.SuccGroups = []string{"go-kite-test"}
 		hn, _ := os.Hostname()
 		entity.KiteServer = hn
+		entity.PublishTime = time.Now().Unix()
 		kiteMysql.Save(entity)
 		mids = append(mids, entity.MessageId)
 	}
@@ -141,6 +142,7 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 	entity.SuccGroups = []string{"go-kite-test"}
 	hn, _ := os.Hostname()
 	entity.KiteServer = hn
+	entity.PublishTime = time.Now().Unix()
 
 	options := MysqlOptions{
 		Addr:         "root:@tcp(localhost:3306)/kite",

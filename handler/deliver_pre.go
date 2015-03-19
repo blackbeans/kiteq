@@ -55,7 +55,8 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
 
 	//构造deliverEvent
-	deliverEvent := newDeliverEvent(pevent.messageId, pevent.header.GetTopic(), pevent.header.GetMessageType())
+	deliverEvent := newDeliverEvent(pevent.messageId, pevent.header.GetTopic(),
+		pevent.header.GetMessageType(), entity.PublishTime)
 
 	//创建不同的packet
 	switch entity.MsgType {

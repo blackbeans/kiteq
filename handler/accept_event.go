@@ -7,6 +7,7 @@ import (
 	"kiteq/store"
 	"log"
 	"os"
+	"time"
 )
 
 //--------------------如下为具体的处理Handler
@@ -66,6 +67,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	}
 
 	if nil != msg {
+		msg.PublishTime = time.Now().Unix()
 		msg.KiteServer = self.kiteserver
 		deliver := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
 		ctx.SendForward(deliver)

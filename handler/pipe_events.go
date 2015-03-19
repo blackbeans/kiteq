@@ -112,6 +112,7 @@ type deliverEvent struct {
 	topic         string
 	messageType   string
 	expiredTime   int64
+	publishtime   int64            //消息发布时间
 	fly           bool             //是否为fly模式的消息
 	packet        *protocol.Packet //消息包
 	succGroups    []string         //已经投递成功的分组
@@ -121,11 +122,12 @@ type deliverEvent struct {
 }
 
 //创建投递事件
-func newDeliverEvent(messageId string, topic string, messageType string) *deliverEvent {
+func newDeliverEvent(messageId string, topic string, messageType string, publishtime int64) *deliverEvent {
 	return &deliverEvent{
 		messageId:   messageId,
 		topic:       topic,
-		messageType: messageType}
+		messageType: messageType,
+		publishtime: publishtime}
 }
 
 //统计投递结果的事件，决定不决定重发

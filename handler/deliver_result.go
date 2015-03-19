@@ -86,7 +86,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	//如果不为fly消息那么需要存储投递结果
 	if !fevent.fly {
 		//存储投递结果
-		self.saveDeliverResult(fevent.messageId, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+		self.saveDeliverResult(fevent.messageId, fevent.publishtime, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
 	}
 
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
@@ -125,8 +125,8 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 }
 
 //存储投递结果
-func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCount int32,
-	succGroups []string, failGroups []string) {
+func (self *DeliverResultHandler) saveDeliverResult(messageId string, publishtime int64,
+	deliverCount int32, succGroups []string, failGroups []string) {
 
 	entity := &store.MessageEntity{
 		MessageId:    messageId,
@@ -134,12 +134,12 @@ func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCou
 		SuccGroups:   succGroups,
 		FailGroups:   failGroups,
 		//设置一下下一次投递时间
-		NextDeliverTime: self.nextDeliveryTime(deliverCount)}
+		NextDeliverTime: self.nextDeliveryTime(publishtime, deliverCount)}
 	//异步更新当前消息的数据
 	self.kitestore.AsyncUpdate(entity)
 }
 
-func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
+func (self *DeliverResultHandler) nextDeliveryTime(publishtime int64, deliverCount int32) int64 {
 	delayTime := self.rw[0].delaySeconds
 	for _, w := range self.rw {
 		if deliverCount >= w.minDeliveryCount &&
@@ -153,5 +153,5 @@ func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间
-	return time.Now().Add(delayTime).Unix()
+	return publishtime + int64(delayTime)
 }

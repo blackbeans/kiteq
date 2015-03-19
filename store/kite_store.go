@@ -23,11 +23,12 @@ type MessageEntity struct {
 	Header    *protocol.Header `kiteq:"header" db:"header"`
 	Body      interface{}      `kiteq:"body" db:"body"` //序列化后的消息
 	//-----------------
-	MsgType         uint8    `kiteq:"msg_type" db:"msg_type"`                   //消息类型
-	Topic           string   `kiteq:"topic" db:"topic"`                         //Topic
-	MessageType     string   `kiteq:"messageType" db:"message_type"`            //MessageType
-	PublishGroup    string   `kiteq:"publish_group" db:"publish_group"`         //发布的groupId
-	Commit          bool     `kiteq:"commit" db:"commit"`                       //是否已提交
+	MsgType         uint8    `kiteq:"msg_type" db:"msg_type"`           //消息类型
+	Topic           string   `kiteq:"topic" db:"topic"`                 //Topic
+	MessageType     string   `kiteq:"messageType" db:"message_type"`    //MessageType
+	PublishGroup    string   `kiteq:"publish_group" db:"publish_group"` //发布的groupId
+	Commit          bool     `kiteq:"commit" db:"commit"`               //是否已提交
+	PublishTime     int64    `kiteq:"publish_time" db:"publish_time"`
 	ExpiredTime     int64    `kiteq:"expiredTime" db:"expired_time"`            //过期时间
 	DeliverCount    int32    `kiteq:"deliver_count" db:"deliver_count"`         //投递次数
 	DeliverLimit    int32    `kiteq:"deliver_limit" db:"deliver_limit"`         //投递次数上线
