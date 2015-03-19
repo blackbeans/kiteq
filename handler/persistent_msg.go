@@ -129,11 +129,11 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 	}
 	select {
 	case <-self.maxDeliverNum:
-		self.flowstat.DeliverPool.Incr(1)
+		self.flowstat.DeliverPool.Incr(-1)
 		go func() {
 			defer func() {
 				self.maxDeliverNum <- 1
-				self.flowstat.DeliverPool.Incr(-1)
+				self.flowstat.DeliverPool.Incr(1)
 			}()
 			//启动投递
 			f()
