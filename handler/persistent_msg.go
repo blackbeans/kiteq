@@ -27,12 +27,6 @@ func NewPersistentHandler(name string, flowstat *stat.FlowStat, topics []string,
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
-	for {
-		if len(phandler.maxDeliverNum) >= maxDeliverWorker {
-			break
-		}
-		phandler.maxDeliverNum <- 1
-	}
 	sort.Strings(topics)
 	phandler.topics = topics
 	phandler.flowstat = flowstat
@@ -127,22 +121,19 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 		ctx.SendForward(deliver)
 		self.flowstat.DeliverFlow.Incr(1)
 	}
-	select {
-	case <-self.maxDeliverNum:
-		self.flowstat.DeliverPool.Incr(1)
-		go func() {
-			defer func() {
-				self.maxDeliverNum <- 1
-				self.flowstat.DeliverPool.Incr(-1)
-			}()
-			//启动投递
-			f()
-		}()
-	default:
-		// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
-		f()
-	}
 
+	self.maxDeliverNum <- 1
+	self.flowstat.DeliverPool.Incr(1)
+	go func() {
+		defer func() {
+			<-self.maxDeliverNum
+			self.flowstat.DeliverPool.Incr(-1)
+		}()
+		//启动投递
+		f()
+	}()
+
+	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }
 
 func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ bool, feedback string) *protocol.Packet {

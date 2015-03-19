@@ -12,22 +12,24 @@ import (
 
 //-----------recover的handler
 type RecoverManager struct {
-	pipeline      *DefaultPipeline
-	serverName    string
-	isClose       bool
-	kitestore     store.IKiteStore
-	recoverPeriod time.Duration
+	pipeline       *DefaultPipeline
+	serverName     string
+	isClose        bool
+	kitestore      store.IKiteStore
+	recoverPeriod  time.Duration
+	recoverWorkers chan byte
 }
 
 //------创建persitehandler
 func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline *DefaultPipeline, kitestore store.IKiteStore) *RecoverManager {
 
 	rm := &RecoverManager{
-		serverName:    serverName,
-		kitestore:     kitestore,
-		isClose:       false,
-		pipeline:      pipeline,
-		recoverPeriod: recoverPeriod}
+		serverName:     serverName,
+		kitestore:      kitestore,
+		isClose:        false,
+		pipeline:       pipeline,
+		recoverPeriod:  recoverPeriod,
+		recoverWorkers: make(chan byte, 50)}
 	return rm
 }
 
@@ -69,13 +71,20 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 
 		//开始发起重投
 		for _, entity := range entities {
-			//如果为未提交的消息则需要发送一个事务检查的消息
-			if !entity.Commit {
-				self.txAck(entity)
-			} else {
-				//发起投递事件
-				self.delivery(entity)
-			}
+			self.recoverWorkers <- 1
+			go func() {
+				defer func() {
+					<-self.recoverWorkers
+				}()
+				//如果为未提交的消息则需要发送一个事务检查的消息
+				if !entity.Commit {
+					self.txAck(entity)
+				} else {
+
+					//发起投递事件
+					self.delivery(entity)
+				}
+			}()
 		}
 		startIdx += 50
 	}
