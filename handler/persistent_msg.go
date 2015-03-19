@@ -4,8 +4,9 @@ import (
 	"errors"
 	. "kiteq/pipe"
 	"kiteq/protocol"
+	"kiteq/stat"
 	"kiteq/store"
-	"log"
+	// "log"
 	"sort"
 )
 
@@ -17,10 +18,11 @@ type PersistentHandler struct {
 	kitestore     store.IKiteStore
 	maxDeliverNum chan byte
 	topics        []string
+	flowstat      *stat.FlowStat
 }
 
 //------创建persitehandler
-func NewPersistentHandler(name string, topics []string, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
+func NewPersistentHandler(name string, flowstat *stat.FlowStat, topics []string, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
@@ -33,6 +35,7 @@ func NewPersistentHandler(name string, topics []string, maxDeliverWorker int, ki
 	}
 	sort.Strings(topics)
 	phandler.topics = topics
+	phandler.flowstat = flowstat
 	return phandler
 }
 
@@ -122,18 +125,21 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 			pevent.entity.Header,
 			pevent.entity)
 		ctx.SendForward(deliver)
+		self.flowstat.DeliverFlow.Incr(1)
 	}
 	select {
 	case <-self.maxDeliverNum:
+		self.flowstat.DeliverPool.Incr(1)
 		go func() {
 			defer func() {
 				self.maxDeliverNum <- 1
+				self.flowstat.DeliverPool.Incr(-1)
 			}()
 			//启动投递
 			f()
 		}()
 	default:
-		log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
+		// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 		f()
 	}
 

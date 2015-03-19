@@ -12,6 +12,8 @@ type FlowStat struct {
 	ReadFlow       *flow
 	DispatcherFlow *flow
 	WriteFlow      *flow
+	DeliverFlow    *flow
+	DeliverPool    *flow
 	stop           bool
 }
 
@@ -21,6 +23,8 @@ func NewFlowStat(name string) *FlowStat {
 		ReadFlow:       &flow{},
 		DispatcherFlow: &flow{},
 		WriteFlow:      &flow{},
+		DeliverFlow:    &flow{},
+		DeliverPool:    &flow{},
 		stop:           false}
 }
 
@@ -29,8 +33,12 @@ func (self *FlowStat) Start() {
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
-			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d", self.name, self.ReadFlow.changes(),
+			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d\t", self.name, self.ReadFlow.changes(),
 				self.DispatcherFlow.changes(), self.WriteFlow.changes())
+			if nil != self.DeliverFlow {
+				line = fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.changes(), self.DeliverPool.count)
+			}
+
 			log.Println(line)
 			<-t.C
 		}

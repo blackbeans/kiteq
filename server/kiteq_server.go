@@ -64,7 +64,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.topics, kc.maxDeliverWorkers, kitedb))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.rc.FlowStat, kc.topics, kc.maxDeliverWorkers, kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))

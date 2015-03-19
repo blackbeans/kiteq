@@ -28,6 +28,14 @@ alter table kite_msg_6 add index idx_msg_type(msg_type);
 alter table kite_msg_7 add index idx_msg_type(msg_type);
 alter table kite_msg_8 add index idx_msg_type(msg_type);
 alter table kite_msg_9 add index idx_msg_type(msg_type);
+alter table kite_msg_9 add index idx_msg_type(msg_type);
+alter table kite_msg_10 add index idx_msg_type(msg_type);
+alter table kite_msg_11 add index idx_msg_type(msg_type);
+alter table kite_msg_12 add index idx_msg_type(msg_type);
+alter table kite_msg_13 add index idx_msg_type(msg_type);
+alter table kite_msg_14 add index idx_msg_type(msg_type);
+alter table kite_msg_15 add index idx_msg_type(msg_type);
+
 
 
 alter table kite_msg_0 add index idx_commit(commit);
@@ -40,15 +48,45 @@ alter table kite_msg_6 add index idx_commit(commit);
 alter table kite_msg_7 add index idx_commit(commit);
 alter table kite_msg_8 add index idx_commit(commit);
 alter table kite_msg_9 add index idx_commit(commit);
+alter table kite_msg_10 add index idx_commit(commit);
+alter table kite_msg_11 add index idx_commit(commit);
+alter table kite_msg_12 add index idx_commit(commit);
+alter table kite_msg_13 add index idx_commit(commit);
+alter table kite_msg_14 add index idx_commit(commit);
+alter table kite_msg_15 add index idx_commit(commit);
 
 
-alter table kite_msg_0 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_1 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_2 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_3 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_4 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_5 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_6 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_7 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_8 add index idx_recover(publish_group,next_deliver_time);
-alter table kite_msg_9 add index idx_recover(publish_group,next_deliver_time);
+
+drop index idx_recover on kite_msg_0;
+drop index idx_recover on kite_msg_1;
+drop index idx_recover on kite_msg_2;
+drop index idx_recover on kite_msg_3;
+drop index idx_recover on kite_msg_4;
+drop index idx_recover on kite_msg_5;
+drop index idx_recover on kite_msg_6;
+drop index idx_recover on kite_msg_7;
+drop index idx_recover on kite_msg_8;
+drop index idx_recover on kite_msg_9;
+drop index idx_recover on kite_msg_10;
+drop index idx_recover on kite_msg_11;
+drop index idx_recover on kite_msg_12;
+drop index idx_recover on kite_msg_13;
+drop index idx_recover on kite_msg_14;
+drop index idx_recover on kite_msg_15;
+
+alter table kite_msg_0 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_1 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_2 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_3 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_4 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_5 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_6 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_7 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_8 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_9 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_10 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_11 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_12 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_13 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_14 add index idx_recover(kite_server,next_deliver_time);
+alter table kite_msg_15 add index idx_recover(kite_server,next_deliver_time);
