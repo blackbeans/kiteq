@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 //请求的packet
@@ -69,11 +70,14 @@ func (self *Packet) unmarshal(r *bytes.Reader) error {
 	}
 
 	if dataLength > 0 {
-		if int(dataLength) == r.Len() {
+		if int(dataLength) == r.Len() && dataLength > MAX_PACKET_BYTES {
 			//读取数据包
 			self.Data = make([]byte, dataLength, dataLength)
 			return Read(r, binary.BigEndian, self.Data)
 		} else {
+			if dataLength > MAX_PACKET_BYTES {
+				return errors.New(fmt.Sprintf("Too Large Packet %d|%d", dataLength, MAX_PACKET_BYTES))
+			}
 			return errors.New("Corrupt PacketData ")
 		}
 	} else {
