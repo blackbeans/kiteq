@@ -36,7 +36,7 @@ func (self *HeartbeatHandler) keepAlive() {
 			func() {
 				id := time.Now().Unix()
 				clients := self.clientMangager.ClientsClone()
-				packet := protocol.MarshalHeartbeatPacket(id)
+				packet := protocol.PbMarshaler.MarshalHeartbeatPacket(id)
 				for h, c := range clients {
 					i := 0
 					//关闭的时候发起重连

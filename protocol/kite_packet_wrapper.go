@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"log"
 )
@@ -56,15 +57,7 @@ func (self *QMessage) GetPbMessage() proto.Message {
 	return self.message
 }
 
-func UnmarshalPbMessage(data []byte, msg proto.Message) error {
-	return proto.Unmarshal(data, msg)
-}
-
-func MarshalPbMessage(message proto.Message) ([]byte, error) {
-	return proto.Marshal(message)
-}
-
-func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
+func BuildMessage(header *Header, msgType uint8, body interface{}) []byte {
 	switch msgType {
 	case CMD_BYTES_MESSAGE:
 		message := &BytesMessage{}
@@ -88,46 +81,139 @@ func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 	return nil
 }
 
-func MarshalConnMeta(groupId, secretKey string) []byte {
+type MarshalHelper interface {
+	UnmarshalMessage(data []byte, msg proto.Message) error
+	MarshalMessage(message proto.Message) ([]byte, error)
+	MarshalConnMeta(groupId, secretKey string) []byte
+	MarshalConnAuthAck(succ bool, feedback string) []byte
+	MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte
+	MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte
+	MarshalHeartbeatPacket(version int64) []byte
+	MarshalDeliverAckPacket(header *Header, status bool) []byte
+}
 
-	data, _ := MarshalPbMessage(&ConnMeta{
+type JsonMarshalHelper struct {
+}
+
+type PbMarshalHelper struct {
+}
+
+var JsonMarshaler = &JsonMarshalHelper{}
+var PbMarshaler = &PbMarshalHelper{}
+
+func GetMarshaler(cmdType *uint8) MarshalHelper {
+	var marshaler MarshalHelper
+	if *cmdType&0x80 == 0 {
+		marshaler = PbMarshaler
+	} else {
+		marshaler = JsonMarshaler
+	}
+	*cmdType = *cmdType & 0x7F
+	return marshaler
+}
+
+func (self *PbMarshalHelper) UnmarshalMessage(data []byte, msg proto.Message) error {
+	return proto.Unmarshal(data, msg)
+}
+
+func (self *JsonMarshalHelper) UnmarshalMessage(data []byte, msg proto.Message) error {
+	return json.Unmarshal(data, msg)
+}
+
+func (self *PbMarshalHelper) MarshalMessage(message proto.Message) ([]byte, error) {
+	return proto.Marshal(message)
+}
+
+func (self *JsonMarshalHelper) MarshalMessage(message proto.Message) ([]byte, error) {
+	return json.Marshal(message)
+}
+
+func (self *PbMarshalHelper) MarshalConnMeta(groupId, secretKey string) []byte {
+	data, _ := self.MarshalMessage(&ConnMeta{
 		GroupId:   proto.String(groupId),
 		SecretKey: proto.String(secretKey)})
 	return data
 }
 
-func MarshalConnAuthAck(succ bool, feedback string) []byte {
-
-	data, _ := MarshalPbMessage(&ConnAuthAck{
-		Status:   proto.Bool(succ),
-		Feedback: proto.String(feedback)})
+func (self *JsonMarshalHelper) MarshalConnMeta(groupId, secretKey string) []byte {
+	data, _ := self.MarshalMessage(&ConnMeta{
+		GroupId:   proto.String(groupId),
+		SecretKey: proto.String(secretKey)})
 	return data
 }
 
-func MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte {
-	data, _ := MarshalPbMessage(&MessageStoreAck{
+func (self *PbMarshalHelper) MarshalConnAuthAck(succ bool, feedback string) []byte {
+	data, _ := self.MarshalMessage(&ConnAuthAck{
+		Status:   proto.Bool(succ),
+		Feedback: proto.String(feedback)})
+	return data
+
+}
+
+func (self *JsonMarshalHelper) MarshalConnAuthAck(succ bool, feedback string) []byte {
+	data, _ := self.MarshalMessage(&ConnAuthAck{
+		Status:   proto.Bool(succ),
+		Feedback: proto.String(feedback)})
+	return data
+
+}
+
+func (self *PbMarshalHelper) MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte {
+	data, _ := self.MarshalMessage(&MessageStoreAck{
 		MessageId: proto.String(messageId),
 		Status:    proto.Bool(succ),
 		Feedback:  proto.String(feedback)})
 	return data
 }
 
-func MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
-	data, _ := MarshalPbMessage(&TxACKPacket{
+func (self *JsonMarshalHelper) MarshalMessageStoreAck(messageId string, succ bool, feedback string) []byte {
+	data, _ := self.MarshalMessage(&MessageStoreAck{
+		MessageId: proto.String(messageId),
+		Status:    proto.Bool(succ),
+		Feedback:  proto.String(feedback)})
+	return data
+}
+
+func (self *PbMarshalHelper) MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
+	data, _ := self.MarshalMessage(&TxACKPacket{
 		Header:   header,
 		Status:   proto.Int32(int32(txstatus)),
 		Feedback: proto.String(feedback)})
 	return data
 }
 
-func MarshalHeartbeatPacket(version int64) []byte {
-	data, _ := MarshalPbMessage(&HeartBeat{
+func (self *JsonMarshalHelper) MarshalTxACKPacket(header *Header, txstatus TxStatus, feedback string) []byte {
+	data, _ := self.MarshalMessage(&TxACKPacket{
+		Header:   header,
+		Status:   proto.Int32(int32(txstatus)),
+		Feedback: proto.String(feedback)})
+	return data
+}
+
+func (self *PbMarshalHelper) MarshalHeartbeatPacket(version int64) []byte {
+	data, _ := self.MarshalMessage(&HeartBeat{
 		Version: proto.Int64(version)})
 	return data
 }
 
-func MarshalDeliverAckPacket(header *Header, status bool) []byte {
-	data, _ := MarshalPbMessage(&DeliverAck{
+func (self *JsonMarshalHelper) MarshalHeartbeatPacket(version int64) []byte {
+	data, _ := self.MarshalMessage(&HeartBeat{
+		Version: proto.Int64(version)})
+	return data
+}
+
+func (self *PbMarshalHelper) MarshalDeliverAckPacket(header *Header, status bool) []byte {
+	data, _ := self.MarshalMessage(&DeliverAck{
+		MessageId:   proto.String(header.GetMessageId()),
+		Topic:       proto.String(header.GetTopic()),
+		MessageType: proto.String(header.GetMessageType()),
+		GroupId:     proto.String(header.GetGroupId()),
+		Status:      proto.Bool(status)})
+	return data
+}
+
+func (self *JsonMarshalHelper) MarshalDeliverAckPacket(header *Header, status bool) []byte {
+	data, _ := self.MarshalMessage(&DeliverAck{
 		MessageId:   proto.String(header.GetMessageId()),
 		Topic:       proto.String(header.GetTopic()),
 		MessageType: proto.String(header.GetMessageType()),

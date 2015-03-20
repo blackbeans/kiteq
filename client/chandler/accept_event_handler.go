@@ -75,7 +75,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//填充条件
 		tx.ConvertTxAckPacket(txPacket)
 
-		txData, _ := protocol.MarshalPbMessage(txPacket)
+		txData, _ := protocol.PbMarshaler.MarshalMessage(txPacket)
 
 		txResp := protocol.NewRespPacket(acceptEvent.opaque, acceptEvent.msgType, txData)
 
@@ -92,7 +92,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 		succ := self.listener.OnMessage(message)
 
-		dpacket := protocol.MarshalDeliverAckPacket(message.GetHeader(), succ)
+		dpacket := protocol.PbMarshaler.MarshalDeliverAckPacket(message.GetHeader(), succ)
 
 		respPacket := protocol.NewRespPacket(acceptEvent.opaque, protocol.CMD_DELIVER_ACK, dpacket)
 

@@ -46,7 +46,9 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 		ctx.SendForward(event)
 	} else {
 		log.Printf("ValidateHandler|UnAuth CONNETION|%s\n", remoteClient.RemoteAddr())
-		cmd := protocol.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
+		var cmd []byte
+		cmd = remoteClient.Marshaler.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
+
 		//响应包
 		packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)
 

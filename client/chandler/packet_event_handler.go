@@ -63,7 +63,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	//连接授权确认
 	case protocol.CMD_CONN_AUTH:
 		var auth protocol.ConnAuthAck
-		err = protocol.UnmarshalPbMessage(packet.Data, &auth)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &auth)
 		if nil == err {
 			pevent.RemoteClient.Attach(packet.Opaque, &auth)
 			event = &SunkEvent{}
@@ -72,7 +72,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	//心跳
 	case protocol.CMD_HEARTBEAT:
 		var hearbeat protocol.HeartBeat
-		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &hearbeat)
 		if nil == err {
 			hb := &hearbeat
 			// log.Printf("PacketHandler|handlePacket|HeartBeat|%t\n", hb)
@@ -81,7 +81,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		//消息持久化
 	case protocol.CMD_MESSAGE_STORE_ACK:
 		var pesisteAck protocol.MessageStoreAck
-		err = protocol.UnmarshalPbMessage(packet.Data, &pesisteAck)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &pesisteAck)
 		if nil == err {
 			//直接通知当前的client对应chan
 			pevent.RemoteClient.Attach(packet.Opaque, &pesisteAck)
@@ -90,21 +90,21 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket
-		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &txAck)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_TX_ACK, &txAck, pevent.RemoteClient, packet.Opaque)
 		}
 	//发送的是bytesmessage
 	case protocol.CMD_BYTES_MESSAGE:
 		var msg protocol.BytesMessage
-		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &msg)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_STRING_MESSAGE:
 		var msg protocol.StringMessage
-		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
+		err = protocol.PbMarshaler.UnmarshalMessage(packet.Data, &msg)
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
 		}
