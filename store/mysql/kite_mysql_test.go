@@ -12,6 +12,107 @@ import (
 	"time"
 )
 
+func TestPageQuery(t *testing.T) {
+
+	options := MysqlOptions{
+		Addr:         "root:@tcp(localhost:3306)/kite",
+		BatchUpSize:  100,
+		BatchDelSize: 100,
+		FlushPeriod:  10 * time.Millisecond,
+		MaxIdleConn:  10,
+		MaxOpenConn:  10}
+
+	kiteMysql := NewKiteMysql(options)
+	truncate(kiteMysql)
+	hn, _ := os.Hostname()
+	for i := 0; i < 10; i++ {
+		//创建消息
+		msg := &protocol.BytesMessage{}
+		msg.Header = &protocol.Header{
+			MessageId:    proto.String(strconv.Itoa(i) + "26c03f00665862591f696a980b5a6c4"),
+			Topic:        proto.String("trade"),
+			MessageType:  proto.String("pay-succ"),
+			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+			DeliverLimit: proto.Int32(100),
+			GroupId:      proto.String("go-kite-test"),
+			Commit:       proto.Bool(false),
+			Fly:          proto.Bool(false)}
+		msg.Body = []byte("hello world")
+
+		entity := store.NewMessageEntity(protocol.NewQMessage(msg))
+
+		entity.KiteServer = hn
+		entity.PublishTime = time.Now().Unix()
+		kiteMysql.Save(entity)
+	}
+
+	startIdx := 0
+	hasMore := true
+	count := 0
+	//开始分页查询未过期的消息实体
+	for hasMore {
+		more, entities := kiteMysql.PageQueryEntity("4", hn,
+			time.Now().Unix(), 0, 1)
+		if len(entities) <= 0 {
+			break
+		}
+
+		//开始发起重投
+		for _, entity := range entities {
+			count++
+			t.Logf("TestPageQuery|PageQueryEntity|%s\n", entity.MessageId)
+			msg := &store.MessageEntity{
+				MessageId:    entity.MessageId,
+				DeliverCount: 1,
+				SuccGroups:   []string{},
+				FailGroups:   []string{"s-mts-test"},
+				//设置一下下一次投递时间
+				NextDeliverTime: time.Now().Add(1 * time.Minute).Unix()}
+			kiteMysql.AsyncUpdate(msg)
+
+		}
+
+		time.Sleep(1 * time.Second)
+		hasMore = more
+		startIdx += len(entities)
+	}
+	if count != 10 {
+		t.Fail()
+		t.Logf("TestPageQuery|IDX|FAIL|%d\n", count)
+		return
+	}
+
+	startIdx = 0
+	hasMore = true
+	//开始分页查询未过期的消息实体
+	for hasMore {
+		more, entities := kiteMysql.PageQueryEntity("4", hn,
+			time.Now().Add(8*time.Minute).Unix(), startIdx, 1)
+		if len(entities) <= 0 {
+			t.Logf("TestPageQuery|CHECK|NO DATA|%s\n", entities)
+			break
+		}
+
+		//开始发起重投
+		for _, entity := range entities {
+			if entity.DeliverCount != 1 || entity.FailGroups[0] != "s-mts-test" {
+				t.Fail()
+			}
+			t.Logf("TestPageQuery|PageQueryEntity|CHECK|%s\n", entity.MessageId)
+		}
+		startIdx += len(entities)
+		hasMore = more
+	}
+
+	t.Logf("TestPageQuery|CHECK|%d\n", startIdx)
+	if startIdx != 10 {
+		t.Fail()
+	}
+
+	// truncate(kiteMysql)
+
+}
+
 func TestBatch(t *testing.T) {
 
 	options := MysqlOptions{

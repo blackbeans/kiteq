@@ -148,11 +148,11 @@ var filterbody = func(colname string) bool {
 }
 
 //没有body的entity
-func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity) {
+func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
 	// log.Println(s)
-	rows, err := self.db.Query(s, kiteServer, nextDeliveryTime, startIdx, limit+1)
+	rows, err := self.db.Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil
@@ -174,7 +174,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 		}
 	}
 
-	if len(results) > int(limit) {
+	if len(results) > limit {
 		return true, results[:limit]
 	} else {
 		return false, results

@@ -175,7 +175,7 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
-	s.WriteString(" where kite_server=? and next_deliver_time<=? limit ?,?")
+	s.WriteString(" where kite_server=? and deliver_count<deliver_limit and expired_time>=? and next_deliver_time<=? order by next_deliver_time asc  limit ?,?")
 
 	sql = s.String()
 

@@ -80,5 +80,5 @@ type IKiteStore interface {
 	Delete(messageId string) bool
 
 	//根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
-	PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int32) (bool, []*MessageEntity)
+	PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity)
 }
