@@ -52,10 +52,12 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
-	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 5*3600))
-	rw = append(rw, handler.NewRedeliveryWindow(3, 10, 10*3600))
-	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 30*3600))
-	rw = append(rw, handler.NewRedeliveryWindow(20, -1, 24*60*3600))
+	rw = append(rw, handler.NewRedeliveryWindow(3, 10, 2*60))
+	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 4*60))
+	rw = append(rw, handler.NewRedeliveryWindow(20, 30, 8*60))
+	rw = append(rw, handler.NewRedeliveryWindow(30, 40, 16*60))
+	rw = append(rw, handler.NewRedeliveryWindow(40, 50, 32*60))
+	rw = append(rw, handler.NewRedeliveryWindow(50, -1, 60*60))
 
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()

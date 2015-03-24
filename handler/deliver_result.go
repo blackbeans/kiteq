@@ -14,14 +14,14 @@ type redeliveryWindows []RedeliveryWindow
 type RedeliveryWindow struct {
 	minDeliveryCount int32
 	maxDeliveryCount int32
-	delaySeconds     time.Duration //延迟的秒数
+	delaySeconds     int64 //延迟的秒数
 }
 
 func NewRedeliveryWindow(minDeliveryCount, maxDeliveryCount int32, delaySeconds int32) RedeliveryWindow {
 	return RedeliveryWindow{
 		minDeliveryCount: minDeliveryCount,
 		maxDeliveryCount: maxDeliveryCount,
-		delaySeconds:     time.Duration(int64(delaySeconds) * int64(1*time.Second))}
+		delaySeconds:     int64(delaySeconds)}
 }
 
 func (self redeliveryWindows) Len() int { return len(self) }
@@ -82,13 +82,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	if len(fevent.deliverySuccGroups) > 0 {
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
-
-	//如果不为fly消息那么需要存储投递结果
-	if !fevent.fly {
-		//存储投递结果
-		self.saveDeliverResult(fevent.messageId, fevent.publishtime, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
-	}
-
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
@@ -110,6 +103,12 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 }
 
 func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bool {
+
+	//如果不为fly消息那么需要存储投递结果
+	if !fevent.fly && fevent.deliverCount >= 3 {
+		//存储投递结果
+		self.saveDeliverResult(fevent.messageId, fevent.publishtime, fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+	}
 
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 	if fevent.expiredTime <= time.Now().Unix() || (fevent.deliverLimit <= fevent.deliverCount &&
@@ -157,5 +156,5 @@ func (self *DeliverResultHandler) nextDeliveryTime(publishtime int64, deliverCou
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间
-	return publishtime + int64(delayTime)
+	return publishtime + delayTime
 }

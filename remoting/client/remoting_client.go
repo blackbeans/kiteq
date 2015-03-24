@@ -50,9 +50,6 @@ func NewRemotingClient(conn *net.TCPConn,
 
 	remoteSession := session.NewSession(conn, rc)
 	ch := make(chan byte, rc.MaxWorkerNum)
-	for i := 0; i < rc.MaxWorkerNum; i++ {
-		ch <- 1
-	}
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
@@ -130,10 +127,10 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 		packet := <-self.remoteSession.ReadChannel
 		//获取协程处理分发包
-		<-self.WorkerNum
+		self.WorkerNum <- 1
 		go func() {
 			defer func() {
-				self.WorkerNum <- 1
+				<-self.WorkerNum
 			}()
 			//处理一下包
 			self.packetDispatcher(self, &packet)

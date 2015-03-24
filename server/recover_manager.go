@@ -29,7 +29,7 @@ func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline 
 		isClose:        false,
 		pipeline:       pipeline,
 		recoverPeriod:  recoverPeriod,
-		recoverWorkers: make(chan byte, 50)}
+		recoverWorkers: make(chan byte, 100)}
 	return rm
 }
 
@@ -65,6 +65,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 	for !self.isClose && hasMore {
 		more, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
 			now.Unix(), startIdx, 100)
+		// log.Printf("RecoverManager|redeliverMsg|%d|%d\n", now.Unix(), len(entities))
 		if len(entities) <= 0 {
 			break
 		}

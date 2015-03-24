@@ -104,7 +104,9 @@ func (self *KiteMMapStore) PageQueryEntity(hashKey string, kiteServer string, ne
 	pe := make([]*MessageEntity, 0, limit+1)
 	for e := self.datalink.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
-		if entity.NextDeliverTime <= nextDeliveryTime {
+		if entity.NextDeliverTime <= nextDeliveryTime &&
+			entity.DeliverCount < entity.Header.GetDeliverLimit() &&
+			entity.ExpiredTime > entity.Header.GetExpiredTime() {
 			pe = append(pe, entity)
 			if len(pe) > limit {
 				return true, pe[:limit]
