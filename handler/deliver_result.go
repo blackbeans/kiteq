@@ -92,9 +92,11 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
-	if !fevent.fly && len(fevent.deliveryFailGroups) <= 0 {
-		//async batch remove
-		self.kitestore.AsyncDelete(fevent.messageId)
+	if len(fevent.deliveryFailGroups) <= 0 {
+		if !fevent.fly {
+			//async batch remove
+			self.kitestore.AsyncDelete(fevent.messageId)
+		}
 	} else {
 		//重投策略
 		if self.checkRedelivery(fevent) {
@@ -108,6 +110,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 }
 
 func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bool {
+
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 	if fevent.expiredTime <= time.Now().Unix() || (fevent.deliverLimit <= fevent.deliverCount &&
 		fevent.deliverLimit > 0) {
@@ -117,6 +120,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		//只有在消息前三次投递才会失败立即重投
 		fevent.deliverGroups = fevent.deliveryFailGroups
 		fevent.packet.Reset()
+		// log.Printf("DeliverResultHandler|checkRedelivery|%s\n", fevent.deliverCount, fevent.deliverEvent)
 		return true
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了

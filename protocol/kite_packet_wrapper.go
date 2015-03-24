@@ -60,6 +60,18 @@ func UnmarshalPbMessage(data []byte, msg proto.Message) error {
 	return proto.Unmarshal(data, msg)
 }
 
+func MarshalPbString(s string) *string {
+	return proto.String(s)
+}
+
+func MarshalInt32(i int32) *int32 {
+	return proto.Int32(i)
+}
+
+func MarshalInt64(i int64) *int64 {
+	return proto.Int64(i)
+}
+
 func MarshalPbMessage(message proto.Message) ([]byte, error) {
 	return proto.Marshal(message)
 }

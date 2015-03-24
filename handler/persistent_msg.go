@@ -7,7 +7,6 @@ import (
 	"kiteq/stat"
 	"kiteq/store"
 	// "log"
-	"sort"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")
@@ -17,18 +16,15 @@ type PersistentHandler struct {
 	BaseForwardHandler
 	kitestore     store.IKiteStore
 	maxDeliverNum chan byte
-	topics        []string
 	flowstat      *stat.FlowStat
 }
 
 //------创建persitehandler
-func NewPersistentHandler(name string, flowstat *stat.FlowStat, topics []string, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
+func NewPersistentHandler(name string, flowstat *stat.FlowStat, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
-	sort.Strings(topics)
-	phandler.topics = topics
 	phandler.flowstat = flowstat
 	return phandler
 }
@@ -51,36 +47,25 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	}
 
 	if nil != pevent.entity {
-
-		//先判断是否是可以处理的topic的消息
-		idx := sort.SearchStrings(self.topics, pevent.entity.Header.GetTopic())
-		if idx == len(self.topics) {
-			//不存在该消息的处理则直接返回存储失败
-			remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-				pevent.entity.Header.GetMessageId(), false, "UnSupport Topic Message!"),
-				[]string{pevent.remoteClient.RemoteAddr()})
-			ctx.SendForward(remoteEvent)
-		} else {
-
-			//如果是fly模式不做持久化
-			if pevent.entity.Header.GetFly() {
-				if pevent.entity.Header.GetCommit() {
-					//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
-					//发送存储结果ack
-					remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-						pevent.entity.Header.GetMessageId(), true, "FLY NO NEED SAVE"), []string{pevent.remoteClient.RemoteAddr()})
-					ctx.SendForward(remoteEvent)
-					self.send(ctx, pevent)
-				} else {
-					remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
-						pevent.entity.Header.GetMessageId(), false, "FLY MUST BE COMMITTED !"), []string{pevent.remoteClient.RemoteAddr()})
-					ctx.SendForward(remoteEvent)
-				}
-
+		//如果是fly模式不做持久化
+		if pevent.entity.Header.GetFly() {
+			if pevent.entity.Header.GetCommit() {
+				//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+				//发送存储结果ack
+				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+					pevent.entity.Header.GetMessageId(), true, "FLY NO NEED SAVE"), []string{pevent.remoteClient.RemoteAddr()})
+				ctx.SendForward(remoteEvent)
+				self.send(ctx, pevent)
 			} else {
-				self.sendUnFlyMessage(ctx, pevent)
+				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+					pevent.entity.Header.GetMessageId(), false, "FLY MUST BE COMMITTED !"), []string{pevent.remoteClient.RemoteAddr()})
+				ctx.SendForward(remoteEvent)
 			}
+
+		} else {
+			self.sendUnFlyMessage(ctx, pevent)
 		}
+
 	}
 
 	return nil
@@ -92,7 +77,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	//写入到持久化存储里面
 	succ := self.kitestore.Save(pevent.entity)
 	//发送存储结果ack
-	remoteEvent := NewRemotingEvent(self.storeAck(pevent.opaque,
+	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
 		pevent.entity.Header.GetMessageId(), succ, ""), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 
@@ -104,7 +89,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
 	if succ && !pevent.entity.Header.GetCommit() {
 
-		remoteEvent := NewRemotingEvent(self.tXAck(
+		remoteEvent := NewRemotingEvent(tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 	}
@@ -136,15 +121,8 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }
 
-func (self *PersistentHandler) storeAck(opaque int32, messageid string, succ bool, feedback string) *protocol.Packet {
-
-	storeAck := protocol.MarshalMessageStoreAck(messageid, succ, feedback)
-	//响应包
-	return protocol.NewRespPacket(opaque, protocol.CMD_MESSAGE_STORE_ACK, storeAck)
-}
-
 //发送事务ack信息
-func (self *PersistentHandler) tXAck(
+func tXAck(
 	header *protocol.Header) *protocol.Packet {
 
 	txack := protocol.MarshalTxACKPacket(header, protocol.TX_UNKNOWN, "Server Check")
