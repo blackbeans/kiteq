@@ -48,7 +48,7 @@ func main() {
 		ReadChannelSize:  10000,
 		IdleTime:         10 * time.Second}
 
-	kc := server.NewKiteQConfig(*bindHost, *zkhost, 100000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
+	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 100000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()

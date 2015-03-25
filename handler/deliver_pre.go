@@ -56,7 +56,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//构造deliverEvent
 	deliverEvent := newDeliverEvent(pevent.messageId, pevent.header.GetTopic(),
-		pevent.header.GetMessageType(), entity.PublishTime)
+		pevent.header.GetMessageType(), entity.PublishTime, pevent.attemptDeliver)
 
 	//创建不同的packet
 	switch entity.MsgType {

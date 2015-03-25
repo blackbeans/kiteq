@@ -67,13 +67,13 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.topics))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.rc.FlowStat, kc.maxDeliverWorkers, kitedb))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.rc.FlowStat, kc.deliverTimeout, kc.maxDeliverWorkers, kitedb))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", 1*time.Second, kitedb, rw))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.deliverTimeout, kitedb, rw))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 
 	recoverManager := NewRecoverManager(kiteqName, kc.recoverPeriod, pipeline, kitedb)

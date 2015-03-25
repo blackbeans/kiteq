@@ -62,7 +62,7 @@ func init() {
 		ReadChannelSize:  10000,
 		IdleTime:         10 * time.Second}
 
-	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 10, 1*time.Minute, []string{"trade"}, "mock://", rc)
+	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mock://", rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()

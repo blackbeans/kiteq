@@ -6,6 +6,7 @@ import (
 	"kiteq/protocol"
 	"kiteq/stat"
 	"kiteq/store"
+	"time"
 	// "log"
 )
 
@@ -14,18 +15,20 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 //----------------持久化的handler
 type PersistentHandler struct {
 	BaseForwardHandler
-	kitestore     store.IKiteStore
-	maxDeliverNum chan byte
-	flowstat      *stat.FlowStat
+	kitestore      store.IKiteStore
+	maxDeliverNum  chan byte
+	deliverTimeout time.Duration
+	flowstat       *stat.FlowStat
 }
 
 //------创建persitehandler
-func NewPersistentHandler(name string, flowstat *stat.FlowStat, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
+func NewPersistentHandler(name string, flowstat *stat.FlowStat, deliverTimeout time.Duration, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
 	phandler.flowstat = flowstat
+	phandler.deliverTimeout = deliverTimeout
 	return phandler
 }
 
@@ -55,7 +58,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
 					pevent.entity.Header.GetMessageId(), true, "FLY NO NEED SAVE"), []string{pevent.remoteClient.RemoteAddr()})
 				ctx.SendForward(remoteEvent)
-				self.send(ctx, pevent)
+				self.send(ctx, pevent, nil)
 			} else {
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
 					pevent.entity.Header.GetMessageId(), false, "FLY MUST BE COMMITTED !"), []string{pevent.remoteClient.RemoteAddr()})
@@ -73,37 +76,65 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 //发送非flymessage
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
+	saveSucc := true
+	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
+	//或者消息本身就是一个未提交的消息也是先持久化
+	if pevent.entity.Commit && len(self.maxDeliverNum)*2 <= cap(self.maxDeliverNum) {
+		//先投递再去根据结果写存储
+		if pevent.entity.Commit {
+			ch := make(chan []string, 1) //用于返回尝试投递结果
+			self.send(ctx, pevent, ch)
+			/*如果是成功的则直接返回处理存储成功的
+			 *如果失败了，则需要持久化
+			 */
+			var failGroups *[]string
+			select {
+			case fg := <-ch:
+				failGroups = &fg
+			case <-time.After(self.deliverTimeout):
+			}
+			//失败或者超时的持久化
+			if nil == failGroups || len(*failGroups) > 0 {
+				pevent.entity.DeliverCount = 3
+				if nil != failGroups {
+					pevent.entity.FailGroups = *failGroups
+				}
 
-	//写入到持久化存储里面
-	succ := self.kitestore.Save(pevent.entity)
-	//发送存储结果ack
-	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), succ, ""), []string{pevent.remoteClient.RemoteAddr()})
-	ctx.SendForward(remoteEvent)
-
-	//如果是commit的消息先尝试投递、再做持久化
-	if succ && pevent.entity.Header.GetCommit() {
-		self.send(ctx, pevent)
+				//写入到持久化存储里面
+				saveSucc = self.kitestore.Save(pevent.entity)
+			}
+		}
+	} else {
+		//写入到持久化存储里面,再投递
+		saveSucc = self.kitestore.Save(pevent.entity)
+		if pevent.entity.Commit {
+			self.send(ctx, pevent, nil)
+		}
 	}
 
-	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
-	if succ && !pevent.entity.Header.GetCommit() {
+	//发送存储结果ack
+	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+		pevent.entity.Header.GetMessageId(), saveSucc, ""), []string{pevent.remoteClient.RemoteAddr()})
+	ctx.SendForward(remoteEvent)
 
+	//如果是成功存储的、并且为未提交的消息，则需要发起一个ack的命令
+	if saveSucc && !pevent.entity.Commit {
 		remoteEvent := NewRemotingEvent(tXAck(
 			pevent.entity.Header), []string{pevent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 	}
 }
 
-func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persistentEvent) {
+func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persistentEvent, ch chan []string) {
 
-	f := func() {
+	f := func(ch chan []string) {
 		//启动投递当然会重投3次
-		deliver := NewDeliverPreEvent(
+		preDeliver := NewDeliverPreEvent(
 			pevent.entity.Header.GetMessageId(),
 			pevent.entity.Header,
 			pevent.entity)
-		ctx.SendForward(deliver)
+		preDeliver.attemptDeliver = ch
+		ctx.SendForward(preDeliver)
 		self.flowstat.DeliverFlow.Incr(1)
 	}
 
@@ -115,9 +146,8 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 			self.flowstat.DeliverPool.Incr(-1)
 		}()
 		//启动投递
-		f()
+		f(ch)
 	}()
-
 	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }
 

@@ -92,9 +92,10 @@ func newPersistentEvent(entity *store.MessageEntity, remoteClient *rclient.Remot
 //投递准备事件
 type deliverPreEvent struct {
 	IForwardEvent
-	messageId string
-	header    *protocol.Header
-	entity    *store.MessageEntity
+	messageId      string
+	header         *protocol.Header
+	entity         *store.MessageEntity
+	attemptDeliver chan []string
 }
 
 func NewDeliverPreEvent(messageId string, header *protocol.Header,
@@ -108,26 +109,29 @@ func NewDeliverPreEvent(messageId string, header *protocol.Header,
 //投递事件
 type deliverEvent struct {
 	IForwardEvent
-	messageId     string
-	topic         string
-	messageType   string
-	expiredTime   int64
-	publishtime   int64            //消息发布时间
-	fly           bool             //是否为fly模式的消息
-	packet        *protocol.Packet //消息包
-	succGroups    []string         //已经投递成功的分组
-	deliverGroups []string         //需要投递的群组
-	deliverLimit  int32
-	deliverCount  int32 //已经投递的次数
+	messageId      string
+	topic          string
+	messageType    string
+	expiredTime    int64
+	publishtime    int64            //消息发布时间
+	fly            bool             //是否为fly模式的消息
+	packet         *protocol.Packet //消息包
+	succGroups     []string         //已经投递成功的分组
+	deliverGroups  []string         //需要投递的群组
+	deliverLimit   int32
+	deliverCount   int32 //已经投递的次数
+	attemptDeliver chan []string
 }
 
 //创建投递事件
-func newDeliverEvent(messageId string, topic string, messageType string, publishtime int64) *deliverEvent {
+func newDeliverEvent(messageId string, topic string, messageType string,
+	publishtime int64, attemptDeliver chan []string) *deliverEvent {
 	return &deliverEvent{
-		messageId:   messageId,
-		topic:       topic,
-		messageType: messageType,
-		publishtime: publishtime}
+		messageId:      messageId,
+		topic:          topic,
+		messageType:    messageType,
+		publishtime:    publishtime,
+		attemptDeliver: attemptDeliver}
 }
 
 //统计投递结果的事件，决定不决定重发
@@ -145,6 +149,7 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 	re.futures = futures
 	re.deliverySuccGroups = make([]string, 0, 5)
 	re.deliveryFailGroups = make([]string, 0, 5)
+
 	return re
 }
 

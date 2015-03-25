@@ -82,7 +82,13 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	if len(fevent.deliverySuccGroups) > 0 {
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
+
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
+
+	//通知处理失败的分组
+	if nil != fevent.attemptDeliver {
+		fevent.attemptDeliver <- fevent.deliveryFailGroups
+	}
 
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
