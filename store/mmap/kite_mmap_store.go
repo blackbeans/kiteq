@@ -102,6 +102,8 @@ func (self *KiteMMapStore) Delete(messageId string) bool {
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *KiteMMapStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 	pe := make([]*MessageEntity, 0, limit+1)
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	for e := self.datalink.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
 		if entity.NextDeliverTime <= nextDeliveryTime &&
