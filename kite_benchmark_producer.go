@@ -123,8 +123,7 @@ func main() {
 					} else {
 						err := kite.SendBytesMessage(buildBytesMessage(true))
 						if nil != err {
-							fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
-							break
+							// fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
 							atomic.AddInt32(&fc, 1)
 						} else {
 							atomic.AddInt32(&count, 1)

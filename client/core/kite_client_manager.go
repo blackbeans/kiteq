@@ -200,7 +200,7 @@ func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteC
 
 	clients, ok := self.kiteClients[header.GetTopic()]
 	if !ok || len(clients) <= 0 {
-		log.Printf("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		// 	log.Printf("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
 		return nil, errors.New("NO KITE CLIENT ! [" + header.GetTopic() + "]")
 	}
 
