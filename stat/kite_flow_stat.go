@@ -8,24 +8,26 @@ import (
 )
 
 type FlowStat struct {
-	name           string
-	ReadFlow       *flow
-	DispatcherFlow *flow
-	WriteFlow      *flow
-	DeliverFlow    *flow
-	DeliverPool    *flow
-	stop           bool
+	name               string
+	ReadFlow           *flow
+	DispatcherWorkPool *flow //处理
+	DispatcherFlow     *flow
+	WriteFlow          *flow
+	DeliverFlow        *flow
+	DeliverPool        *flow
+	stop               bool
 }
 
 func NewFlowStat(name string) *FlowStat {
 	return &FlowStat{
-		name:           name,
-		ReadFlow:       &flow{},
-		DispatcherFlow: &flow{},
-		WriteFlow:      &flow{},
-		DeliverFlow:    &flow{},
-		DeliverPool:    &flow{},
-		stop:           false}
+		name:               name,
+		ReadFlow:           &flow{},
+		DispatcherWorkPool: &flow{},
+		DispatcherFlow:     &flow{},
+		WriteFlow:          &flow{},
+		DeliverFlow:        &flow{},
+		DeliverPool:        &flow{},
+		stop:               false}
 }
 
 func (self *FlowStat) Start() {
@@ -35,6 +37,9 @@ func (self *FlowStat) Start() {
 		for !self.stop {
 			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d\t", self.name, self.ReadFlow.changes(),
 				self.DispatcherFlow.changes(), self.WriteFlow.changes())
+			if nil != self.DispatcherWorkPool {
+				line = fmt.Sprintf("%s\tdispatcher-pool:%d\t", line, self.DispatcherWorkPool.count)
+			}
 			if nil != self.DeliverFlow {
 				line = fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.changes(), self.DeliverPool.count)
 			}

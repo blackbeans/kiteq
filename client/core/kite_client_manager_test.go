@@ -19,7 +19,7 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 		MessageId:    proto.String(store.MessageId()),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("ps-trade-a"),
 		Commit:       proto.Bool(commit),
@@ -36,7 +36,7 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 		MessageId:    proto.String(store.MessageId()),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("ps-trade-a"),
 		Commit:       proto.Bool(commit),
@@ -83,7 +83,7 @@ func init() {
 		ReadChannelSize:  10000,
 		IdleTime:         10 * time.Second}
 
-	kc := server.NewKiteQConfig("127.0.0.1:13800", "localhost:2181", 100000, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rconf)
+	kc := server.NewKiteQConfig("127.0.0.1:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rconf)
 	kiteQ = server.NewKiteQServer(kc)
 
 	// 创建客户端

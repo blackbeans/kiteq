@@ -81,29 +81,28 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	//或者消息本身就是一个未提交的消息也是先持久化
 	if pevent.entity.Commit && len(self.maxDeliverNum)*2 <= cap(self.maxDeliverNum) {
 		//先投递再去根据结果写存储
-		if pevent.entity.Commit {
-			ch := make(chan []string, 1) //用于返回尝试投递结果
-			self.send(ctx, pevent, ch)
-			/*如果是成功的则直接返回处理存储成功的
-			 *如果失败了，则需要持久化
-			 */
-			var failGroups *[]string
-			select {
-			case fg := <-ch:
-				failGroups = &fg
-			case <-time.After(self.deliverTimeout):
-			}
-			//失败或者超时的持久化
-			if nil == failGroups || len(*failGroups) > 0 {
-				pevent.entity.DeliverCount = 3
-				if nil != failGroups {
-					pevent.entity.FailGroups = *failGroups
-				}
-
-				//写入到持久化存储里面
-				saveSucc = self.kitestore.Save(pevent.entity)
-			}
+		ch := make(chan []string, 3) //用于返回尝试投递结果
+		self.send(ctx, pevent, ch)
+		/*如果是成功的则直接返回处理存储成功的
+		 *如果失败了，则需要持久化
+		 */
+		var failGroups *[]string
+		select {
+		case fg := <-ch:
+			failGroups = &fg
+		case <-time.After(self.deliverTimeout):
 		}
+		//失败或者超时的持久化
+		if nil == failGroups || len(*failGroups) > 0 {
+			pevent.entity.DeliverCount = 1
+			if nil != failGroups {
+				pevent.entity.FailGroups = *failGroups
+			}
+
+			//写入到持久化存储里面
+			saveSucc = self.kitestore.Save(pevent.entity)
+		}
+
 	} else {
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)

@@ -13,20 +13,18 @@ import (
 
 var clientManager *ClientManager
 var remoteServer *server.RemotingServer
-var flow = stat.NewFlowControl("server")
-var clientf = stat.NewFlowControl("client")
+var flow = stat.NewFlowStat("server")
+var clientf = stat.NewFlowStat("client")
 
-func clientPacketDispatcher(rclient *RemotingClient, packet []byte) {
+func clientPacketDispatcher(rclient *RemotingClient, resp *protocol.Packet) {
 	clientf.ReadFlow.Incr(1)
 	clientf.DispatcherFlow.Incr(1)
-	resp, _ := protocol.UnmarshalTLV(packet)
 	rclient.Attach(resp.Opaque, resp.Data)
 }
 
-func packetDispatcher(rclient *RemotingClient, packet []byte) {
+func packetDispatcher(rclient *RemotingClient, p *protocol.Packet) {
 	flow.ReadFlow.Incr(1)
 	flow.DispatcherFlow.Incr(1)
-	p, _ := protocol.UnmarshalTLV(packet)
 
 	resp := protocol.NewRespPacket(p.Opaque, p.CmdType, p.Data)
 	//直接回写回去
@@ -41,12 +39,15 @@ func handshake(ga *GroupAuth, remoteClient *RemotingClient) (bool, error) {
 func init() {
 
 	rc := &protocol.RemotingConfig{
+		MaxDispatcherNum: 50,
+		MaxWorkerNum:     100,
 		ReadBufferSize:   16 * 1024,
 		WriteBufferSize:  16 * 1024,
 		WriteChannelSize: 10000,
-		ReadChannelSize:  10000}
-
-	remoteServer = server.NewRemotionServer("localhost:28888", 3*time.Second, flow, packetDispatcher, rc)
+		ReadChannelSize:  10000,
+		IdleTime:         10 * time.Second}
+	rc.FlowStat = flow
+	remoteServer = server.NewRemotionServer("localhost:28888", rc, packetDispatcher)
 	remoteServer.ListenAndServer()
 
 	conn, _ := dial("localhost:28888")
@@ -74,10 +75,12 @@ func BenchmarkRemoteClient(t *testing.B) {
 		p := protocol.NewPacket(1, []byte("echo"))
 		for pb.Next() {
 			for i := 0; i < t.N; i++ {
-				tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupId string) bool {
+				tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupid string, c *RemotingClient) bool {
+
 					return false
 				})
-				_, err := tmp["a"][0].WriteAndGet(p, 200*time.Millisecond)
+
+				_, err := tmp["a"][0].WriteAndGet(*p, 200*time.Millisecond)
 				clientf.WriteFlow.Incr(1)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)

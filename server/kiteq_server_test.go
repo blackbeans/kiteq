@@ -18,7 +18,7 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		MessageId:    proto.String(store.MessageId() + id),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Unix()),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(true),
