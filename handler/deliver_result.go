@@ -85,14 +85,15 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
+	attemptDeliver := (nil != fevent.attemptDeliver && fevent.deliverCount <= 1)
 	//第一次尝试投递失败了立即通知
-	if nil != fevent.attemptDeliver && fevent.deliverCount <= 1 {
+	if attemptDeliver {
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
 		close(fevent.attemptDeliver)
 	}
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
-		if !fevent.fly {
+		if !fevent.fly && !attemptDeliver {
 			//async batch remove
 			self.kitestore.AsyncDelete(fevent.messageId)
 		}
