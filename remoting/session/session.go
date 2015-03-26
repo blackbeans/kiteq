@@ -176,7 +176,9 @@ func (self *Session) write0(tlv protocol.Packet) {
 		//如果是同步写出
 		return
 	}
-	length, err := self.bw.Write(packet)
+
+	length, err := self.conn.Write(packet)
+	// length, err := self.bw.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		//链接是关闭的
