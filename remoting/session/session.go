@@ -178,13 +178,13 @@ func (self *Session) write0(tlv protocol.Packet) {
 	}
 
 	var writer io.Writer
+	writer = self.conn
 	//当是非常小的包直接写出
-	if len(packet) <= protocol.MIN_PACKET_BYTES {
-		writer = self.conn
-	} else {
-		writer = self.bw
-
-	}
+	// if len(packet) <= protocol.MIN_PACKET_BYTES {
+	// 	writer = self.conn
+	// } else {
+	// 	writer = self.bw
+	// }
 	length, err := writer.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
@@ -194,8 +194,10 @@ func (self *Session) write0(tlv protocol.Packet) {
 			self.Close()
 			return
 		}
+		if writer == self.bw {
+			self.bw.Reset(self.conn)
+		}
 
-		self.bw.Reset(self.conn)
 		//如果没有写够则再写一次
 		if err == io.ErrShortWrite {
 			writer.Write(packet[length:])
