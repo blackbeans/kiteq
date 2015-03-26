@@ -39,14 +39,11 @@ func main() {
 		}
 	}()
 
-	rc := &protocol.RemotingConfig{
-		MaxDispatcherNum: 50,
-		MaxWorkerNum:     100,
-		ReadBufferSize:   16 * 1024,
-		WriteBufferSize:  16 * 1024,
-		WriteChannelSize: 10000,
-		ReadChannelSize:  10000,
-		IdleTime:         10 * time.Second}
+	rc := protocol.NewRemotingConfig(
+		"KiteQ-"+*bindHost,
+		1000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
 
 	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 1000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
 

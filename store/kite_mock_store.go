@@ -61,7 +61,8 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		Commit:       proto.Bool(true),
+		Fly:          proto.Bool(false)}
 	entity.Body = proto.String("hello go-kite")
 
 	return entity
@@ -77,7 +78,8 @@ func buildBytesMessage(id string) *protocol.BytesMessage {
 		ExpiredTime:  proto.Int64(time.Now().Unix()),
 		DeliverLimit: proto.Int32(-1),
 		GroupId:      proto.String("go-kite-test"),
-		Commit:       proto.Bool(true)}
+		Commit:       proto.Bool(true),
+		Fly:          proto.Bool(false)}
 	entity.Body = []byte("hello go-kite")
 
 	return entity

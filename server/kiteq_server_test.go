@@ -53,14 +53,11 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 
 func init() {
 
-	rc := &protocol.RemotingConfig{
-		MaxDispatcherNum: 50,
-		MaxWorkerNum:     50000,
-		ReadBufferSize:   16 * 1024,
-		WriteBufferSize:  16 * 1024,
-		WriteChannelSize: 10000,
-		ReadChannelSize:  10000,
-		IdleTime:         10 * time.Second}
+	rc := protocol.NewRemotingConfig(
+		"KiteQ-localhost:13800",
+		1000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
 
 	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mock://", rc)
 
@@ -81,7 +78,7 @@ func init() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			log.Printf("%s\n", (c - lc))
+			log.Printf("%d\n", (c - lc))
 			lc = c
 		}
 	}()
@@ -132,5 +129,5 @@ func TestRemotingServer(t *testing.T) {
 
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(10 * time.Second)
 }

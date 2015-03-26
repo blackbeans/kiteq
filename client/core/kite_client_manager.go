@@ -8,7 +8,6 @@ import (
 	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
-	"kiteq/stat"
 	"log"
 	"math/rand"
 	"net"
@@ -38,15 +37,11 @@ type KiteClientManager struct {
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
-	rc := &protocol.RemotingConfig{
-		MaxDispatcherNum: 50,
-		MaxWorkerNum:     50000,
-		ReadBufferSize:   16 * 1024,
-		WriteBufferSize:  16 * 1024,
-		WriteChannelSize: 10000,
-		ReadChannelSize:  10000,
-		IdleTime:         10 * time.Second,
-		FlowStat:         stat.NewFlowStat("kiteclient-" + groupId)}
+	rc := protocol.NewRemotingConfig(
+		"kiteclient-"+groupId,
+		1000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
 
 	//重连管理器
 	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)

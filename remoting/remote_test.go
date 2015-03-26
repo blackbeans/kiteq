@@ -38,15 +38,11 @@ func handshake(ga *GroupAuth, remoteClient *RemotingClient) (bool, error) {
 
 func init() {
 
-	rc := &protocol.RemotingConfig{
-		MaxDispatcherNum: 50,
-		MaxWorkerNum:     100,
-		ReadBufferSize:   16 * 1024,
-		WriteBufferSize:  16 * 1024,
-		WriteChannelSize: 10000,
-		ReadChannelSize:  10000,
-		IdleTime:         10 * time.Second}
-	rc.FlowStat = flow
+	rc := protocol.NewRemotingConfig(
+		"KiteQ-localhost:28888",
+		1000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
 	remoteServer = server.NewRemotionServer("localhost:28888", rc, packetDispatcher)
 	remoteServer.ListenAndServer()
 
@@ -57,7 +53,13 @@ func init() {
 
 	clientManager = NewClientManager(reconnManager)
 
-	remoteClient := NewRemotingClient(conn, clientPacketDispatcher, rc)
+	rcc := protocol.NewRemotingConfig(
+		"KiteQ-localhost:28888",
+		1000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
+
+	remoteClient := NewRemotingClient(conn, clientPacketDispatcher, rcc)
 	remoteClient.Start()
 
 	auth := &GroupAuth{}
@@ -76,11 +78,10 @@ func BenchmarkRemoteClient(t *testing.B) {
 		for pb.Next() {
 			for i := 0; i < t.N; i++ {
 				tmp := clientManager.FindRemoteClients([]string{"a"}, func(groupid string, c *RemotingClient) bool {
-
 					return false
 				})
 
-				_, err := tmp["a"][0].WriteAndGet(*p, 200*time.Millisecond)
+				_, err := tmp["a"][0].WriteAndGet(*p, 500*time.Millisecond)
 				clientf.WriteFlow.Incr(1)
 				if nil != err {
 					log.Printf("WAIT RESPONSE FAIL|%s\n", err)

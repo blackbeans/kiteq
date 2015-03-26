@@ -7,7 +7,6 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/client"
 	"kiteq/remoting/server"
-	"kiteq/stat"
 	"kiteq/store"
 	smm "kiteq/store/mmap"
 	smq "kiteq/store/mysql"
@@ -38,8 +37,6 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	kitedb := parseDB(kc.db)
 
 	kiteqName, _ := os.Hostname()
-
-	kc.rc.FlowStat = stat.NewFlowStat("KiteQ-" + kc.server)
 
 	//重连管理器
 	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)

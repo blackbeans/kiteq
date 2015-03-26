@@ -7,30 +7,18 @@ import (
 	"kiteq/remoting/session"
 	"log"
 	"net"
-	"sync"
-	"sync/atomic"
 	"time"
-)
-
-const (
-	MAX_WATER_MARK   int = 52000
-	CONCURRENT_LEVEL     = 16
 )
 
 //网络层的client
 type RemotingClient struct {
 	conn             *net.TCPConn
-	opaque           uint32
-	locks            []*sync.Mutex
-	holders          []map[int32]chan interface{}
 	localAddr        string
 	remoteAddr       string
 	heartbeat        int64
 	remoteSession    *session.Session
 	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
 	rc               *protocol.RemotingConfig
-	WorkerNum        chan byte //工作线程的channel控制器
-
 }
 
 func NewRemotingClient(conn *net.TCPConn,
@@ -38,15 +26,6 @@ func NewRemotingClient(conn *net.TCPConn,
 	rc *protocol.RemotingConfig) *RemotingClient {
 
 	remoteSession := session.NewSession(conn, rc)
-	ch := make(chan byte, rc.MaxWorkerNum)
-
-	holders := make([]map[int32]chan interface{}, 0, CONCURRENT_LEVEL)
-	locks := make([]*sync.Mutex, 0, CONCURRENT_LEVEL)
-	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]chan interface{}, MAX_WATER_MARK/CONCURRENT_LEVEL)
-		holders = append(holders, splitMap)
-		locks = append(locks, &sync.Mutex{})
-	}
 
 	//创建一个remotingcleint
 	remotingClient := &RemotingClient{
@@ -54,11 +33,7 @@ func NewRemotingClient(conn *net.TCPConn,
 		conn:             conn,
 		packetDispatcher: packetDispatcher,
 		remoteSession:    remoteSession,
-		rc:               rc,
-		WorkerNum:        ch,
-		opaque:           0,
-		holders:          holders,
-		locks:            locks}
+		rc:               rc}
 
 	return remotingClient
 }
@@ -87,11 +62,8 @@ func (self *RemotingClient) Start() {
 	//开启写操作
 	go self.remoteSession.WritePacket()
 
-	//开启多个派发goroutine
-	for i := 0; i < self.rc.MaxDispatcherNum; i++ {
-		//开启转发
-		go self.dispatcherPacket(self.remoteSession)
-	}
+	//开启转发
+	go self.dispatcherPacket(self.remoteSession)
 
 	//启动读取
 	go self.remoteSession.ReadPacket()
@@ -127,11 +99,11 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 
 		packet := <-self.remoteSession.ReadChannel
 		//获取协程处理分发包
-		self.WorkerNum <- 1
+		self.rc.MaxDispatcherNum <- 1
 		self.rc.FlowStat.DispatcherWorkPool.Incr(1)
 		go func() {
 			defer func() {
-				<-self.WorkerNum
+				<-self.rc.MaxDispatcherNum
 				self.rc.FlowStat.DispatcherWorkPool.Incr(-1)
 			}()
 			//处理一下包
@@ -177,16 +149,12 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 	tid := packet.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
-		id := int32((atomic.AddUint32(&self.opaque, 1) % uint32(MAX_WATER_MARK)))
+		id := self.rc.RequestHolder.CurrentOpaque()
 		packet.Opaque = id
 		tid = id
 	}
 
 	return tid, make(chan interface{}, 1)
-}
-
-func (self *RemotingClient) locker(id int32) (*sync.Mutex, map[int32]chan interface{}) {
-	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
 }
 
 //将结果attach到当前的等待回调chan
@@ -197,17 +165,7 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 		}
 	}()
 
-	l, m := self.locker(opaque)
-	l.Lock()
-	defer l.Unlock()
-
-	ch, ok := m[opaque]
-	if ok {
-		delete(m, opaque)
-		ch <- obj
-		close(ch)
-		// log.Printf("RemotingClient|Attach|%s|%s\n", opaque, obj)
-	}
+	self.rc.RequestHolder.Detach(opaque, obj)
 
 }
 
@@ -215,11 +173,7 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, error) {
 
 	opaque, future := self.fillOpaque(&packet)
-
-	l, m := self.locker(opaque)
-	l.Lock()
-	defer l.Unlock()
-	m[opaque] = future
+	self.rc.RequestHolder.Attach(opaque, future)
 	return future, self.remoteSession.Write(packet)
 
 }
