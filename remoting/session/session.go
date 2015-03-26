@@ -177,8 +177,15 @@ func (self *Session) write0(tlv protocol.Packet) {
 		return
 	}
 
-	length, err := self.conn.Write(packet)
-	// length, err := self.bw.Write(packet)
+	var writer io.Writer
+	//当是非常小的包直接写出
+	if len(packet) <= protocol.MIN_PACKET_BYTES {
+		writer = self.conn
+	} else {
+		writer = self.bw
+
+	}
+	length, err := writer.Write(packet)
 	if nil != err {
 		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		//链接是关闭的
@@ -189,10 +196,9 @@ func (self *Session) write0(tlv protocol.Packet) {
 		}
 
 		self.bw.Reset(self.conn)
-
 		//如果没有写够则再写一次
 		if err == io.ErrShortWrite {
-			self.bw.Write(packet[length:])
+			writer.Write(packet[length:])
 		}
 	}
 

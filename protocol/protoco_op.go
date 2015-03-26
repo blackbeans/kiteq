@@ -22,6 +22,7 @@ const (
 
 	//最大packet的字节数
 	MAX_PACKET_BYTES    = 32 * 1024
+	MIN_PACKET_BYTES    = 128 //128个字节
 	RESP_STATUS_SUCC    = 200
 	RESP_STATUS_FAIL    = 500
 	RESP_STATUS_TIMEOUT = 501
