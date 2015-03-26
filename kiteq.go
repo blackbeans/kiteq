@@ -41,11 +41,11 @@ func main() {
 
 	rc := protocol.NewRemotingConfig(
 		"KiteQ-"+*bindHost,
-		1000, 16*1024,
+		2000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 1000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
+	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 5000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()
