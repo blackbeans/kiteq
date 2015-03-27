@@ -211,7 +211,7 @@ func (self *Session) WritePacket() {
 }
 
 func (self *Session) flush() {
-	if self.bw.Buffered() > 0 {
+	if self.bw.Buffered() > 0 && !self.Closed() {
 		err := self.bw.Flush()
 		if nil != err {
 			log.Printf("Session|Write|FLUSH|FAIL|%t\n", err.Error())
