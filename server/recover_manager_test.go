@@ -4,6 +4,7 @@ import (
 	"kiteq/binding"
 	"kiteq/handler"
 	. "kiteq/pipe"
+	"kiteq/stat"
 	"kiteq/store"
 	"log"
 	"os"
@@ -40,12 +41,11 @@ func TestRecoverManager(t *testing.T) {
 	pipeline := NewDefaultPipeline()
 
 	kitedb := &store.MockKiteStore{}
+	fs := stat.NewFlowStat("recover")
 
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger("localhost:2181", "127.0.0.1:13800")
-	ch := make(chan bool, 1)
-
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
 	rm := NewRecoverManager(hostname, 1*time.Second, pipeline, kitedb)

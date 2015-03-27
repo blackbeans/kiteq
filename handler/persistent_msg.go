@@ -15,20 +15,20 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 //----------------持久化的handler
 type PersistentHandler struct {
 	BaseForwardHandler
-	kitestore      store.IKiteStore
-	maxDeliverNum  chan byte
-	deliverTimeout time.Duration
-	flowstat       *stat.FlowStat
+	kitestore       store.IKiteStore
+	deliverTimeout  time.Duration
+	deliverOptimize chan bool
+	flowstat        *stat.FlowStat //当前优化是否开启 true为开启，false为关闭
 }
 
 //------创建persitehandler
-func NewPersistentHandler(name string, flowstat *stat.FlowStat, deliverTimeout time.Duration, maxDeliverWorker int, kitestore store.IKiteStore) *PersistentHandler {
+func NewPersistentHandler(name string, deliverTimeout time.Duration,
+	kitestore store.IKiteStore, flowstat *stat.FlowStat) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
-	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
-	phandler.flowstat = flowstat
 	phandler.deliverTimeout = deliverTimeout
+	phandler.flowstat = flowstat
 	return phandler
 }
 
@@ -77,9 +77,9 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 //发送非flymessage
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
 	saveSucc := true
-	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
-	//或者消息本身就是一个未提交的消息也是先持久化
-	if pevent.entity.Commit && len(self.maxDeliverNum)*5/4 <= cap(self.maxDeliverNum) {
+
+	//提交并且开启优化
+	if pevent.entity.Commit && self.flowstat.OptimzeStatus {
 		//先投递再去根据结果写存储
 		ch := make(chan []string, 3) //用于返回尝试投递结果
 		self.send(ctx, pevent, ch)
@@ -126,27 +126,14 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 
 func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persistentEvent, ch chan []string) {
 
-	f := func(ch chan []string) {
-		//启动投递当然会重投3次
-		preDeliver := NewDeliverPreEvent(
-			pevent.entity.Header.GetMessageId(),
-			pevent.entity.Header,
-			pevent.entity)
-		preDeliver.attemptDeliver = ch
-		ctx.SendForward(preDeliver)
-		self.flowstat.DeliverFlow.Incr(1)
-	}
+	//启动投递当然会重投3次
+	preDeliver := NewDeliverPreEvent(
+		pevent.entity.Header.GetMessageId(),
+		pevent.entity.Header,
+		pevent.entity)
+	preDeliver.attemptDeliver = ch
+	ctx.SendForward(preDeliver)
 
-	self.maxDeliverNum <- 1
-	self.flowstat.DeliverPool.Incr(1)
-	go func() {
-		defer func() {
-			<-self.maxDeliverNum
-			self.flowstat.DeliverPool.Incr(-1)
-		}()
-		//启动投递
-		f(ch)
-	}()
 	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }
 

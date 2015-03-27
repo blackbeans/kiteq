@@ -6,22 +6,30 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	// "log"
+	"kiteq/stat"
+	"time"
 )
 
 //----------------持久化的handler
 type DeliverPreHandler struct {
 	BaseForwardHandler
-	kitestore store.IKiteStore
-	exchanger *binding.BindExchanger
+	kitestore      store.IKiteStore
+	exchanger      *binding.BindExchanger
+	maxDeliverNum  chan byte
+	deliverTimeout time.Duration
+	flowstat       *stat.FlowStat
 }
 
 //------创建deliverpre
 func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
-	exchanger *binding.BindExchanger) *DeliverPreHandler {
+	exchanger *binding.BindExchanger, flowstat *stat.FlowStat,
+	maxDeliverWorker int) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
+	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
+	phandler.flowstat = flowstat
 	return phandler
 }
 
@@ -42,13 +50,38 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
+	self.maxDeliverNum <- 1
+	self.flowstat.DeliverPool.Incr(1)
+	go func() {
+		defer func() {
+			<-self.maxDeliverNum
+			self.flowstat.DeliverPool.Incr(-1)
+		}()
+		//启动投递
+		self.send0(ctx, pevent)
+		self.flowstat.DeliverFlow.Incr(1)
+	}()
+
+	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
+	//或者消息本身就是一个未提交的消息也是先持久化
+	if len(self.maxDeliverNum)*5/4 <= cap(self.maxDeliverNum) {
+		self.flowstat.OptimzeStatus = false
+	} else {
+		self.flowstat.OptimzeStatus = true
+	}
+
+	return nil
+}
+
+//内部处理
+func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *deliverPreEvent) {
 	//如果没有entity则直接查询一下db
 	entity := pevent.entity
 	if nil == entity {
 		//查询消息
 		entity = self.kitestore.Query(pevent.messageId)
 		if nil == entity {
-			return nil
+			return
 		}
 	}
 
@@ -71,8 +104,6 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	self.fillDeliverExt(deliverEvent, entity)
 	//向后投递发送
 	ctx.SendForward(deliverEvent)
-	return nil
-
 }
 
 //填充订阅分组

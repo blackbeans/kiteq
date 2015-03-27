@@ -9,6 +9,7 @@ import (
 
 type FlowStat struct {
 	name               string
+	OptimzeStatus      bool //当前优化的状态
 	ReadFlow           *flow
 	DispatcherWorkPool *flow //处理
 	DispatcherFlow     *flow
@@ -20,6 +21,7 @@ type FlowStat struct {
 
 func NewFlowStat(name string) *FlowStat {
 	return &FlowStat{
+		OptimzeStatus:      true,
 		name:               name,
 		ReadFlow:           &flow{},
 		DispatcherWorkPool: &flow{},
