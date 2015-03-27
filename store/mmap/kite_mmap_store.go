@@ -23,8 +23,9 @@ func NewKiteMMapStore(path string, initcap, maxcap int) *KiteMMapStore {
 		path:     path}
 }
 
-func (self *KiteMMapStore) AsyncUpdate(entity *MessageEntity) { self.UpdateEntity(entity) }
-func (self *KiteMMapStore) AsyncDelete(messageId string)      { self.Delete(messageId) }
+func (self *KiteMMapStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteMMapStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
+func (self *KiteMMapStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
 
 func (self *KiteMMapStore) Query(messageId string) *MessageEntity {
 	self.lock.RLock()

@@ -70,8 +70,9 @@ func NewMessageEntity(msg *protocol.QMessage) *MessageEntity {
 //kitestore存储
 type IKiteStore interface {
 	//批量提交channel
-	AsyncUpdate(entity *MessageEntity)
-	AsyncDelete(messageId string)
+	AsyncUpdate(entity *MessageEntity) bool
+	AsyncDelete(messageId string) bool
+	AsyncCommit(messageId string) bool
 
 	Query(messageId string) *MessageEntity
 	Save(entity *MessageEntity) bool

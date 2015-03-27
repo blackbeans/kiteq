@@ -15,7 +15,10 @@ import (
 func TestPageQuery(t *testing.T) {
 
 	options := MysqlOptions{
-		Addr:         "root:@tcp(localhost:3306)/kite",
+		Addr:         "localhost:3306",
+		DB:           "kite",
+		Username:     "root",
+		Password:     "",
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -114,9 +117,11 @@ func TestPageQuery(t *testing.T) {
 }
 
 func TestBatch(t *testing.T) {
-
 	options := MysqlOptions{
-		Addr:         "root:@tcp(localhost:3306)/kite",
+		Addr:         "localhost:3306",
+		DB:           "kite",
+		Username:     "root",
+		Password:     "",
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -246,7 +251,10 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 	entity.PublishTime = time.Now().Unix()
 
 	options := MysqlOptions{
-		Addr:         "root:@tcp(localhost:3306)/kite",
+		Addr:         "localhost:3306",
+		DB:           "kite",
+		Username:     "root",
+		Password:     "",
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -285,10 +293,15 @@ func innerT(msg interface{}, msgid string, t *testing.T) {
 	}
 
 	fmt.Println("Commint BEGIN")
-	kiteMysql.Commit(msgid)
+	commit := kiteMysql.Commit(msgid)
+	if !commit {
+		fmt.Println("Commint FAIL")
+		t.Fail()
+	}
 	fmt.Println("Commint END")
-
+	time.Sleep(100 * time.Millisecond)
 	ret = kiteMysql.Query(msgid)
+	t.Logf("PageQueryEntity|COMMIT RESULT|%s\n", ret)
 	if !ret.Commit {
 		t.Logf("Commit|FAIL|%s\n", ret)
 		t.Fail()

@@ -28,6 +28,7 @@ type KiteMysqlStore struct {
 	dbslave      *sql.DB
 	batchUpChan  []chan *MessageEntity
 	batchDelChan []chan string
+	batchComChan []chan string
 	batchUpSize  int
 	batchDelSize int
 	flushPeriod  time.Duration
@@ -50,9 +51,11 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	//创建Hash的channel
 	batchDelChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
 	batchUpChan := make([]chan *MessageEntity, 0, sqlwrapper.hashshard.ShardCnt())
+	batchComChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
 	for i := 0; i < sqlwrapper.hashshard.ShardCnt(); i++ {
 		batchUpChan = append(batchUpChan, make(chan *MessageEntity, options.BatchUpSize/sqlwrapper.hashshard.ShardCnt()))
 		batchDelChan = append(batchDelChan, make(chan string, options.BatchDelSize/sqlwrapper.hashshard.ShardCnt()))
+		batchComChan = append(batchComChan, make(chan string, options.BatchUpSize/sqlwrapper.hashshard.ShardCnt()))
 	}
 
 	ins := &KiteMysqlStore{
@@ -64,6 +67,7 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		batchUpSize:  cap(batchDelChan),
 		batchDelChan: batchDelChan,
 		batchDelSize: cap(batchDelChan),
+		batchComChan: batchComChan,
 		flushPeriod:  options.FlushPeriod}
 
 	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
@@ -132,16 +136,15 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 }
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
-
-	s := self.sqlwrapper.hashCommitSQL(messageId)
-	log.Println(s)
-	result, err := self.db.Exec(s, true, messageId)
-	if err != nil {
-		log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
-		return false
-	}
-	num, _ := result.RowsAffected()
-	return num == 1
+	return self.AsyncCommit(messageId)
+	// s := self.sqlwrapper.hashCommitSQL(messageId)
+	// result, err := self.db.Exec(s, 1, messageId)
+	// if err != nil {
+	// 	log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
+	// 	return false
+	// }
+	// num, _ := result.RowsAffected()
+	// return true
 }
 
 func (self *KiteMysqlStore) Rollback(messageId string) bool {
@@ -150,14 +153,15 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 
 func (self *KiteMysqlStore) Delete(messageId string) bool {
 
-	s := self.sqlwrapper.hashDeleteSQL(messageId)
-	result, err := self.db.Exec(s, messageId)
-	if err != nil {
-		log.Printf("KiteMysqlStore|Delete|FAIL|%s|%s\n", err, messageId)
-		return false
-	}
-	num, _ := result.RowsAffected()
-	return num == 1
+	// s := self.sqlwrapper.hashDeleteSQL(messageId)
+	// result, err := self.db.Exec(s, messageId)
+	// if err != nil {
+	// 	log.Printf("KiteMysqlStore|Delete|FAIL|%s|%s\n", err, messageId)
+	// 	return false
+	// }
+	// num, _ := result.RowsAffected()
+	// return num == 1
+	return self.AsyncDelete(messageId)
 }
 
 var filterbody = func(colname string) bool {

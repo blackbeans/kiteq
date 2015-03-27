@@ -56,9 +56,7 @@ func (self *TxAckHandler) Process(ctx *DefaultPipelineContext, event IEvent) err
 			ctx.SendForward(deliver)
 
 		} else {
-
 			log.Printf("TxAckHandler|%s|Process|Commit|FAIL|%s|%s\n", self.GetName(), h.GetMessageId(), succ)
-
 		}
 
 	} else if pevent.txPacket.GetStatus() == int32(protocol.TX_ROLLBACK) {

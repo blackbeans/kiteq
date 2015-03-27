@@ -59,7 +59,7 @@ func parseDB(db string) store.IKiteStore {
 			}
 		}
 
-		bus := 1000
+		bus := 100
 		u, ok := params["batchUpdateSize"]
 		if ok {
 			v, e := strconv.ParseInt(u, 10, 32)
@@ -69,7 +69,7 @@ func parseDB(db string) store.IKiteStore {
 			bus = int(v)
 		}
 
-		bds := 1000
+		bds := 100
 		d, ok := params["batchDelSize"]
 		if ok {
 			v, e := strconv.ParseInt(d, 10, 32)
