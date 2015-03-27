@@ -79,7 +79,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	saveSucc := true
 	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
 	//或者消息本身就是一个未提交的消息也是先持久化
-	if pevent.entity.Commit && len(self.maxDeliverNum)*2 <= cap(self.maxDeliverNum) {
+	if pevent.entity.Commit && len(self.maxDeliverNum)*5/4 <= cap(self.maxDeliverNum) {
 		//先投递再去根据结果写存储
 		ch := make(chan []string, 3) //用于返回尝试投递结果
 		self.send(ctx, pevent, ch)

@@ -27,11 +27,28 @@ type ClientManager struct {
 
 func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 
-	return &ClientManager{
+	cm := &ClientManager{
 		groupAuth:        make(map[string]*GroupAuth, 10),
 		groupClients:     make(map[string][]*RemotingClient, 50),
 		allClients:       make(map[string]*RemotingClient, 100),
 		reconnectManager: reconnectManager}
+	go cm.evict()
+	return cm
+}
+
+func (self *ClientManager) evict() {
+	log.Println("ClientManager|evict...")
+	tick := time.NewTicker(1 * time.Minute)
+	for {
+		clients := self.ClientsClone()
+		for _, c := range clients {
+			if c.IsClosed() {
+				//可能会删除连接，如果不开启重连策略的话
+				self.SubmitReconnect(c)
+			}
+		}
+		<-tick.C
+	}
 }
 
 //验证是否授权
