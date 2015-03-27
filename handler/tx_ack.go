@@ -49,11 +49,8 @@ func (self *TxAckHandler) Process(ctx *DefaultPipelineContext, event IEvent) err
 		if succ {
 			//发起投递事件
 			//启动异步协程处理分发逻辑
-			deliver := &deliverEvent{}
-			deliver.messageId = h.GetMessageId()
-			deliver.topic = h.GetTopic()
-			deliver.messageType = h.GetMessageType()
-			ctx.SendForward(deliver)
+			preevent := NewDeliverPreEvent(h.GetMessageId(), h, nil)
+			ctx.SendForward(preevent)
 
 		} else {
 			//失败了等待下次recover询问
