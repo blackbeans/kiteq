@@ -66,7 +66,7 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		batchDelSize: cap(batchDelChan),
 		flushPeriod:  options.FlushPeriod}
 
-	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s...\n", options.Addr)
+	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	ins.start()
 	return ins
 }

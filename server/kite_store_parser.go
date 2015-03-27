@@ -53,7 +53,7 @@ func parseDB(db string) store.IKiteStore {
 		params := make(map[string]string, 5)
 		if len(mp) > 1 {
 			split := strings.Split(mp[1], "&")
-			for _, v := range split[1:] {
+			for _, v := range split {
 				p := strings.SplitN(v, "=", 2)
 				params[p[0]] = p[1]
 			}
