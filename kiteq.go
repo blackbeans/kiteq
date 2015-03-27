@@ -25,7 +25,7 @@ func main() {
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
 	db := flag.String("db", "mmap://file=/data/kiteq&initcap=100000&maxcap=200000",
-		"-db=mysql://root:root@tcp(localhost:3306)/kite?batchUpdateSize=1000&batchDelSize=1000&flushPeriod=1000")
+		"-db=mysql://master:3306,slave:3306/kite?username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushPeriod=1000")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 
 	flag.Parse()

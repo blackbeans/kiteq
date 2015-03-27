@@ -12,6 +12,8 @@ import (
 //mysql的参数
 type MysqlOptions struct {
 	Addr                      string
+	SlaveAddr                 string
+	Username, Password        string
 	BatchUpSize, BatchDelSize int
 	FlushPeriod               time.Duration
 	MaxIdleConn               int
@@ -22,6 +24,7 @@ type KiteMysqlStore struct {
 	convertor    convertor
 	sqlwrapper   *sqlwrapper
 	db           *sql.DB
+	dbslave      *sql.DB
 	batchUpChan  []chan *MessageEntity
 	batchDelChan []chan string
 	batchUpSize  int
@@ -31,13 +34,15 @@ type KiteMysqlStore struct {
 
 func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 
-	db, err := sql.Open("mysql", options.Addr)
-	if err != nil {
-		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, options.Addr)
+	master := openDb(
+		options.Username+":"+options.Password+"@tcp("+options.Addr+")",
+		options.MaxIdleConn, options.MaxOpenConn)
+	slave := master
+	if len(options.SlaveAddr) > 0 {
+		slave = openDb(
+			options.Username+":"+options.Password+"@tcp("+options.SlaveAddr+")",
+			options.MaxIdleConn, options.MaxOpenConn)
 	}
-
-	db.SetMaxIdleConns(options.MaxIdleConn)
-	db.SetMaxOpenConns(options.MaxOpenConn)
 
 	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, MessageEntity{})
 
@@ -50,7 +55,8 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	}
 
 	ins := &KiteMysqlStore{
-		db:           db,
+		db:           master,
+		dbslave:      slave,
 		convertor:    convertor{columns: sqlwrapper.columns},
 		sqlwrapper:   sqlwrapper,
 		batchUpChan:  batchUpChan,
@@ -64,6 +70,17 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	return ins
 }
 
+func openDb(addr string, idleConn, maxConn int) *sql.DB {
+	db, err := sql.Open("mysql", addr)
+	if err != nil {
+		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+	}
+
+	db.SetMaxIdleConns(idleConn)
+	db.SetMaxOpenConns(maxConn)
+	return db
+}
+
 var filternothing = func(colname string) bool {
 	return false
 }
@@ -72,7 +89,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 
 	var entity *MessageEntity
 	s := self.sqlwrapper.hashQuerySQL(messageId)
-	rows, err := self.db.Query(s, messageId)
+	rows, err := self.dbslave.Query(s, messageId)
 	if nil != err {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
@@ -152,7 +169,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
 	// log.Println(s)
-	rows, err := self.db.Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
+	rows, err := self.dbslave.Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
 		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil

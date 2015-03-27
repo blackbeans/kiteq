@@ -114,8 +114,8 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 	//如果不为fly消息那么需要存储投递结果
 	if !fevent.fly && fevent.deliverCount > 3 {
 		//存储投递结果
-		self.saveDeliverResult(fevent.messageId, fevent.publishtime,
-			fevent.deliverCount, fevent.succGroups, fevent.deliveryFailGroups)
+		self.saveDeliverResult(fevent.messageId, fevent.deliverCount,
+			fevent.succGroups, fevent.deliveryFailGroups)
 	}
 
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
@@ -136,8 +136,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 }
 
 //存储投递结果
-func (self *DeliverResultHandler) saveDeliverResult(messageId string, publishtime int64,
-	deliverCount int32, succGroups []string, failGroups []string) {
+func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCount int32, succGroups []string, failGroups []string) {
 
 	entity := &store.MessageEntity{
 		MessageId:    messageId,
@@ -145,12 +144,12 @@ func (self *DeliverResultHandler) saveDeliverResult(messageId string, publishtim
 		SuccGroups:   succGroups,
 		FailGroups:   failGroups,
 		//设置一下下一次投递时间
-		NextDeliverTime: self.nextDeliveryTime(publishtime, deliverCount)}
+		NextDeliverTime: self.nextDeliveryTime(deliverCount)}
 	//异步更新当前消息的数据
 	self.kitestore.AsyncUpdate(entity)
 }
 
-func (self *DeliverResultHandler) nextDeliveryTime(publishtime int64, deliverCount int32) int64 {
+func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
 	delayTime := self.rw[0].delaySeconds
 	for _, w := range self.rw {
 		if deliverCount >= w.minDeliveryCount &&
@@ -164,5 +163,5 @@ func (self *DeliverResultHandler) nextDeliveryTime(publishtime int64, deliverCou
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间
-	return publishtime + delayTime
+	return time.Now().Unix() + delayTime
 }

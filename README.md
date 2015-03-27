@@ -73,6 +73,9 @@ kiteq
         3. 直到Producer明确告诉Commit或者Rollback该消息
         4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
 
+##### Benchmark
+      Env: 4Core * 2 CPU  8G RAM 
+      
 #####  QuickStart
     1.编译：sh build.sh 
     2.安装装Zookeeper:省略
