@@ -118,6 +118,7 @@ func parseDB(db string) store.IKiteStore {
 		options := smq.MysqlOptions{
 			Addr:         master,
 			SlaveAddr:    slave,
+			DB:           params["db"],
 			Username:     username,
 			Password:     password,
 			BatchUpSize:  bus,

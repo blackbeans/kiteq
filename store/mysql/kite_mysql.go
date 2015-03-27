@@ -13,6 +13,7 @@ import (
 type MysqlOptions struct {
 	Addr                      string
 	SlaveAddr                 string
+	DB                        string
 	Username, Password        string
 	BatchUpSize, BatchDelSize int
 	FlushPeriod               time.Duration
@@ -35,12 +36,12 @@ type KiteMysqlStore struct {
 func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 
 	master := openDb(
-		options.Username+":"+options.Password+"@tcp("+options.Addr+")",
+		options.Username+":"+options.Password+"@tcp("+options.Addr+")/"+options.DB,
 		options.MaxIdleConn, options.MaxOpenConn)
 	slave := master
 	if len(options.SlaveAddr) > 0 {
 		slave = openDb(
-			options.Username+":"+options.Password+"@tcp("+options.SlaveAddr+")",
+			options.Username+":"+options.Password+"@tcp("+options.SlaveAddr+")/"+options.DB,
 			options.MaxIdleConn, options.MaxOpenConn)
 	}
 
