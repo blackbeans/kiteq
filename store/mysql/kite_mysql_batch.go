@@ -87,32 +87,21 @@ func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL, prepareCommi
 
 func (self *KiteMysqlStore) AsyncCommit(messageid string) bool {
 	idx := self.sqlwrapper.hashshard.FindForKey(messageid)
-	select {
-	case self.batchComChan[idx] <- messageid:
-		return true
-	case <-time.After(100 * time.Millisecond):
-		return false
-	}
+	self.batchComChan[idx] <- messageid
+	return true
+
 }
 
 func (self *KiteMysqlStore) AsyncUpdate(entity *MessageEntity) bool {
 	idx := self.sqlwrapper.hashshard.FindForKey(entity.MessageId)
-	select {
-	case self.batchUpChan[idx] <- entity:
-		return true
-	case <-time.After(100 * time.Millisecond):
-		return false
-	}
+	self.batchUpChan[idx] <- entity
+	return true
 
 }
 func (self *KiteMysqlStore) AsyncDelete(messageid string) bool {
 	idx := self.sqlwrapper.hashshard.FindForKey(messageid)
-	select {
-	case self.batchDelChan[idx] <- messageid:
-		return true
-	case <-time.After(100 * time.Millisecond):
-		return false
-	}
+	self.batchDelChan[idx] <- messageid
+	return true
 }
 
 func (self *KiteMysqlStore) batchCommit(prepareSQL string, messageId []string) bool {
@@ -121,7 +110,7 @@ func (self *KiteMysqlStore) batchCommit(prepareSQL string, messageId []string) b
 		return true
 	}
 
-	log.Printf("KiteMysqlStore|batchCommit|%s|%s\n", prepareSQL, messageId)
+	// log.Printf("KiteMysqlStore|batchCommit|%s|%s\n", prepareSQL, messageId)
 	tx, err := self.db.Begin()
 	if nil != err {
 		log.Printf("KiteMysqlStore|batchCommit|Tx|Begin|FAIL|%s\n", err)
