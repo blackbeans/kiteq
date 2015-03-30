@@ -1,43 +1,60 @@
 package mysql
 
 import (
+	"database/sql"
 	"encoding/json"
 	. "kiteq/store"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 )
 
-var SQL_BATCH_UPDATE = "update kite_msg_{} set succ_groups=?,fail_groups=?,next_deliver_time=?,deliver_count=? where message_id=?"
-var SQL_BATCH_DELETE = "delete from kite_msg_{} where message_id=?"
-var SQL_BATCH_COMMIT = "update kite_msg_{} set commit=1 where message_id=?"
+func (self *KiteMysqlStore) Start() {
 
-func (self *KiteMysqlStore) start() {
+	//创建每种批量的preparestmt
+	stmts := make(map[batchType][]*StmtPool, 4)
+	for k, v := range self.sqlwrapper.batchSQL {
+		btype := k
+		pool := make([]*StmtPool, 0, self.sqlwrapper.hashshard.ShardCnt())
+		for _, s := range v {
+			psql := s
 
-	for i := 0; i < self.sqlwrapper.hashshard.ShardCnt(); i++ {
-
-		sqld := strings.Replace(SQL_BATCH_DELETE, "{}", strconv.Itoa(i), -1)
-		sqlu := strings.Replace(SQL_BATCH_UPDATE, "{}", strconv.Itoa(i), -1)
-		sqlc := strings.Replace(SQL_BATCH_COMMIT, "{}", strconv.Itoa(i), -1)
-		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s\n", sqlu, sqld)
-		go self.startBatch(sqld, sqlu, sqlc, self.batchUpChan[i],
-			self.batchDelChan[i], self.batchComChan[i])
+			err, p := NewStmtPool(10, 20, 50, 1*time.Minute, func() (error, *sql.Stmt) {
+				stmt, err := self.dbslave.Prepare(psql)
+				if nil != err {
+					log.Printf("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
+					return err, nil
+				}
+				return nil, stmt
+			})
+			if nil != err {
+				log.Panicf("NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
+			}
+			pool = append(pool, p)
+		}
+		stmts[btype] = pool
 	}
 
+	self.stmtPools = stmts
+
+	for i := 0; i < self.sqlwrapper.hashshard.ShardCnt(); i++ {
+		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s\n", sqlu, sqld)
+		go self.startBatch(i, self.batchUpChan[i],
+			self.batchDelChan[i], self.batchComChan[i])
+	}
+	log.Println("KiteMysqlStore|Start...")
 }
 
 //批量删除任务
-func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL, prepareCommitSQL string,
+func (self *KiteMysqlStore) startBatch(hash int,
 	chu chan *MessageEntity, chd, chcommit chan string) {
 
 	//启动的entity更新的携程
-	go func(sql string, ch chan *MessageEntity, batchSize int,
-		do func(sql string, d []*MessageEntity) bool) {
+	go func(hashId int, ch chan *MessageEntity, batchSize int,
+		do func(sql int, d []*MessageEntity) bool) {
 		timer := time.NewTimer(self.flushPeriod)
 		data := make([]*MessageEntity, 0, batchSize)
 		flush := false
-		for {
+		for !self.stop {
 			select {
 			case mid := <-ch:
 				data = append(data, mid)
@@ -46,21 +63,21 @@ func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL, prepareCommi
 			}
 			//强制提交: 达到批量提交的阀值或者超时没有数据则提交
 			if len(data) >= batchSize || flush {
-				do(sql, data)
+				do(hashId, data)
 				data = data[:0]
 				flush = false
 				timer.Reset(self.flushPeriod)
 			}
 		}
 		timer.Stop()
-	}(prepareUpSQL, chu, self.batchUpSize, self.batchUpdate)
+	}(hash, chu, self.batchUpSize, self.batchUpdate)
 
-	batchFun := func(sql string, ch chan string, batchSize int,
-		do func(sql string, d []string) bool) {
+	batchFun := func(hashid int, ch chan string, batchSize int,
+		do func(hashid int, d []string) bool) {
 		timer := time.NewTimer(self.flushPeriod)
 		data := make([]string, 0, batchSize)
 		flush := false
-		for {
+		for !self.stop {
 			select {
 			case mid := <-ch:
 				data = append(data, mid)
@@ -69,7 +86,7 @@ func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL, prepareCommi
 			}
 			//强制提交: 达到批量提交的阀值或者超时没有数据则提交
 			if len(data) >= batchSize || flush {
-				do(sql, data)
+				do(hashid, data)
 				data = data[:0]
 				flush = false
 				timer.Reset(self.flushPeriod)
@@ -79,9 +96,9 @@ func (self *KiteMysqlStore) startBatch(prepareDelSQL, prepareUpSQL, prepareCommi
 	}
 
 	//启动批量删除
-	go batchFun(prepareDelSQL, chd, self.batchDelSize, self.batchDelete)
+	go batchFun(hash, chd, self.batchDelSize, self.batchDelete)
 	//启动批量提交
-	go batchFun(prepareCommitSQL, chcommit, self.batchUpSize, self.batchCommit)
+	go batchFun(hash, chcommit, self.batchUpSize, self.batchCommit)
 
 }
 
@@ -104,60 +121,43 @@ func (self *KiteMysqlStore) AsyncDelete(messageid string) bool {
 	return true
 }
 
-func (self *KiteMysqlStore) batchCommit(prepareSQL string, messageId []string) bool {
+func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
 
 	if len(messageId) <= 0 {
 		return true
 	}
 
 	// log.Printf("KiteMysqlStore|batchCommit|%s|%s\n", prepareSQL, messageId)
-	tx, err := self.db.Begin()
+	p := self.stmtPools[COMMIT][hashId]
+	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchCommit|Tx|Begin|FAIL|%s\n", err)
+		log.Printf("KiteMysqlStore|batchCommit|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
-
-	stmt, err := tx.Prepare(prepareSQL)
-	if nil != err {
-		log.Printf("KiteMysqlStore|batchCommit|Prepare|FAIL|%s|%s\n", err, prepareSQL)
-		return false
-	}
-
-	defer stmt.Close()
+	defer p.Release(stmt)
 
 	for _, v := range messageId {
-		_, err = stmt.Exec(v)
+		_, err = stmt.Exec(true, v)
 		if nil != err {
 			log.Printf("KiteMysqlStore|batchCommit|FAIL|%s|%s\n", err, v)
 		}
 	}
-
-	err = tx.Commit()
-	if nil != err {
-		tx.Rollback()
-	}
 	return nil == err
 }
 
-func (self *KiteMysqlStore) batchDelete(prepareSQL string, messageId []string) bool {
+func (self *KiteMysqlStore) batchDelete(hashId int, messageId []string) bool {
 
 	if len(messageId) <= 0 {
 		return true
 	}
 
-	tx, err := self.db.Begin()
+	p := self.stmtPools[DELETE][hashId]
+	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchDelete|Tx|Begin|FAIL|%s\n", err)
+		log.Printf("KiteMysqlStore|batchDelete|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
-
-	stmt, err := tx.Prepare(prepareSQL)
-	if nil != err {
-		log.Printf("KiteMysqlStore|batchDelete|Prepare|FAIL|%s|%s\n", err, prepareSQL)
-		return false
-	}
-
-	defer stmt.Close()
+	defer p.Release(stmt)
 
 	for _, v := range messageId {
 		_, err = stmt.Exec(v)
@@ -165,32 +165,22 @@ func (self *KiteMysqlStore) batchDelete(prepareSQL string, messageId []string) b
 			log.Printf("KiteMysqlStore|batchDelete|FAIL|%s|%s\n", err, v)
 		}
 	}
-
-	err = tx.Commit()
-	if nil != err {
-		tx.Rollback()
-	}
 	return nil == err
 }
 
-func (self *KiteMysqlStore) batchUpdate(prepareSQL string, entity []*MessageEntity) bool {
+func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) bool {
 
 	if len(entity) <= 0 {
 		return true
 	}
 
-	tx, err := self.db.Begin()
+	p := self.stmtPools[UPDATE][hashId]
+	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchUpdate|Tx|Begin|FAIL|%s\n", err)
+		log.Printf("KiteMysqlStore|batchUpdate|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
-
-	stmt, err := tx.Prepare(prepareSQL)
-	if nil != err {
-		log.Printf("KiteMysqlStore|batchUpdate|Prepare|FAIL|%s|%s\n", err, prepareSQL)
-		return false
-	}
-	defer stmt.Close()
+	defer p.Release(stmt)
 
 	args := make([]interface{}, 0, 5)
 	var errs error
@@ -230,10 +220,15 @@ func (self *KiteMysqlStore) batchUpdate(prepareSQL string, entity []*MessageEnti
 		}
 
 	}
-	errs = tx.Commit()
-	if nil != errs {
-		log.Printf("KiteMysqlStore|batchUpdate|COMMIT|FAIL|%s\n", errs)
-		tx.Rollback()
-	}
 	return nil == errs
+}
+
+func (self *KiteMysqlStore) Stop() {
+	self.stop = true
+	for k, v := range self.stmtPools {
+		for _, s := range v {
+			s.Shutdown()
+		}
+		log.Printf("KiteMysqlStore|Stop|Stmt|%t\n", k)
+	}
 }

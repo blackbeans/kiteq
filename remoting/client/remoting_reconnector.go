@@ -56,6 +56,7 @@ func NewReconnectManager(allowReconnect bool,
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
 		maxReconnectTimes: maxReconnectTimes, handshake: handshake}
+	log.Println("ReconnectManager|Start...")
 	return manager
 }
 
@@ -130,4 +131,5 @@ func (self *ReconnectManager) stop() {
 	for _, t := range self.timers {
 		t.Stop()
 	}
+	log.Println("ReconnectManager|stop...")
 }

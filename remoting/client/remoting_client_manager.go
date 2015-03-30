@@ -201,7 +201,9 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 }
 
 func (self *ClientManager) Shutdown() {
+	self.reconnectManager.stop()
 	for _, c := range self.allClients {
 		c.Shutdown()
 	}
+	log.Println("ClientManager|Shutdown....")
 }

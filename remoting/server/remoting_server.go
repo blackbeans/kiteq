@@ -76,4 +76,5 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 func (self *RemotingServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
+	log.Println("RemotingServer|Shutdown...")
 }

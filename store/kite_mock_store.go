@@ -13,6 +13,9 @@ func NewMockKiteStore() *MockKiteStore {
 	return &MockKiteStore{}
 }
 
+func (self *MockKiteStore) Start() {}
+func (self *MockKiteStore) Stop()  {}
+
 func (self *MockKiteStore) AsyncUpdate(entity *MessageEntity) bool { return true }
 func (self *MockKiteStore) AsyncDelete(messgeid string) bool       { return true }
 func (self *MockKiteStore) AsyncCommit(messageId string) bool      { return true }

@@ -7,6 +7,7 @@ import (
 	"kiteq/protocol"
 	"kiteq/remoting/client"
 	"kiteq/remoting/server"
+	"kiteq/store"
 	"log"
 	"os"
 )
@@ -19,6 +20,7 @@ type KiteQServer struct {
 	pipeline       *pipe.DefaultPipeline
 	recoverManager *RecoverManager
 	kc             KiteQConfig
+	kitedb         store.IKiteStore
 }
 
 //握手包
@@ -75,7 +77,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 		exchanger:      exchanger,
 		pipeline:       pipeline,
 		recoverManager: recoverManager,
-		kc:             kc}
+		kc:             kc,
+		kitedb:         kitedb}
 
 }
 
@@ -115,7 +118,12 @@ func (self *KiteQServer) Start() {
 }
 
 func (self *KiteQServer) Shutdown() {
+	//先关闭exchanger让客户端不要再输送数据
+	self.exchanger.Shutdown()
+	self.recoverManager.Stop()
+	self.kitedb.Stop()
 	self.clientManager.Shutdown()
 	self.remotingServer.Shutdown()
-	self.exchanger.Shutdown()
+	log.Println("KiteQServer|Shutdown...")
+
 }

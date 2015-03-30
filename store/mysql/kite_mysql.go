@@ -32,6 +32,8 @@ type KiteMysqlStore struct {
 	batchUpSize  int
 	batchDelSize int
 	flushPeriod  time.Duration
+	stmtPools    map[batchType][]*StmtPool
+	stop         bool
 }
 
 func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
@@ -53,9 +55,9 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	batchUpChan := make([]chan *MessageEntity, 0, sqlwrapper.hashshard.ShardCnt())
 	batchComChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
 	for i := 0; i < sqlwrapper.hashshard.ShardCnt(); i++ {
-		batchUpChan = append(batchUpChan, make(chan *MessageEntity, options.BatchUpSize/sqlwrapper.hashshard.ShardCnt()))
-		batchDelChan = append(batchDelChan, make(chan string, options.BatchDelSize/sqlwrapper.hashshard.ShardCnt()))
-		batchComChan = append(batchComChan, make(chan string, options.BatchUpSize/sqlwrapper.hashshard.ShardCnt()))
+		batchUpChan = append(batchUpChan, make(chan *MessageEntity, options.BatchUpSize))
+		batchDelChan = append(batchDelChan, make(chan string, options.BatchDelSize))
+		batchComChan = append(batchComChan, make(chan string, options.BatchUpSize))
 	}
 
 	ins := &KiteMysqlStore{
@@ -68,10 +70,10 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		batchDelChan: batchDelChan,
 		batchDelSize: cap(batchDelChan),
 		batchComChan: batchComChan,
-		flushPeriod:  options.FlushPeriod}
-
+		flushPeriod:  options.FlushPeriod,
+		stop:         false}
+	ins.Start()
 	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
-	ins.start()
 	return ins
 }
 

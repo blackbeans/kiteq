@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+type batchType uint8
+
+const (
+	COMMIT batchType = 1
+	UPDATE batchType = 2
+	DELETE batchType = 3
+)
+
 type column struct {
 	columnName string
 	fieldName  string
@@ -16,14 +24,13 @@ type column struct {
 }
 
 type sqlwrapper struct {
-	tablename           string
-	columns             []column
-	queryPrepareSQL     []string
-	savePrepareSQL      []string
-	commitPrepareSQL    []string
-	deletePrepareSQL    []string
-	pageQueryPrepareSQL []string
-	hashshard           HashShard
+	tablename       string
+	columns         []column
+	batchSQL        map[batchType][]string
+	queryPrepareSQL []string
+	pageQuerySQL    []string
+	savePrepareSQL  []string
+	hashshard       HashShard
 }
 
 func newSqlwrapper(tablename string, hashshard HashShard, i interface{}) *sqlwrapper {
@@ -63,13 +70,13 @@ func (self *sqlwrapper) hashSaveSQL(hashkey string) string {
 	return self.savePrepareSQL[self.hashshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashCommitSQL(hashkey string) string {
-	return self.commitPrepareSQL[self.hashshard.FindForKey(hashkey)]
+	return self.batchSQL[COMMIT][self.hashshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashDeleteSQL(hashkey string) string {
-	return self.deletePrepareSQL[self.hashshard.FindForKey(hashkey)]
+	return self.batchSQL[DELETE][self.hashshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashPQSQL(hashkey string) string {
-	return self.pageQueryPrepareSQL[self.hashshard.FindForKey(hashkey)]
+	return self.pageQuerySQL[self.hashshard.FindForKey(hashkey)]
 }
 
 func (self *sqlwrapper) initSQL() {
@@ -128,37 +135,6 @@ func (self *sqlwrapper) initSQL() {
 		self.savePrepareSQL = append(self.savePrepareSQL, strings.Replace(sql, "{}", st, -1))
 	}
 
-	//commit
-	s.Reset()
-	s.WriteString("update ")
-	s.WriteString(self.tablename)
-	s.WriteString("_{} ")
-	s.WriteString(" set commit=? ")
-	s.WriteString(" where message_id=?")
-
-	sql = s.String()
-
-	self.commitPrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
-		st := strconv.Itoa(i)
-		self.commitPrepareSQL = append(self.commitPrepareSQL, strings.Replace(sql, "{}", st, -1))
-	}
-
-	//delete
-	s.Reset()
-	s.WriteString("delete from  ")
-	s.WriteString(self.tablename)
-	s.WriteString("_{} ")
-	s.WriteString(" where message_id=?")
-
-	sql = s.String()
-
-	self.deletePrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
-		st := strconv.Itoa(i)
-		self.deletePrepareSQL = append(self.deletePrepareSQL, strings.Replace(sql, "{}", st, -1))
-	}
-
 	//page query
 	s.Reset()
 	s.WriteString("select  ")
@@ -179,9 +155,60 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.pageQueryPrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
+	self.pageQuerySQL = make([]string, 0, self.hashshard.ShardCnt())
 	for i := 0; i < self.hashshard.ShardCnt(); i++ {
 		st := strconv.Itoa(i)
-		self.pageQueryPrepareSQL = append(self.pageQueryPrepareSQL, strings.Replace(sql, "{}", st, -1))
+		self.pageQuerySQL = append(self.pageQuerySQL, strings.Replace(sql, "{}", st, -1))
 	}
+
+	//--------------batchOps
+
+	self.batchSQL = make(map[batchType][]string, 4)
+	//commit
+	s.Reset()
+	s.WriteString("update ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" set commit=? ")
+	s.WriteString(" where message_id=?")
+
+	sql = s.String()
+
+	self.batchSQL[COMMIT] = make([]string, 0, self.hashshard.ShardCnt())
+	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+		st := strconv.Itoa(i)
+		self.batchSQL[COMMIT] = append(self.batchSQL[COMMIT], strings.Replace(sql, "{}", st, -1))
+	}
+
+	//delete
+	s.Reset()
+	s.WriteString("delete from  ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" where message_id=?")
+
+	sql = s.String()
+
+	self.batchSQL[DELETE] = make([]string, 0, self.hashshard.ShardCnt())
+	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+		st := strconv.Itoa(i)
+		self.batchSQL[DELETE] = append(self.batchSQL[DELETE], strings.Replace(sql, "{}", st, -1))
+	}
+
+	//batch update
+	s.Reset()
+	s.WriteString("update ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" set succ_groups=?,fail_groups=?,next_deliver_time=?,deliver_count=? ")
+	s.WriteString(" where message_id=?")
+
+	sql = s.String()
+
+	self.batchSQL[UPDATE] = make([]string, 0, self.hashshard.ShardCnt())
+	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+		st := strconv.Itoa(i)
+		self.batchSQL[UPDATE] = append(self.batchSQL[UPDATE], strings.Replace(sql, "{}", st, -1))
+	}
+
 }
