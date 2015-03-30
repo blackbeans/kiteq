@@ -29,7 +29,7 @@ func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline 
 		isClose:        false,
 		pipeline:       pipeline,
 		recoverPeriod:  recoverPeriod,
-		recoverWorkers: make(chan byte, 100)}
+		recoverWorkers: make(chan byte, 500)}
 	return rm
 }
 
