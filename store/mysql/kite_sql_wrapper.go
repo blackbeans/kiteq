@@ -136,6 +136,16 @@ func (self *sqlwrapper) initSQL() {
 	}
 
 	//page query
+
+	// select
+	// 	a.message_id,a.header,msg_type,a.topic,a.message_type,a.publish_group,a.commit,a.publish_time,a.expired_time,a.deliver_count,a.deliver_limit,a.kite_server,a.fail_groups,a.succ_groups,a.next_deliver_time
+	// from kite_msg_2 a,
+	//  	( select
+	//  		message_id,next_deliver_time from kite_msg_2
+	//  		where kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit and expired_time>=1427713817 and next_deliver_time<=1427712908
+	//  		limit 5000) b
+	//  	where a.message_id=b.message_id
+	//  	order by a.next_deliver_time asc limit 3000,100;
 	s.Reset()
 	s.WriteString("select  ")
 	for i, v := range self.columns {
@@ -143,6 +153,7 @@ func (self *sqlwrapper) initSQL() {
 		if v.columnName == "body" {
 			continue
 		}
+		s.WriteString("a.")
 		s.WriteString(v.columnName)
 		if i < len(self.columns)-1 {
 			s.WriteString(",")
@@ -150,8 +161,14 @@ func (self *sqlwrapper) initSQL() {
 	}
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
+	s.WriteString("_{} a,")
+	s.WriteString("( select message_id from ")
+	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
-	s.WriteString(" where kite_server=? and deliver_count<deliver_limit and expired_time>=? and next_deliver_time<=? order by next_deliver_time asc  limit ?,?")
+	s.WriteString(" where kite_server=? and deliver_count<deliver_limit and expired_time>=? and next_deliver_time<=? ")
+	s.WriteString(" limit 5000 ) b ")
+	s.WriteString(" where a.message_id=b.message_id ")
+	s.WriteString(" order by next_deliver_time asc  limit ?,? ")
 
 	sql = s.String()
 
