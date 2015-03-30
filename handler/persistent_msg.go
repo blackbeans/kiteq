@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	. "kiteq/pipe"
-	"kiteq/protocol"
 	"kiteq/stat"
 	"kiteq/store"
 	"time"
@@ -58,6 +57,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
 					pevent.entity.Header.GetMessageId(), true, "FLY NO NEED SAVE"), []string{pevent.remoteClient.RemoteAddr()})
 				ctx.SendForward(remoteEvent)
+
 				self.send(ctx, pevent, nil)
 			} else {
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
@@ -128,13 +128,4 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 	ctx.SendForward(preDeliver)
 
 	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
-}
-
-//发送事务ack信息
-func tXAck(
-	header *protocol.Header) *protocol.Packet {
-
-	txack := protocol.MarshalTxACKPacket(header, protocol.TX_UNKNOWN, "Server Check")
-	//响应包
-	return protocol.NewPacket(protocol.CMD_TX_ACK, txack)
 }
