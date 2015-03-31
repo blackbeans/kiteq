@@ -1,9 +1,9 @@
 package handler
 
 import (
+	log "github.com/blackbeans/log4go"
 	. "kiteq/pipe"
 	"kiteq/store"
-	"log"
 	"sort"
 	"time"
 )
@@ -54,7 +54,7 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 
 	//排好序
 	sort.Sort(dhandler.rw)
-	log.Printf("DeliverResultHandler|SORT RedeliveryWindows|%s\n ", dhandler.rw)
+	log.Info("DeliverResultHandler|RedeliveryWindows|%s\n ", dhandler.rw)
 	return dhandler
 }
 
@@ -83,7 +83,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
 
-	// log.Printf("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
+	// log.Info("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	attemptDeliver := (nil != fevent.attemptDeliver && fevent.deliverCount <= 1)
 	//第一次尝试投递失败了立即通知
@@ -127,7 +127,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		//只有在消息前三次投递才会失败立即重投
 		fevent.deliverGroups = fevent.deliveryFailGroups
 		fevent.packet.Reset()
-		// log.Printf("DeliverResultHandler|checkRedelivery|%s\n", fevent.deliverCount, fevent.deliverEvent)
+		// log.Info("DeliverResultHandler|checkRedelivery|%s\n", fevent.deliverCount, fevent.deliverEvent)
 		return true
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
@@ -159,7 +159,7 @@ func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
 		}
 	}
 
-	// log.Printf("DeliverResultHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
+	// log.Info("DeliverResultHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间

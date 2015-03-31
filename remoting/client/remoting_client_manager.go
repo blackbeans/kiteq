@@ -1,7 +1,7 @@
 package client
 
 import (
-	"log"
+	log "github.com/blackbeans/log4go"
 	"sync"
 	"time"
 )
@@ -37,7 +37,7 @@ func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 }
 
 func (self *ClientManager) evict() {
-	log.Println("ClientManager|evict...")
+	log.Info("ClientManager|evict...")
 	tick := time.NewTicker(1 * time.Minute)
 	for {
 		clients := self.ClientsClone()
@@ -121,7 +121,7 @@ func (self *ClientManager) removeClient(hostport string) {
 		}
 	}
 
-	log.Printf("ClientManager|removeClient|%s...\n", hostport)
+	log.Info("ClientManager|removeClient|%s...\n", hostport)
 }
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
@@ -205,5 +205,5 @@ func (self *ClientManager) Shutdown() {
 	for _, c := range self.allClients {
 		c.Shutdown()
 	}
-	log.Println("ClientManager|Shutdown....")
+	log.Info("ClientManager|Shutdown....")
 }

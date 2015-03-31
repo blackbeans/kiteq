@@ -1,7 +1,7 @@
 package binding
 
 import (
-	"log"
+	log "github.com/blackbeans/log4go"
 	"sort"
 	"strings"
 	"sync"
@@ -31,10 +31,10 @@ func NewBindExchanger(zkhost string, kiteQServer string) *BindExchanger {
 func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	err := self.zkmanager.PublishQServer(hostport, topics)
 	if nil != err {
-		log.Printf("BindExchanger|PushQServer|FAIL|%s|%s|%s\n", err, hostport, topics)
+		log.Error("BindExchanger|PushQServer|FAIL|%s|%s|%s\n", err, hostport, topics)
 		return false
 	}
-	log.Printf("BindExchanger|PushQServer|SUCC|%s|%s\n", hostport, topics)
+	log.Info("BindExchanger|PushQServer|SUCC|%s|%s\n", hostport, topics)
 	self.topics = append(self.topics, topics...)
 	sort.Strings(self.topics)
 
@@ -49,12 +49,12 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 	for _, topic := range topics {
 		binds, err := self.zkmanager.GetBindAndWatch(topic)
 		if nil != err {
-			log.Printf("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
+			log.Error("BindExchanger|SubscribeBinds|FAIL|%s|%s\n", err, topic)
 			return false
 		} else {
 			for groupId, bs := range binds {
 				self.onBindChanged(topic, groupId, bs)
-				log.Printf("BindExchanger|SubscribeBinds|SUCC|%s|%s\n", topic, binds)
+				log.Info("BindExchanger|SubscribeBinds|SUCC|%s|%s\n", topic, binds)
 			}
 		}
 	}
@@ -94,7 +94,7 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
 			//不合法的订阅璐姐
-			log.Printf("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
+			log.Error("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
 			return
 		}
 		//获取topic
@@ -105,7 +105,7 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 		//如果topic下无订阅分组节点，直接删除该topic
 		if len(childNode) <= 0 {
 			self.onBindChanged(topic, "", nil)
-			log.Printf("BindExchanger|NodeChange|无子节点|%s|%s\n", path, childNode)
+			log.Error("BindExchanger|NodeChange|无子节点|%s|%s\n", path, childNode)
 			return
 		}
 
@@ -115,7 +115,7 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 
 			bm, err := self.zkmanager.GetBindAndWatch(topic)
 			if nil != err {
-				log.Printf("BindExchanger|NodeChange|获取订阅关系失败|%s|%s\n", path, childNode)
+				log.Error("BindExchanger|NodeChange|获取订阅关系失败|%s|%s\n", path, childNode)
 			}
 
 			//如果topic下没有订阅关系分组则青琉璃
@@ -130,7 +130,7 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 		}
 
 	} else {
-		log.Printf("BindExchanger|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
+		log.Warn("BindExchanger|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
 	}
 }
 
@@ -149,7 +149,7 @@ func (self *BindExchanger) DataChange(path string, binds []*Binding) {
 		self.onBindChanged(topic, groupId, binds)
 
 	} else {
-		log.Printf("BindExchanger|DataChange|非SUB节点变更|%s\n", path)
+		log.Warn("BindExchanger|DataChange|非SUB节点变更|%s\n", path)
 	}
 
 }
@@ -164,7 +164,7 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Bind
 
 	//不是当前服务可以处理的topic则直接丢地啊哦
 	if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-		log.Printf("BindExchanger|onBindChanged|UnAccept Bindings|%s|%s|%s\n", topic, self.topics, newbinds)
+		log.Warn("BindExchanger|onBindChanged|UnAccept Bindings|%s|%s|%s\n", topic, self.topics, newbinds)
 		return
 	}
 

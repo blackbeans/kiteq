@@ -1,10 +1,10 @@
 package handler
 
 import (
+	log "github.com/blackbeans/log4go"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
-	"log"
 )
 
 //----------------鉴权handler
@@ -33,7 +33,7 @@ func (self *AccessHandler) cast(event IEvent) (val *accessEvent, ok bool) {
 
 func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("accessEvent|Process|%s|%t\n", self.GetName(), event)
+	// log.Debug("accessEvent|Process|%s|%t\n", self.GetName(), event)
 
 	aevent, ok := self.cast(event)
 	if !ok {
@@ -42,13 +42,13 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	//做权限校验.............
 	if false {
-		log.Printf("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
+		log.Warn("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
 	}
 
 	// 权限验证通过 保存到clientmanager
 	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
 
-	log.Printf("accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
+	// log.Info("accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
 
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包

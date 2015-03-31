@@ -2,10 +2,10 @@ package handler
 
 import (
 	"errors"
+	log "github.com/blackbeans/log4go"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	"log"
 	"os"
 	"time"
 )
@@ -38,7 +38,7 @@ func (self *AcceptHandler) cast(event IEvent) (val *acceptEvent, ok bool) {
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
 func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	// log.Printf("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.Debug("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
 	ae, ok := self.cast(event)
 	if !ok {
@@ -63,7 +63,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.StringMessage)))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.Printf("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
+		log.Warn("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
 	if nil != msg {

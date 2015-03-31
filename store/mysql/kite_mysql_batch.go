@@ -3,8 +3,8 @@ package mysql
 import (
 	"database/sql"
 	"encoding/json"
+	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
-	"log"
 	"time"
 )
 
@@ -21,13 +21,14 @@ func (self *KiteMysqlStore) Start() {
 			err, p := NewStmtPool(10, 20, 50, 1*time.Minute, func() (error, *sql.Stmt) {
 				stmt, err := self.dbslave.Prepare(psql)
 				if nil != err {
-					log.Printf("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
+					log.Error("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
 					return err, nil
 				}
 				return nil, stmt
 			})
 			if nil != err {
-				log.Panicf("NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
+				log.Error("NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
+				panic(err)
 			}
 			pool = append(pool, p)
 		}
@@ -41,7 +42,7 @@ func (self *KiteMysqlStore) Start() {
 		go self.startBatch(i, self.batchUpChan[i],
 			self.batchDelChan[i], self.batchComChan[i])
 	}
-	log.Println("KiteMysqlStore|Start...")
+	log.Info("KiteMysqlStore|Start...")
 }
 
 //批量删除任务
@@ -131,7 +132,7 @@ func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
 	p := self.stmtPools[COMMIT][hashId]
 	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchCommit|GET STMT|FAIL|%s|%d\n", err, hashId)
+		log.Error("KiteMysqlStore|batchCommit|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
 	defer p.Release(stmt)
@@ -139,7 +140,7 @@ func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
 	for _, v := range messageId {
 		_, err = stmt.Exec(true, v)
 		if nil != err {
-			log.Printf("KiteMysqlStore|batchCommit|FAIL|%s|%s\n", err, v)
+			log.Error("KiteMysqlStore|batchCommit|FAIL|%s|%s\n", err, v)
 		}
 	}
 	return nil == err
@@ -154,7 +155,7 @@ func (self *KiteMysqlStore) batchDelete(hashId int, messageId []string) bool {
 	p := self.stmtPools[DELETE][hashId]
 	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchDelete|GET STMT|FAIL|%s|%d\n", err, hashId)
+		log.Error("KiteMysqlStore|batchDelete|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
 	defer p.Release(stmt)
@@ -162,7 +163,7 @@ func (self *KiteMysqlStore) batchDelete(hashId int, messageId []string) bool {
 	for _, v := range messageId {
 		_, err = stmt.Exec(v)
 		if nil != err {
-			log.Printf("KiteMysqlStore|batchDelete|FAIL|%s|%s\n", err, v)
+			log.Error("KiteMysqlStore|batchDelete|FAIL|%s|%s\n", err, v)
 		}
 	}
 	return nil == err
@@ -177,7 +178,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 	p := self.stmtPools[UPDATE][hashId]
 	err, stmt := p.Get()
 	if nil != err {
-		log.Printf("KiteMysqlStore|batchUpdate|GET STMT|FAIL|%s|%d\n", err, hashId)
+		log.Error("KiteMysqlStore|batchUpdate|GET STMT|FAIL|%s|%d\n", err, hashId)
 		return false
 	}
 	defer p.Release(stmt)
@@ -190,7 +191,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		sg, err := json.Marshal(e.SuccGroups)
 		if nil != err {
-			log.Printf("KiteMysqlStore|batchUpdate|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.SuccGroups)
+			log.Error("KiteMysqlStore|batchUpdate|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.SuccGroups)
 			errs = err
 			continue
 		}
@@ -199,7 +200,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		fg, err := json.Marshal(e.FailGroups)
 		if nil != err {
-			log.Printf("KiteMysqlStore|batchUpdate|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.FailGroups)
+			log.Error("KiteMysqlStore|batchUpdate|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.FailGroups)
 			errs = err
 			continue
 		}
@@ -215,7 +216,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		_, err = stmt.Exec(args...)
 		if nil != err {
-			log.Printf("KiteMysqlStore|batchUpdate|FAIL|%s|%s\n", err, e)
+			log.Error("KiteMysqlStore|batchUpdate|FAIL|%s|%s\n", err, e)
 			errs = err
 		}
 
@@ -229,6 +230,6 @@ func (self *KiteMysqlStore) Stop() {
 		for _, s := range v {
 			s.Shutdown()
 		}
-		log.Printf("KiteMysqlStore|Stop|Stmt|%t\n", k)
+		log.Info("KiteMysqlStore|Stop|Stmt|%t\n", k)
 	}
 }

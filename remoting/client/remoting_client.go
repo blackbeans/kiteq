@@ -3,9 +3,9 @@ package client
 import (
 	"errors"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	"kiteq/remoting/session"
-	"log"
 	"net"
 	"time"
 )
@@ -68,7 +68,7 @@ func (self *RemotingClient) Start() {
 	//启动读取
 	go self.remoteSession.ReadPacket()
 
-	log.Printf("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
+	log.Info("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
 }
 
 //重连
@@ -76,7 +76,7 @@ func (self *RemotingClient) reconnect() (bool, error) {
 
 	conn, err := net.DialTCP("tcp4", nil, self.conn.RemoteAddr().(*net.TCPAddr))
 	if nil != err {
-		log.Printf("RemotingClient|RECONNECT|%s|FAIL|%s\n", self.RemoteAddr(), err)
+		log.Error("RemotingClient|RECONNECT|%s|FAIL|%s\n", self.RemoteAddr(), err)
 		return false, err
 	}
 
@@ -128,7 +128,7 @@ func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Durati
 	}
 	version, ok := pong.(int64)
 	if !ok {
-		log.Printf("RemotingClient|Ping|Pong|ERROR TYPE |%s\n", pong)
+		log.Warn("RemotingClient|Ping|Pong|ERROR TYPE |%s\n", pong)
 		return ERROR_PONG
 	}
 	self.updateHeartBeat(version)
@@ -161,7 +161,7 @@ func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan int
 func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
-			log.Printf("RemotingClient|Attach|FAIL|%s|%s\n", err, obj)
+			log.Error("RemotingClient|Attach|FAIL|%s|%s\n", err, obj)
 		}
 	}()
 
@@ -205,5 +205,5 @@ func (self *RemotingClient) IsClosed() bool {
 
 func (self *RemotingClient) Shutdown() {
 	self.remoteSession.Close()
-	log.Printf("RemotingClient|Shutdown|%s...", self.LocalAddr())
+	log.Info("RemotingClient|Shutdown|%s...", self.LocalAddr())
 }

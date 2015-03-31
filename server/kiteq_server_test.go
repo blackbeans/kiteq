@@ -31,8 +31,8 @@ func buildStringMessage(id string) *protocol.StringMessage {
 //初始化存储
 var kitestore = &store.MockKiteStore{}
 var ch = make(chan bool, 1)
+
 var kiteClient *client.KiteQClient
-var consumer *client.KiteQClient
 var kiteQServer *KiteQServer
 var c int32 = 0
 var lc int32 = 0
@@ -41,12 +41,12 @@ type defualtListener struct {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
-
+	log.Printf("defualtListener|OnMessage|%s\n", msg.GetHeader().GetMessageId())
 	return true
 }
 
 func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
-	// log.Println("defualtListener|OnMessageCheck", messageId)
+	log.Printf("defualtListener|OnMessageCheck", tx.MessageId)
 	tx.Commit()
 	return nil
 }
@@ -59,21 +59,18 @@ func init() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mock://", rc)
+	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.", rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 
-	kiteClient = client.NewKiteQClient("localhost:2181", "ps-trade-a", "123456", &defualtListener{})
+	kiteClient = client.NewKiteQClient("localhost:2181", "s-trade-a", "123456", &defualtListener{})
 	kiteClient.SetTopics([]string{"trade"})
-	kiteClient.Start()
-
-	consumer = client.NewKiteQClient("localhost:2181", "s-trade-a", "123456", &defualtListener{})
-	consumer.SetBindings([]*binding.Binding{
-		binding.Bind_Direct("ps-trade-a", "trade", "pay-succ", 1000, true),
+	kiteClient.SetBindings([]*binding.Binding{
+		binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 	})
-	consumer.Start()
+	kiteClient.Start()
 
 	go func() {
 		for {

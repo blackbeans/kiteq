@@ -30,7 +30,7 @@ func (self *mockDeliverHandler) TypeAssert(event IEvent) bool {
 }
 
 func (self *mockDeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	log.Printf("-------------------%s\n", event)
+	log.Printf("TestRecoverManager|-------------------%s\n", event)
 	self.ch <- true
 	return nil
 

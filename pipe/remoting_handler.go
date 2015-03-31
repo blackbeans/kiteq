@@ -1,8 +1,8 @@
 package pipe
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/remoting/client"
-	"log"
 	"math/rand"
 )
 
@@ -48,7 +48,7 @@ func (self *RemotingHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	// log.Printf("RemotingHandler|Process|%s|%t\n", self.GetName(), revent)
 	var futures map[string]chan interface{}
 	if len(revent.GroupIds) <= 0 && len(revent.TargetHost) <= 0 {
-		log.Printf("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
+		log.Warn("RemotingHandler|%s|Process|NO GROUP OR HOSTS|%s|%s\n", self.GetName(), revent)
 		futures = EMPTY_FUTURE
 	} else {
 		//发送数据
@@ -88,7 +88,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]chan i
 
 			} else {
 				//记为失败的下次需要重新发送
-				log.Printf("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
+				// log.Debug("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
 				futures[host] = QUICK_FAILGROUP_FUTURE
 			}
 		}

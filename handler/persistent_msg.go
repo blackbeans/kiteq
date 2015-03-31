@@ -6,7 +6,7 @@ import (
 	"kiteq/stat"
 	"kiteq/store"
 	"time"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")

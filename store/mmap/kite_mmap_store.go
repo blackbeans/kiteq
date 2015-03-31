@@ -2,8 +2,8 @@ package mmap
 
 import (
 	"container/list"
+	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
-	"log"
 	"sync"
 )
 
@@ -48,7 +48,7 @@ func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := self.datalink.Len()
 	if cl >= self.maxcap {
-		log.Printf("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		log.Info("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
 		back := self.datalink.Back()
 		delete(self.idx, back.Value.(*MessageEntity).MessageId)
 		back.Value = entity

@@ -2,7 +2,7 @@ package protocol
 
 import (
 	"kiteq/stat"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 	"sync"
 	"sync/atomic"
 	"time"

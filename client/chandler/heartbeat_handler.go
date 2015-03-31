@@ -1,10 +1,10 @@
 package chandler
 
 import (
+	log "github.com/blackbeans/log4go"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	rcclient "kiteq/remoting/client"
-	"log"
 	"time"
 )
 
@@ -50,10 +50,10 @@ func (self *HeartbeatHandler) keepAlive() {
 								err := c.Ping(hp, time.Duration(self.heartbeatTimeout))
 								//如果有错误则需要记录
 								if nil != err {
-									log.Printf("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
+									log.Warn("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
 									continue
 								} else {
-									log.Printf("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
+									log.Info("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
 									break
 								}
 							}
@@ -63,7 +63,7 @@ func (self *HeartbeatHandler) keepAlive() {
 						//说明连接有问题需要重连
 						c.Shutdown()
 						self.clientMangager.SubmitReconnect(c)
-						log.Printf("HeartbeatHandler|SubmitReconnect|%s\n", c.RemoteAddr())
+						log.Warn("HeartbeatHandler|SubmitReconnect|%s\n", c.RemoteAddr())
 					}
 				}
 			}()
@@ -89,7 +89,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	// log.Printf("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	// log.Debug("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	hevent.RemoteClient.Attach(hevent.Opaque, hevent.Version)
 	return nil
 }

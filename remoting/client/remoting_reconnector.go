@@ -1,7 +1,7 @@
 package client
 
 import (
-	"log"
+	log "github.com/blackbeans/log4go"
 	"math"
 	"sync"
 	"time"
@@ -56,7 +56,7 @@ func NewReconnectManager(allowReconnect bool,
 		allowReconnect:    allowReconnect,
 		reconnectTimeout:  reconnectTimeout,
 		maxReconnectTimes: maxReconnectTimes, handshake: handshake}
-	log.Println("ReconnectManager|Start...")
+	log.Info("ReconnectManager|Start...")
 	return manager
 }
 
@@ -80,14 +80,14 @@ func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 
 	//创建定时的timer
 	timer := time.AfterFunc(self.reconnectTimeout, func() {
-		log.Printf("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
+		log.Info("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
 		succ, err := task.reconnect(self.handshake)
 		if nil != err || !succ {
 			timer := self.timers[addr]
 
 			//如果当前重试次数大于最大重试次数则放弃
 			if task.retryCount > self.maxReconnectTimes {
-				log.Printf("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d\n", addr, task.retryCount)
+				log.Info("ReconnectManager|OVREFLOW MAX TRYCOUNT|REMOVE|%s|%d\n", addr, task.retryCount)
 				t, ok := self.timers[addr]
 				if ok {
 					t.Stop()
@@ -106,7 +106,7 @@ func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 				delete(self.timers, addr)
 			}
 		}
-		log.Printf("ReconnectManager|END RECONNECT|%s|addr:%s|succ:%s,err:%s,|retryCount:%d\n", task.remoteClient.RemoteAddr(), addr, succ, err, task.retryCount)
+		log.Info("ReconnectManager|END RECONNECT|%s|addr:%s|succ:%s,err:%s,|retryCount:%d\n", task.remoteClient.RemoteAddr(), addr, succ, err, task.retryCount)
 	})
 
 	//记录timer
@@ -131,5 +131,5 @@ func (self *ReconnectManager) stop() {
 	for _, t := range self.timers {
 		t.Stop()
 	}
-	log.Println("ReconnectManager|stop...")
+	log.Info("ReconnectManager|stop...")
 }

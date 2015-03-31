@@ -5,7 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 )
 
 //远程操作的PacketHandler

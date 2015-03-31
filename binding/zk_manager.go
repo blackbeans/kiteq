@@ -1,8 +1,8 @@
 package binding
 
 import (
+	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/zk"
-	"log"
 	_ "net"
 	"strings"
 	"time"
@@ -39,10 +39,10 @@ type IWatcher interface {
 
 func NewZKManager(zkhosts string, watcher IWatcher) *ZKManager {
 	if len(zkhosts) <= 0 {
-		log.Println("使用默认zkhosts！|localhost:2181\n")
+		log.Warn("使用默认zkhosts！|localhost:2181\n")
 		zkhosts = "localhost:2181"
 	} else {
-		log.Printf("使用zkhosts:[%s]！\n", zkhosts)
+		log.Info("使用zkhosts:[%s]！\n", zkhosts)
 	}
 
 	conf := &zk.Config{Addrs: strings.Split(zkhosts, ","), Timeout: 5 * time.Second}
@@ -63,7 +63,7 @@ func NewZKManager(zkhosts string, watcher IWatcher) *ZKManager {
 		if nil != err {
 			panic("NewZKManager|CREATE ROOT PATH|FAIL|" + KITEQ + "|" + err.Error())
 		} else {
-			log.Printf("NewZKManager|CREATE ROOT PATH|SUCC|%s", resp)
+			log.Info("NewZKManager|CREATE ROOT PATH|SUCC|%s", resp)
 		}
 	}
 
@@ -81,14 +81,14 @@ func (self *ZKManager) listenEvent() {
 		switch change.Type {
 		case zk.Deleted:
 			self.watcher.NodeChange(path, ZkEvent(change.Type), []string{})
-			log.Printf("ZKManager|listenEvent|%s|%s\n", path, change)
+			log.Info("ZKManager|listenEvent|%s|%s\n", path, change)
 		case zk.Created, zk.Child:
 			childnodes, _, err := self.session.Children(path, self.zkwatcher)
 			if nil != err {
-				log.Printf("ZKManager|listenEvent|CD|%s|%s|%t\n", err, path, change.Type)
+				log.Info("ZKManager|listenEvent|CD|%s|%s|%t\n", err, path, change.Type)
 			} else {
 				self.watcher.NodeChange(path, ZkEvent(change.Type), childnodes)
-				log.Printf("ZKManager|listenEvent|%s|%s|%s\n", path, change, childnodes)
+				log.Info("ZKManager|listenEvent|%s|%s|%s\n", path, change, childnodes)
 			}
 
 		case zk.Changed:
@@ -101,12 +101,12 @@ func (self *ZKManager) listenEvent() {
 			//获取一下数据
 			binds, err := self.getBindData(path, self.zkwatcher)
 			if nil != err {
-				log.Printf("ZKManager|listenEvent|Changed|Get DATA|FAIL|%s|%s\n", err, path)
+				log.Error("ZKManager|listenEvent|Changed|Get DATA|FAIL|%s|%s\n", err, path)
 				//忽略
 				continue
 			}
 			self.watcher.DataChange(path, binds)
-			log.Printf("ZKManager|listenEvent|%s|%s|%s\n", path, change, binds)
+			// log.Info("ZKManager|listenEvent|%s|%s|%s\n", path, change, binds)
 
 		}
 
@@ -123,9 +123,9 @@ func (self *ZKManager) UnpushlishQServer(hostport string, topics []string) {
 		//删除当前该Topic下的本机
 		err := self.session.Delete(qpath, -1)
 		if nil != err {
-			log.Printf("ZKManager|UnpushlishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
+			log.Error("ZKManager|UnpushlishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
 		} else {
-			log.Printf("ZKManager|UnpushlishQServer|SUCC|%s/%s\n", qpath, hostport)
+			log.Info("ZKManager|UnpushlishQServer|SUCC|%s/%s\n", qpath, hostport)
 		}
 	}
 }
@@ -148,10 +148,10 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 		//注册当前节点
 		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)
 		if nil != err {
-			log.Printf("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
+			log.Error("ZKManager|PublishQServer|FAIL|%s|%s/%s\n", err, qpath, hostport)
 			return err
 		}
-		log.Printf("ZKManager|PublishQServer|SUCC|%s\n", path)
+		log.Info("ZKManager|PublishQServer|SUCC|%s\n", path)
 	}
 
 	return nil
@@ -164,10 +164,10 @@ func (self *ZKManager) PublishTopics(topics []string, groupId string, hostport s
 		pubPath := KITEQ_PUB + "/" + topic + "/" + groupId
 		path, err := self.registePath(pubPath, hostport, zk.CreatePersistent, nil)
 		if nil != err {
-			log.Printf("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, pubPath, hostport)
+			log.Error("ZKManager|PublishTopic|FAIL|%s|%s/%s\n", err, pubPath, hostport)
 			return err
 		}
-		log.Printf("ZKManager|PublishTopic|SUCC|%s\n", path)
+		log.Info("ZKManager|PublishTopic|SUCC|%s\n", path)
 	}
 	return nil
 }
@@ -190,7 +190,7 @@ func (self *ZKManager) PublishBindings(groupId string, bindings []*Binding) erro
 	for topic, binds := range groupBind {
 		data, err := MarshalBinds(binds)
 		if nil != err {
-			log.Printf("ZKManager|PublishBindings|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
+			log.Error("ZKManager|PublishBindings|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
 			return err
 		}
 
@@ -204,10 +204,10 @@ func (self *ZKManager) PublishBindings(groupId string, bindings []*Binding) erro
 		//注册对应topic的groupId //注册订阅信息
 		succpath, err := self.registePath(path, groupId+"-bind", createType, data)
 		if nil != err {
-			log.Printf("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binds)
+			log.Error("ZKManager|PublishTopic|Bind|FAIL|%s|%s/%s\n", err, path, binds)
 			return err
 		} else {
-			log.Printf("ZKManager|PublishTopic|Bind|SUCC|%s|%s\n", succpath, binds)
+			log.Info("ZKManager|PublishTopic|Bind|SUCC|%s|%s\n", succpath, binds)
 		}
 	}
 	return nil
@@ -219,7 +219,7 @@ func (self *ZKManager) registePath(path string, childpath string, createType zk.
 	if nil == err {
 		err := self.innerCreatePath(path+"/"+childpath, data, createType)
 		if nil != err {
-			log.Printf("ZKManager|registePath|CREATE CHILD|FAIL|%s|%s\n", err, path+"/"+childpath)
+			log.Error("ZKManager|registePath|CREATE CHILD|FAIL|%s|%s\n", err, path+"/"+childpath)
 			return "", err
 		} else {
 			return path + "/" + childpath, nil
@@ -240,7 +240,7 @@ func (self *ZKManager) traverseCreatePath(path string, data []byte, createType z
 		}
 		err := self.innerCreatePath(tmppath, nil, zk.CreatePersistent)
 		if nil != err {
-			log.Printf("ZKManager|traverseCreatePath|FAIL|%s\n", err)
+			log.Error("ZKManager|traverseCreatePath|FAIL|%s\n", err)
 			return err
 		}
 		tmppath += "/"
@@ -257,7 +257,7 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 	if nil == err && !exist {
 		_, err := self.session.Create(tmppath, data, createType, zk.AclOpen)
 		if nil != err {
-			log.Printf("ZKManager|innerCreatePath|FAIL|%s|%s\n", err, tmppath)
+			log.Error("ZKManager|innerCreatePath|FAIL|%s|%s\n", err, tmppath)
 			return err
 		}
 
@@ -273,13 +273,13 @@ func (self *ZKManager) innerCreatePath(tmppath string, data []byte, createType z
 
 		return err
 	} else if nil != err {
-		log.Printf("ZKManager|innerCreatePath|FAIL|%s\n", err)
+		log.Error("ZKManager|innerCreatePath|FAIL|%s\n", err)
 		return err
 	} else if nil != data {
 		//存在该节点，推送新数据
 		_, err := self.session.Set(tmppath, data, -1)
 		if nil != err {
-			log.Printf("ZKManager|innerCreatePath|PUSH DATA|FAIL|%s|%s|%s\n", err, tmppath, string(data))
+			log.Error("ZKManager|innerCreatePath|PUSH DATA|FAIL|%s|%s|%s\n", err, tmppath, string(data))
 			return err
 		}
 	}
@@ -298,7 +298,7 @@ func (self *ZKManager) GetQServerAndWatch(topic string) ([]string, error) {
 	//获取topic下的所有qserver
 	children, _, err := self.session.Children(path, self.zkwatcher)
 	if nil != err {
-		log.Printf("ZKManager|GetQServerAndWatch|FAIL|%s\n", path)
+		log.Error("ZKManager|GetQServerAndWatch|FAIL|%s\n", path)
 		return nil, err
 	}
 	return children, nil
@@ -318,7 +318,7 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, err
 	//获取topic下的所有qserver
 	groupIds, _, err := self.session.Children(path, self.zkwatcher)
 	if nil != err {
-		log.Printf("ZKManager|GetBindAndWatch|GroupID|FAIL|%s|%s\n", err, path)
+		log.Error("ZKManager|GetBindAndWatch|GroupID|FAIL|%s|%s\n", err, path)
 		return nil, err
 	}
 
@@ -328,7 +328,7 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, err
 		tmppath := path + "/" + groupId
 		binds, err := self.getBindData(tmppath, self.zkwatcher)
 		if nil != err {
-			log.Printf("GetBindAndWatch|getBindData|FAIL|%s|%s\n", tmppath, err)
+			log.Error("GetBindAndWatch|getBindData|FAIL|%s|%s\n", tmppath, err)
 			continue
 		}
 
@@ -345,7 +345,7 @@ func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Bin
 
 	bindData, _, err := self.session.Get(path, zkwatcher)
 	if nil != err {
-		log.Printf("ZKManager|getBindData|Binding|FAIL|%s|%s\n", err, path)
+		log.Error("ZKManager|getBindData|Binding|FAIL|%s|%s\n", err, path)
 		return nil, err
 	}
 
@@ -355,7 +355,7 @@ func (self *ZKManager) getBindData(path string, zkwatcher chan zk.Event) ([]*Bin
 	} else {
 		binding, err := UmarshalBinds(bindData)
 		if nil != err {
-			log.Printf("ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
+			log.Error("ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
 
 		}
 		return binding, err

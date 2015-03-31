@@ -1,11 +1,11 @@
 package core
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/binding"
 	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
-	"log"
 	"sort"
 	"strings"
 )
@@ -18,14 +18,14 @@ func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
 			//不合法的订阅璐姐
-			log.Printf("KiteClientManager|ChildWatcher|INVALID SERVER PATH |%s|%t\n", path, children)
+			log.Warn("KiteClientManager|ChildWatcher|INVALID SERVER PATH |%s|%t\n", path, children)
 			return
 		}
 		//获取topic
 		topic := split[3]
 		//不是当前服务可以处理的topic则直接丢地啊哦
 		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-			log.Printf("BindExchanger|ChildWatcher|REFUSE SERVER PATH |%s|%t\n", path, children)
+			log.Warn("BindExchanger|ChildWatcher|REFUSE SERVER PATH |%s|%t\n", path, children)
 			return
 		}
 		self.onQServerChanged(topic, children)
@@ -44,7 +44,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 			//这里就新建一个remote客户端连接
 			conn, err := dial(host)
 			if nil != err {
-				log.Printf("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
+				log.Error("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
 				continue
 			}
 			remoteClient = rclient.NewRemotingClient(conn,
@@ -52,14 +52,14 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 					event := pipe.NewPacketEvent(rc, packet)
 					err := self.pipeline.FireWork(event)
 					if nil != err {
-						log.Printf("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+						log.Error("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
 					}
 				}, self.rc)
 			remoteClient.Start()
 			auth, err := handshake(self.ga, remoteClient)
 			if !auth || nil != err {
 				remoteClient.Shutdown()
-				log.Printf("KiteClientManager|onQServerChanged|HANDSHAKE|FAIL|%s|%s\n", err, auth)
+				log.Error("KiteClientManager|onQServerChanged|HANDSHAKE|FAIL|%s|%s\n", err, auth)
 				continue
 			}
 			self.clientManager.Auth(self.ga, remoteClient)
@@ -68,7 +68,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 		//创建kiteClient
 		kiteClient := newKitClient(remoteClient)
 		clients = append(clients, kiteClient)
-		log.Printf("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
+		log.Info("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
 	}
 
 	self.lock.Lock()

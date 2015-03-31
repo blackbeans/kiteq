@@ -2,7 +2,7 @@ package stat
 
 import (
 	"fmt"
-	"log"
+	log "github.com/blackbeans/log4go"
 	"sync/atomic"
 	"time"
 )
@@ -40,13 +40,13 @@ func (self *FlowStat) Start() {
 			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d\t", self.name, self.ReadFlow.changes(),
 				self.DispatcherFlow.changes(), self.WriteFlow.changes())
 			if nil != self.DispatcherWorkPool {
-				line = fmt.Sprintf("%s\tdispatcher-pool:%d\t", line, self.DispatcherWorkPool.count)
+				line = fmt.Sprintf("%sdispatcher-pool:%d\t", line, self.DispatcherWorkPool.count)
 			}
 			if nil != self.DeliverFlow {
-				line = fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.changes(), self.DeliverPool.count)
+				line = fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.changes(), self.DeliverPool.count)
 			}
 
-			log.Println(line)
+			log.Info(line)
 			<-t.C
 		}
 		t.Stop()

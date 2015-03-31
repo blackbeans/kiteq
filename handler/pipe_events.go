@@ -5,7 +5,7 @@ import (
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
 	"kiteq/store"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 	"time"
 )
 

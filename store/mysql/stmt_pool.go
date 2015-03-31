@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"database/sql"
 	"errors"
-	"log"
+	log "github.com/blackbeans/log4go"
 	"sync"
 	"time"
 )
@@ -75,7 +75,7 @@ func (self *StmtPool) enhancedPool(size int) error {
 		for ; j < 3; j++ {
 			err, stmt = self.dialFunc()
 			if nil != err {
-				log.Printf("POOL_FACTORY|CREATE STMT|INIT|FAIL|%s\n", err)
+				log.Error("POOL_FACTORY|CREATE STMT|INIT|FAIL|%s\n", err)
 
 			} else {
 				break
@@ -217,7 +217,7 @@ func (self *StmtPool) Release(stmt *sql.Stmt) error {
 	} else {
 		stmt.Close()
 		stmt = nil
-		log.Printf("POOL|RELEASE|FAIL|%d\n", self.numActive)
+		log.Error("POOL|RELEASE|FAIL|%d\n", self.numActive)
 		return errors.New("POOL|RELEASE|INVALID CONN")
 	}
 
@@ -235,7 +235,7 @@ func (self *StmtPool) Shutdown() {
 			break
 		}
 
-		log.Printf("Statment Pool|CLOSEING|WORK POOL SIZE|:%d\n", self.numWork)
+		log.Info("Statment Pool|CLOSEING|WORK POOL SIZE|:%d\n", self.numWork)
 		i++
 	}
 
@@ -248,5 +248,5 @@ func (self *StmtPool) Shutdown() {
 		idleStmt = nil
 	}
 
-	log.Printf("Statment Pool|SHUTDOWN")
+	log.Info("Statment Pool|SHUTDOWN")
 }

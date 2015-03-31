@@ -2,13 +2,13 @@ package core
 
 import (
 	"errors"
+	log "github.com/blackbeans/log4go"
 	"kiteq/binding"
 	"kiteq/client/chandler"
 	"kiteq/client/listener"
 	"kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
-	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -76,9 +76,9 @@ func (self *KiteClientManager) Start() {
 	//推送本机到
 	err := self.zkManager.PublishTopics(self.topics, self.ga.GroupId, hostname)
 	if nil != err {
-		log.Fatalf("KiteClientManager|PublishTopics|FAIL|%s|%s\n", err, self.topics)
+		log.Crashf("KiteClientManager|PublishTopics|FAIL|%s|%s\n", err, self.topics)
 	} else {
-		log.Printf("KiteClientManager|PublishTopics|SUCC|%s\n", self.topics)
+		log.Info("KiteClientManager|PublishTopics|SUCC|%s\n", self.topics)
 	}
 
 outter:
@@ -95,22 +95,22 @@ outter:
 
 		hosts, err := self.zkManager.GetQServerAndWatch(topic)
 		if nil != err {
-			log.Fatalf("KiteClientManager|GetQServerAndWatch|FAIL|%s|%s\n", err, topic)
+			log.Crashf("KiteClientManager|GetQServerAndWatch|FAIL|%s|%s\n", err, topic)
 		} else {
-			log.Printf("KiteClientManager|GetQServerAndWatch|SUCC|%s|%s\n", topic, hosts)
+			log.Info("KiteClientManager|GetQServerAndWatch|SUCC|%s|%s\n", topic, hosts)
 		}
 		self.onQServerChanged(topic, hosts)
 	}
 
 	if len(self.kiteClients) <= 0 {
-		log.Fatalf("KiteClientManager|Start|NO VALID KITESERVER|%s\n", self.topics)
+		log.Crashf("KiteClientManager|Start|NO VALID KITESERVER|%s\n", self.topics)
 	}
 
 	if len(self.binds) > 0 {
 		//订阅关系推送，并拉取QServer
 		err = self.zkManager.PublishBindings(self.ga.GroupId, self.binds)
 		if nil != err {
-			log.Fatalf("KiteClientManager|PublishBindings|FAIL|%s|%s\n", err, self.binds)
+			log.Crashf("KiteClientManager|PublishBindings|FAIL|%s|%s\n", err, self.binds)
 		}
 	}
 
@@ -121,12 +121,12 @@ func dial(hostport string) (*net.TCPConn, error) {
 	//连接
 	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", hostport)
 	if nil != err_r {
-		log.Printf("KiteClientManager|RECONNECT|RESOLVE ADDR |FAIL|remote:%s\n", err_r)
+		log.Error("KiteClientManager|RECONNECT|RESOLVE ADDR |FAIL|remote:%s\n", err_r)
 		return nil, err_r
 	}
 	conn, err := net.DialTCP("tcp4", nil, remoteAddr)
 	if nil != err {
-		log.Printf("KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
+		log.Error("KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
 		return nil, err
 	}
 
@@ -195,7 +195,7 @@ func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteC
 
 	clients, ok := self.kiteClients[header.GetTopic()]
 	if !ok || len(clients) <= 0 {
-		// 	log.Printf("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		// 	log.Warn("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
 		return nil, errors.New("NO KITE CLIENT ! [" + header.GetTopic() + "]")
 	}
 

@@ -152,8 +152,12 @@ func TestBytesMessage(t *testing.T) {
 func TestTxBytesMessage(t *testing.T) {
 
 	bm := buildBytesMessage(false)
+
 	// 发送数据
-	err := manager.SendMessage(protocol.NewQMessage(bm))
+	err := manager.SendTxMessage(protocol.NewQMessage(bm),
+		func(message *protocol.QMessage) (bool, error) {
+			return true, nil
+		})
 	if nil != err {
 		log.Println("SEND TxBytesMESSAGE |FAIL|", err)
 	} else {

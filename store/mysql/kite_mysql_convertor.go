@@ -2,9 +2,9 @@ package mysql
 
 import (
 	"encoding/json"
+	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	"kiteq/store"
-	"log"
 	"reflect"
 )
 
@@ -52,7 +52,8 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 		fn := elem.FieldByName(c.fieldName)
 
 		k := fn.Kind()
-		// log.Printf("convertor|Convert2Entity|%s|%s\n", c.fieldName, rv)
+
+		// log.Debug("convertor|Convert2Entity|%s|%s\n", c.fieldName, rv)
 
 		switch k {
 		case reflect.Int8:
@@ -88,14 +89,14 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 					if hok {
 						err := json.Unmarshal(hd, &header)
 						if nil != err {
-							log.Printf("convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
+							log.Error("convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
 						}
 					}
 					fn.Set(reflect.ValueOf(&header))
 				} else if hok {
 					fn.SetBytes(hd)
 				} else {
-					log.Printf("convertor|Convert2Entity|FAIL|UnSupport Ptr DataType|%s|%t|%s|%s\n", c.fieldName, rv, hok, ok)
+					log.Error("convertor|Convert2Entity|FAIL|UnSupport Ptr DataType|%s|%t|%s|%s\n", c.fieldName, rv, hok, ok)
 					return
 				}
 			}
@@ -105,13 +106,13 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 				var data []string
 				err := json.Unmarshal([]byte(rv.(string)), &data)
 				if nil != err {
-					log.Printf("convertor|Convert2Entity|FAIL|UnSupport SLICE|%s|%s\n", c.fieldName, rv)
+					log.Error("convertor|Convert2Entity|FAIL|UnSupport SLICE|%s|%s\n", c.fieldName, rv)
 				}
 				fn.Set(reflect.ValueOf(data))
 			} else if k == reflect.Uint8 {
 				fn.SetBytes(rv.([]byte))
 			} else {
-				log.Printf("convertor|Convert2Entity|FAIL|UnSupport SLICE DataType|%s|%s\n", c.columnName, fn.Elem().Kind())
+				log.Error("convertor|Convert2Entity|FAIL|UnSupport SLICE DataType|%s|%s\n", c.columnName, fn.Elem().Kind())
 				return
 			}
 		default:
@@ -120,11 +121,11 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 				if ok {
 					fn.Set(rval.Elem())
 				} else {
-					log.Printf("convertor|Convert2Entity|FAIL|UnSupport BodyType |REQ:[]byte|%s|%T\n", c.fieldName, rv)
+					log.Error("convertor|Convert2Entity|FAIL|UnSupport BodyType |REQ:[]byte|%s|%T\n", c.fieldName, rv)
 					return
 				}
 			} else {
-				log.Printf("convertor|Convert2Entity|FAIL|UnSupport DataType|%s|%s\n", c.fieldName, rv)
+				log.Error("convertor|Convert2Entity|FAIL|UnSupport DataType|%s|%s\n", c.fieldName, rv)
 			}
 		}
 	}
@@ -143,23 +144,25 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 			} else if entity.MsgType == protocol.CMD_BYTES_MESSAGE {
 				fv = entity.GetBody().([]byte)
 			} else {
-				log.Printf("convertor|Convert2Params|UnSupport MESSAGE TYPE|%s\n", entity.MsgType)
+				log.Error("convertor|Convert2Params|UnSupport MESSAGE TYPE|%s\n", entity.MsgType)
 			}
 		} else {
 			f := val.FieldByName(v.fieldName)
-			// log.Printf("convertor|Convert2Params|%s|%s\n", v.fieldName, f)
+
+			// log.Debug("convertor|Convert2Params|%s|%s\n", v.fieldName, f)
+
 			switch f.Kind() {
 			case reflect.Ptr:
 				header, ok := f.Interface().(*protocol.Header)
 				if ok {
 					data, err := json.Marshal(header)
 					if err != nil {
-						log.Printf("convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
+						log.Error("convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
 						return nil
 					}
 					fv = data
 				} else {
-					log.Printf("convertor|Convert2Params|Not protocol.Header PRT |FAIL|%s\n", f.Addr())
+					log.Error("convertor|Convert2Params|Not protocol.Header PRT |FAIL|%s\n", f.Addr())
 					return nil
 				}
 
@@ -168,7 +171,7 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 				if f.Type().Elem().Kind() == reflect.String {
 					data, err := json.Marshal(f.Interface())
 					if nil != err {
-						log.Printf("convertor|Convert2Params|Marshal|Slice|FAIL||%s\n", err)
+						log.Error("convertor|Convert2Params|Marshal|Slice|FAIL||%s\n", err)
 						return nil
 					}
 					fv = string(data)

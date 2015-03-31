@@ -2,10 +2,10 @@ package mysql
 
 import (
 	"database/sql"
+	log "github.com/blackbeans/log4go"
 	_ "github.com/go-sql-driver/mysql"
 	"kiteq/protocol"
 	. "kiteq/store"
-	"log"
 	"time"
 )
 
@@ -73,14 +73,16 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		flushPeriod:  options.FlushPeriod,
 		stop:         false}
 	ins.Start()
-	log.Printf("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
+
+	log.Info("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	return ins
 }
 
 func openDb(addr string, idleConn, maxConn int) *sql.DB {
 	db, err := sql.Open("mysql", addr)
 	if err != nil {
-		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		log.Error("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		panic(err)
 	}
 
 	db.SetMaxIdleConns(idleConn)
@@ -98,7 +100,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	s := self.sqlwrapper.hashQuerySQL(messageId)
 	rows, err := self.dbslave.Query(s, messageId)
 	if nil != err {
-		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
+		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
 	}
 	defer rows.Close()
@@ -109,7 +111,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		fc := self.convertor.convertFields(entity, filternothing)
 		err := rows.Scan(fc...)
 		if nil != err {
-			log.Printf("KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
+			log.Error("KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
 			return nil
 		}
 		self.convertor.Convert2Entity(fc, entity, filternothing)
@@ -129,7 +131,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	s := self.sqlwrapper.hashSaveSQL(entity.MessageId)
 	result, err := self.db.Exec(s, fvs...)
 	if err != nil {
-		log.Printf("KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
+		log.Error("KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
 		return false
 	}
 
@@ -178,7 +180,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 	// log.Println(s)
 	rows, err := self.dbslave.Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
-		log.Printf("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
+		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil
 	}
 	defer rows.Close()
@@ -190,7 +192,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 		fc := self.convertor.convertFields(entity, filterbody)
 		err := rows.Scan(fc...)
 		if err != nil {
-			log.Printf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
+			log.Error("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
 		} else {
 
 			self.convertor.Convert2Entity(fc, entity, filterbody)

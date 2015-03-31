@@ -1,10 +1,10 @@
 package handler
 
 import (
+	log "github.com/blackbeans/log4go"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
-	"log"
 )
 
 //----------------鉴权handler
@@ -41,11 +41,11 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	remoteClient := aevent.getClient()
 	//做权限校验.............
 	isAuth := self.clientManager.Validate(remoteClient)
-	// log.Printf("ValidateHandler|CONNETION|%s|%s\n", remoteClient.RemoteAddr(), isAuth)
+	// log.Debug("ValidateHandler|CONNETION|%s|%s\n", remoteClient.RemoteAddr(), isAuth)
 	if isAuth {
 		ctx.SendForward(event)
 	} else {
-		log.Printf("ValidateHandler|UnAuth CONNETION|%s\n", remoteClient.RemoteAddr())
+		log.Warn("ValidateHandler|UnAuth CONNETION|%s\n", remoteClient.RemoteAddr())
 		cmd := protocol.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
 		//响应包
 		packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 	"time"
 )
 
@@ -57,7 +57,7 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout t
 			if !ok || !storeAck.GetStatus() {
 				return errors.New(fmt.Sprintf("kiteClient|SendMessage|FAIL|%s\n", resp))
 			} else {
-				// log.Printf("kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
+				// log.Debug("kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
 				return nil
 			}
 		}

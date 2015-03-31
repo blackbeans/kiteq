@@ -5,9 +5,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"io"
 	"kiteq/protocol"
-	"log"
 	"net"
 	"syscall"
 	"time"
@@ -67,7 +67,7 @@ func (self *Session) ReadPacket() {
 
 	defer func() {
 		if err := recover(); nil != err {
-			log.Printf("Session|ReadPacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
+			log.Error("Session|ReadPacket|%s|recover|FAIL|%s\n", self.remoteAddr, err)
 		}
 	}()
 
@@ -85,13 +85,13 @@ func (self *Session) ReadPacket() {
 				err == syscall.EPIPE ||
 				err == syscall.ECONNRESET {
 				self.Close()
-				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
+				log.Error("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			}
 			continue
 		}
 
 		if buff.Len()+len(slice) >= protocol.MAX_PACKET_BYTES {
-			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
+			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
 		}
@@ -111,7 +111,7 @@ func (self *Session) ReadPacket() {
 				err == syscall.EPIPE ||
 				err == syscall.ECONNRESET {
 				self.Close()
-				log.Printf("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
+				log.Error("Session|ReadPacket|%s|\\r|FAIL|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			}
 			continue
 		}
@@ -120,7 +120,7 @@ func (self *Session) ReadPacket() {
 		err = buff.WriteByte(delim)
 		if nil != err {
 			self.Close()
-			log.Printf("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
+			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			return
 		}
 
@@ -130,7 +130,7 @@ func (self *Session) ReadPacket() {
 			packet, err := protocol.UnmarshalTLV(buff.Bytes())
 
 			if nil != err || nil == packet {
-				log.Printf("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
+				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
 				buff.Reset()
 				continue
 			}
@@ -152,7 +152,7 @@ func (self *Session) ReadPacket() {
 func (self *Session) Write(packet protocol.Packet) error {
 	defer func() {
 		if err := recover(); nil != err {
-			log.Printf("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
+			log.Error("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
 		}
 	}()
 
@@ -172,14 +172,14 @@ func (self *Session) write0(tlv protocol.Packet) {
 
 	packet := protocol.MarshalPacket(&tlv)
 	if nil == packet || len(packet) <= 0 {
-		log.Printf("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
+		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
 		//如果是同步写出
 		return
 	}
 
 	length, err := self.bw.Write(packet)
 	if nil != err {
-		log.Printf("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
+		log.Error("Session|write0|conn|%s|FAIL|%s|%d/%d\n", self.remoteAddr, err, length, len(packet))
 		//链接是关闭的
 		if err == io.EOF ||
 			err == syscall.EPIPE || err == syscall.ECONNRESET {
@@ -214,7 +214,7 @@ func (self *Session) flush() {
 	if self.bw.Buffered() > 0 && !self.Closed() {
 		err := self.bw.Flush()
 		if nil != err {
-			log.Printf("Session|Write|FLUSH|FAIL|%t\n", err.Error())
+			log.Error("Session|Write|FLUSH|FAIL|%t\n", err.Error())
 			self.bw.Reset(self.conn)
 		}
 	}
@@ -232,7 +232,7 @@ func (self *Session) Close() error {
 		self.conn.Close()
 		close(self.WriteChannel)
 		close(self.ReadChannel)
-		log.Printf("Session|Close|%s...\n", self.remoteAddr)
+		log.Info("Session|Close|%s...\n", self.remoteAddr)
 	}
 	return nil
 }

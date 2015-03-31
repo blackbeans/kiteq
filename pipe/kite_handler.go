@@ -2,7 +2,7 @@ package pipe
 
 import (
 	"errors"
-	"log"
+	log "github.com/blackbeans/log4go"
 	"time"
 )
 
@@ -72,7 +72,7 @@ func (self *BaseForwardHandler) HandleForward(ctx *DefaultPipelineContext, event
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("BaseForwardHandler|%s|cost:%d\n", self.GetName(), cost)
+			log.Warn("BaseForwardHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 		return err
 	}
@@ -117,7 +117,7 @@ func (self *BaseBackwardHandler) HandleBackward(ctx *DefaultPipelineContext, eve
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("BaseBackwardHandler|%s|cost:%d\n", self.GetName(), cost)
+			log.Warn("BaseBackwardHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 
 		return err
@@ -166,7 +166,7 @@ func (self *BaseDoubleSidedHandler) HandleBackward(ctx *DefaultPipelineContext, 
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
+			log.Warn("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 
 		return err
@@ -184,7 +184,7 @@ func (self *BaseDoubleSidedHandler) HandleForward(ctx *DefaultPipelineContext, e
 		err := self.processor.Process(ctx, event)
 		cost := time.Now().Unix() - now
 		if cost > 100 {
-			log.Printf("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
+			log.Warn("BaseDoubleSidedHandler|%s|cost:%d\n", self.GetName(), cost)
 		}
 		return err
 	}

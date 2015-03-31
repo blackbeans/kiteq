@@ -1,8 +1,8 @@
 package listener
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
-	"log"
 )
 
 type IListener interface {
@@ -18,14 +18,14 @@ type MockListener struct {
 }
 
 func (self *MockListener) OnMessage(msg *protocol.QMessage) bool {
-	log.Println("MockListener|OnMessage", msg.GetHeader(), msg.GetBody())
+	log.Debug("MockListener|OnMessage", msg.GetHeader(), msg.GetBody())
 	return true
 }
 
 func (self *MockListener) OnMessageCheck(tx *protocol.TxResponse) error {
-	log.Printf("MockListener|OnMessageCheck|%s\n", tx.MessageId)
+	log.Debug("MockListener|OnMessageCheck|%s\n", tx.MessageId)
 	v, _ := tx.GetProperty("tradeno")
-	log.Printf("MockListener|OnMessageCheck|PROP|%s\n", v)
+	log.Debug("MockListener|OnMessageCheck|PROP|%s\n", v)
 	tx.Commit()
 	return nil
 }

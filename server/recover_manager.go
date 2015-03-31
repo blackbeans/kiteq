@@ -2,11 +2,11 @@ package server
 
 import (
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"kiteq/handler"
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	"log"
 	"time"
 )
 
@@ -39,7 +39,7 @@ func (self *RecoverManager) Start() {
 		go self.startRecoverTask(fmt.Sprintf("%x", i))
 	}
 
-	log.Println("RecoverManager|Start|SUCC....")
+	log.Info("RecoverManager|Start|SUCC....")
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
@@ -65,7 +65,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 	for !self.isClose && hasMore {
 		more, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
 			now.Unix(), startIdx, 50)
-		// log.Printf("RecoverManager|redeliverMsg|%d|%d\n", now.Unix(), len(entities))
+		// log.Debug("RecoverManager|redeliverMsg|%d|%d\n", now.Unix(), len(entities))
 		if len(entities) <= 0 {
 			break
 		}

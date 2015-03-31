@@ -1,10 +1,10 @@
 package server
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/store"
 	smm "kiteq/store/mmap"
 	smq "kiteq/store/mysql"
-	"log"
 
 	"strconv"
 	"strings"
@@ -26,14 +26,14 @@ func parseDB(db string) store.IKiteStore {
 
 		file := params["file"]
 		if len(file) <= 0 {
-			log.Fatalf("NewKiteQServer|INVALID|FILE PATH|%s\n", db)
+			log.Crashf("NewKiteQServer|INVALID|FILE PATH|%s\n", db)
 		}
 		initval := 10 * 10000
 		initcap, ok := params["initcap"]
 		if ok {
 			v, e := strconv.ParseInt(initcap, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|INIT CAP|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|INIT CAP|%s\n", db)
 			}
 			initval = int(v)
 		}
@@ -42,7 +42,7 @@ func parseDB(db string) store.IKiteStore {
 		if ok {
 			v, e := strconv.ParseInt(maxcap, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|MAX CAP|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|MAX CAP|%s\n", db)
 			}
 			max = int(v)
 		}
@@ -64,7 +64,7 @@ func parseDB(db string) store.IKiteStore {
 		if ok {
 			v, e := strconv.ParseInt(u, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|batchUpdateSize|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|batchUpdateSize|%s\n", db)
 			}
 			bus = int(v)
 		}
@@ -74,7 +74,7 @@ func parseDB(db string) store.IKiteStore {
 		if ok {
 			v, e := strconv.ParseInt(d, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
 			bds = int(v)
 		}
@@ -84,7 +84,7 @@ func parseDB(db string) store.IKiteStore {
 		if ok {
 			v, e := strconv.ParseInt(fp, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
 			flushPeriod = time.Duration(v * int64(1*time.Millisecond))
 		}
@@ -94,7 +94,7 @@ func parseDB(db string) store.IKiteStore {
 		if ok {
 			v, e := strconv.ParseInt(mc, 10, 32)
 			if nil != e {
-				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
 			maxConn = int(v)
 		}
@@ -128,7 +128,7 @@ func parseDB(db string) store.IKiteStore {
 			MaxOpenConn:  maxConn}
 		kitedb = smq.NewKiteMysql(options)
 	} else {
-		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
+		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
 
 	return kitedb

@@ -5,7 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 	"kiteq/stat"
 	"time"
 )

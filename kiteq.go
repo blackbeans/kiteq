@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	"kiteq/server"
-	"log"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -30,12 +30,15 @@ func main() {
 
 	flag.Parse()
 
+	//加载log4go的配置
+	log.LoadConfiguration("./log4go.xml")
+
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	host, port, _ := net.SplitHostPort(*bindHost)
 	go func() {
 		if *pprofPort > 0 {
-			log.Println(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
+			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
 		}
 	}()
 
@@ -45,7 +48,7 @@ func main() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 5000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
+	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 8000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()
@@ -71,5 +74,6 @@ func main() {
 	}
 
 	qserver.Shutdown()
-	log.Println("KiteQServer IS STOPPED!")
+	log.Info("KiteQServer IS STOPPED!")
+
 }

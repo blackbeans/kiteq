@@ -2,7 +2,7 @@ package handler
 
 import (
 	. "kiteq/pipe"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 )
 
 //----------------投递的handler

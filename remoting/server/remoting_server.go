@@ -1,9 +1,9 @@
 package server
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	. "kiteq/remoting/client"
-	"log"
 	"net"
 	"time"
 )
@@ -37,13 +37,13 @@ func (self *RemotingServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
 	if nil != err {
-		log.Fatalf("RemotingServer|ADDR|FAIL|%s\n", self.hostport)
+		log.Error("RemotingServer|ADDR|FAIL|%s\n", self.hostport)
 		return err
 	}
 
 	listener, err := net.ListenTCP("tcp4", addr)
 	if nil != err {
-		log.Fatalf("RemotingServer|ListenTCP|FAIL|%s\n", addr)
+		log.Error("RemotingServer|ListenTCP|FAIL|%s\n", addr)
 		return err
 	}
 
@@ -60,11 +60,11 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 	for !self.isShutdown {
 		conn, err := l.Accept()
 		if nil != err {
-			log.Printf("RemotingServer|serve|AcceptTCP|FAIL|%s\n", err)
+			log.Error("RemotingServer|serve|AcceptTCP|FAIL|%s\n", err)
 			continue
 		} else {
 
-			log.Printf("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
+			log.Info("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
 			remoteClient := NewRemotingClient(conn, self.packetDispatcher, self.rc)
 			remoteClient.Start()
@@ -76,5 +76,5 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 func (self *RemotingServer) Shutdown() {
 	self.isShutdown = true
 	close(self.stopChan)
-	log.Println("RemotingServer|Shutdown...")
+	log.Info("RemotingServer|Shutdown...")
 }

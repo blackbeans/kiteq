@@ -1,6 +1,7 @@
 package server
 
 import (
+	log "github.com/blackbeans/log4go"
 	"kiteq/binding"
 	"kiteq/handler"
 	"kiteq/pipe"
@@ -8,7 +9,6 @@ import (
 	"kiteq/remoting/client"
 	"kiteq/remoting/server"
 	"kiteq/store"
-	"log"
 	"os"
 )
 
@@ -89,24 +89,24 @@ func (self *KiteQServer) Start() {
 			event := pipe.NewPacketEvent(rclient, packet)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
-				log.Printf("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+				log.Error("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
 			} else {
-				// log.Printf("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
+				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
 		})
 
 	err := self.remotingServer.ListenAndServer()
 	if nil != err {
-		log.Fatalf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.server)
+		log.Crashf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.server)
 	} else {
-		log.Printf("KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
+		log.Info("KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
 	}
 	//推送可发送的topic列表并且获取了对应topic下的订阅关系
 	succ := self.exchanger.PushQServer(self.kc.server, self.kc.topics)
 	if !succ {
-		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.topics)
+		log.Crashf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.topics)
 	} else {
-		log.Printf("KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
+		log.Info("KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
 	}
 
 	//开启流量统计
@@ -124,6 +124,6 @@ func (self *KiteQServer) Shutdown() {
 	self.kitedb.Stop()
 	self.clientManager.Shutdown()
 	self.remotingServer.Shutdown()
-	log.Println("KiteQServer|Shutdown...")
+	log.Info("KiteQServer|Shutdown...")
 
 }

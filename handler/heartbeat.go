@@ -3,7 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
-	// "log"
+	// 	log "github.com/blackbeans/log4go"
 )
 
 type HeartbeatHandler struct {
