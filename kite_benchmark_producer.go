@@ -4,12 +4,12 @@ import (
 	"crypto/rand"
 	"flag"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"github.com/golang/protobuf/proto"
 	"io"
 	"kiteq/client"
 	"kiteq/protocol"
 	"kiteq/store"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -26,12 +26,12 @@ type defualtListener struct {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
-	log.Println("defualtListener|OnMessage", msg.GetHeader(), msg.GetBody())
+	log.Info("defualtListener|OnMessage", msg.GetHeader(), msg.GetBody())
 	return true
 }
 
 func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
-	// log.Println("defualtListener|OnMessageCheck", messageId)
+	// log.Info("defualtListener|OnMessageCheck", messageId)
 	tx.Commit()
 	return nil
 }
@@ -74,9 +74,11 @@ func main() {
 
 	runtime.GOMAXPROCS(8)
 
+	log.LoadConfiguration("./log_producer.xml")
+
 	go func() {
 
-		log.Println(http.ListenAndServe(":28000", nil))
+		log.Info(http.ListenAndServe(":28000", nil))
 	}()
 
 	count := int32(0)

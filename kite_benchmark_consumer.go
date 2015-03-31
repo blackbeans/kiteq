@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	"kiteq/binding"
 	"kiteq/client"
 	"kiteq/protocol"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -35,13 +35,13 @@ func (self *defualtListener) monitor() {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
-	// log.Println("defualtListener|OnMessage", *msg.Header, *msg.Body)
+	// log.Info("defualtListener|OnMessage", *msg.Header, *msg.Body)
 	atomic.AddInt32(&self.count, 1)
 	return true
 }
 
 func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
-	// log.Println("defualtListener|OnMessageCheck", messageId)
+	// log.Info("defualtListener|OnMessageCheck", messageId)
 	tx.Commit()
 	return nil
 }
@@ -52,9 +52,10 @@ func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(8)
 
+	log.LoadConfiguration("./log_producer.xml")
 	go func() {
 
-		log.Println(http.ListenAndServe(":38000", nil))
+		log.Info(http.ListenAndServe(":38000", nil))
 	}()
 
 	lis := &defualtListener{}

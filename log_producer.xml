@@ -2,7 +2,7 @@
   <filter enabled="true">
     <tag>stdout</tag>
     <type>file</type>
-    <property name="filename">/home/logs/kiteq_stdout.log</property>
+    <property name="filename">/home/logs/kiteq/stdout_producer.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
@@ -15,7 +15,7 @@
     <tag>kite_info</tag>
     <type>file</type>
     <level>INFO</level>
-    <property name="filename">/home/logs/kiteq/kite_info.log</property>
+    <property name="filename">/home/logs/kiteq/kite_producer_info.log</property>
     <!--
        %T - Time (15:04:05 MST)
        %t - Time (15:04)
@@ -37,7 +37,7 @@
     <tag>kite_warn</tag>
     <type>file</type>
     <level>WARNING</level>
-    <property name="filename">/home/logs/kiteq/kite_warn.log</property>
+    <property name="filename">/home/logs/kiteq/kite_producer_warn.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
@@ -48,7 +48,7 @@
     <tag>kite_error</tag>
     <type>file</type>
     <level>ERROR</level>
-    <property name="filename">/home/logs/kiteq/kite_error.log</property>
+    <property name="filename">/home/logs/kiteq/kite_producer_error.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
