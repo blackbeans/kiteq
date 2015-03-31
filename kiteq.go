@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-
+	logxml := flag.String("logxml", "./log4go.xml", "-logxml=./log4go.xml")
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
@@ -31,7 +31,7 @@ func main() {
 	flag.Parse()
 
 	//加载log4go的配置
-	log.LoadConfiguration("./log4go.xml")
+	log.LoadConfiguration(*logxml)
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
