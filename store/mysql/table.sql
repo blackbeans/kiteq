@@ -40,10 +40,10 @@ CREATE TABLE `kite_msg_0` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -72,10 +72,10 @@ CREATE TABLE `kite_msg_1` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -104,13 +104,10 @@ CREATE TABLE `kite_msg_10` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`),
   KEY `idx_kite_server` (`kite_server`),
   KEY `idx_expired_time` (`expired_time`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_next_deliver_time` (`next_deliver_time`)
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -139,10 +136,10 @@ CREATE TABLE `kite_msg_11` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -171,10 +168,10 @@ CREATE TABLE `kite_msg_12` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -203,10 +200,10 @@ CREATE TABLE `kite_msg_13` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -235,10 +232,10 @@ CREATE TABLE `kite_msg_14` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -267,10 +264,10 @@ CREATE TABLE `kite_msg_15` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -299,10 +296,10 @@ CREATE TABLE `kite_msg_2` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -331,10 +328,10 @@ CREATE TABLE `kite_msg_3` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -363,10 +360,10 @@ CREATE TABLE `kite_msg_4` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -395,10 +392,10 @@ CREATE TABLE `kite_msg_5` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -427,10 +424,10 @@ CREATE TABLE `kite_msg_6` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -459,10 +456,10 @@ CREATE TABLE `kite_msg_7` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -491,10 +488,10 @@ CREATE TABLE `kite_msg_8` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -523,10 +520,10 @@ CREATE TABLE `kite_msg_9` (
   `succ_groups` varchar(255) DEFAULT NULL,
   `next_deliver_time` bigint(13) DEFAULT NULL,
   PRIMARY KEY (`message_id`),
-  KEY `idx_msg_type` (`msg_type`),
   KEY `idx_commit` (`commit`),
-  KEY `idx_ndt` (`next_deliver_time`),
-  KEY `idx_recover` (`kite_server`,`expired_time`,`next_deliver_time`)
+  KEY `idx_kite_server` (`kite_server`),
+  KEY `idx_expired_time` (`expired_time`),
+  KEY `idx_recover_a` (`next_deliver_time`,`kite_server`,`expired_time`,`deliver_count`,`deliver_limit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;

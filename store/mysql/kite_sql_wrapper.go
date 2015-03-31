@@ -137,17 +137,17 @@ func (self *sqlwrapper) initSQL() {
 
 	//page query
 
-	//select
-	//a.message_id,a.header,a.msg_type,a.topic,a.message_type,
-	//a.publish_group,a.commit,a.publish_time,a.expired_time,
-	//a.deliver_count,a.deliver_limit,a.kite_server,
-	//a.fail_groups,a.succ_groups,a.next_deliver_time
-	//from kite_msg_10 a  force index(idx_ndt)
-	//where
-	//	a.kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit
-	//	and expired_time>=1427731537 and next_deliver_time<=1427731536
-	//	order by a.next_deliver_time
-	//limit 5000,20\G;
+	// select
+	// a.message_id,a.header,a.msg_type,a.topic,a.message_type,
+	// a.publish_group,a.commit,a.publish_time,a.expired_time,
+	// a.deliver_count,a.deliver_limit,a.kite_server,
+	// a.fail_groups,a.succ_groups,a.next_deliver_time
+	// from kite_msg_10 a  force index(idx_recover)
+	// where
+	// a.kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit
+	// and expired_time>=1427731537 and next_deliver_time<=1427731536
+	// order by a.next_deliver_time asc
+	// limit 1000,20;
 
 	s.Reset()
 	s.WriteString("select  ")
@@ -165,8 +165,7 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} a ")
-	s.WriteString("  force index(idx_ndt) ") //强制使用idx_ndt索引
-	s.WriteString("( select message_id from ")
+	s.WriteString("  force index(idx_recover) ") //强制使用idx_recover索引
 	s.WriteString(" where a.kite_server=? and a.deliver_count<a.deliver_limit and a.expired_time>=? and a.next_deliver_time<=? ")
 	s.WriteString(" order by a.next_deliver_time asc  limit ?,? ")
 
