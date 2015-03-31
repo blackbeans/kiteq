@@ -1,10 +1,15 @@
 <logging>
   <filter enabled="true">
     <tag>stdout</tag>
-    <type>console</type>
     <type>file</type>
+    <property name="filename">./stdout.log</property>
+    <property name="format">[%D %T] [%L] (%S) %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
     <!-- level is (:?FINEST|FINE|DEBUG|TRACE|INFO|WARNING|ERROR) -->
-    <level>DEBUG</level>
+    <level>INFO</level>
   </filter>
   <filter enabled="true">
     <tag>kite_info</tag>
@@ -31,7 +36,7 @@
   <filter enabled="true">
     <tag>kite_warn</tag>
     <type>file</type>
-    <level>WARN</level>
+    <level>WARNING</level>
     <property name="filename">./kite_warn.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
