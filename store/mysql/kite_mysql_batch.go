@@ -10,34 +10,55 @@ import (
 
 func (self *KiteMysqlStore) Start() {
 
-	//创建每种批量的preparestmt
-	stmts := make(map[batchType][]*StmtPool, 4)
+	count := self.dbshard.ShardNum() * self.dbshard.HashNum()
+	//创建Hash的channel
+	batchDelChan := make([]chan string, 0, count)
+	batchUpChan := make([]chan *MessageEntity, 0, count)
+	batchComChan := make([]chan string, 0, count)
+	for i := 0; i < count; i++ {
+		batchUpChan = append(batchUpChan, make(chan *MessageEntity, self.batchUpSize))
+		batchDelChan = append(batchDelChan, make(chan string, self.batchDelSize))
+		batchComChan = append(batchComChan, make(chan string, self.batchUpSize))
+	}
+
+	//批量的channel
+	self.batchUpChan = batchUpChan
+	self.batchDelChan = batchDelChan
+	self.batchComChan = batchComChan
+
+	//创建每种批量的preparedstmt
+	stmts := make(map[batchType][][]*StmtPool, 4)
 	for k, v := range self.sqlwrapper.batchSQL {
 		btype := k
-		pool := make([]*StmtPool, 0, self.sqlwrapper.hashshard.ShardCnt())
-		for _, s := range v {
-			psql := s
-
-			err, p := NewStmtPool(10, 20, 50, 1*time.Minute, func() (error, *sql.Stmt) {
-				stmt, err := self.dbslave.Prepare(psql)
+		pool := make([][]*StmtPool, 0, self.dbshard.ShardNum())
+		//对每个shard构建stmt的pool
+		for i := 0; i < self.dbshard.ShardNum(); i++ {
+			innerPool := make([]*StmtPool, 0, self.dbshard.HashNum())
+			for j, s := range v {
+				psql := s
+				db := self.dbshard.FindShardById(i*self.dbshard.HashNum() + j).master
+				err, p := NewStmtPool(10, 20, 50, 1*time.Minute, func() (error, *sql.Stmt) {
+					stmt, err := db.Prepare(psql)
+					if nil != err {
+						log.Error("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
+						return err, nil
+					}
+					return nil, stmt
+				})
 				if nil != err {
-					log.Error("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
-					return err, nil
+					log.Error("NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
+					panic(err)
 				}
-				return nil, stmt
-			})
-			if nil != err {
-				log.Error("NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
-				panic(err)
+				innerPool = append(innerPool, p)
 			}
-			pool = append(pool, p)
+			pool = append(pool, innerPool)
 		}
 		stmts[btype] = pool
 	}
 
 	self.stmtPools = stmts
 
-	for i := 0; i < self.sqlwrapper.hashshard.ShardCnt(); i++ {
+	for i := 0; i < count; i++ {
 		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s\n", sqlu, sqld)
 		go self.startBatch(i, self.batchUpChan[i],
 			self.batchDelChan[i], self.batchComChan[i])
@@ -104,22 +125,28 @@ func (self *KiteMysqlStore) startBatch(hash int,
 }
 
 func (self *KiteMysqlStore) AsyncCommit(messageid string) bool {
-	idx := self.sqlwrapper.hashshard.FindForKey(messageid)
+	idx := self.dbshard.HashId(messageid)
 	self.batchComChan[idx] <- messageid
 	return true
 
 }
 
 func (self *KiteMysqlStore) AsyncUpdate(entity *MessageEntity) bool {
-	idx := self.sqlwrapper.hashshard.FindForKey(entity.MessageId)
+	idx := self.dbshard.HashId(entity.MessageId)
 	self.batchUpChan[idx] <- entity
 	return true
 
 }
 func (self *KiteMysqlStore) AsyncDelete(messageid string) bool {
-	idx := self.sqlwrapper.hashshard.FindForKey(messageid)
+	idx := self.dbshard.HashId(messageid)
 	self.batchDelChan[idx] <- messageid
 	return true
+}
+
+func (self *KiteMysqlStore) stmtPool(bt batchType, hash string) *StmtPool {
+	shard := self.dbshard.FindForShard(hash)
+	id := self.dbshard.FindForKey(hash)
+	return self.stmtPools[bt][shard.shardId][id]
 }
 
 func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
@@ -127,9 +154,8 @@ func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
 	if len(messageId) <= 0 {
 		return true
 	}
-
 	// log.Printf("KiteMysqlStore|batchCommit|%s|%s\n", prepareSQL, messageId)
-	p := self.stmtPools[COMMIT][hashId]
+	p := self.stmtPool(COMMIT, messageId[0])
 	err, stmt := p.Get()
 	if nil != err {
 		log.Error("KiteMysqlStore|batchCommit|GET STMT|FAIL|%s|%d\n", err, hashId)
@@ -152,7 +178,7 @@ func (self *KiteMysqlStore) batchDelete(hashId int, messageId []string) bool {
 		return true
 	}
 
-	p := self.stmtPools[DELETE][hashId]
+	p := self.stmtPool(DELETE, messageId[0])
 	err, stmt := p.Get()
 	if nil != err {
 		log.Error("KiteMysqlStore|batchDelete|GET STMT|FAIL|%s|%d\n", err, hashId)
@@ -175,7 +201,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 		return true
 	}
 
-	p := self.stmtPools[UPDATE][hashId]
+	p := self.stmtPool(UPDATE, entity[0].MessageId)
 	err, stmt := p.Get()
 	if nil != err {
 		log.Error("KiteMysqlStore|batchUpdate|GET STMT|FAIL|%s|%d\n", err, hashId)
@@ -228,8 +254,11 @@ func (self *KiteMysqlStore) Stop() {
 	self.stop = true
 	for k, v := range self.stmtPools {
 		for _, s := range v {
-			s.Shutdown()
+			for _, p := range s {
+				p.Shutdown()
+			}
 		}
 		log.Info("KiteMysqlStore|Stop|Stmt|%t\n", k)
 	}
+	self.dbshard.Stop()
 }

@@ -1,9 +1,7 @@
 package mysql
 
 import (
-	"database/sql"
 	log "github.com/blackbeans/log4go"
-	_ "github.com/go-sql-driver/mysql"
 	"kiteq/protocol"
 	. "kiteq/store"
 	"time"
@@ -11,6 +9,7 @@ import (
 
 //mysql的参数
 type MysqlOptions struct {
+	ShardNum                  int //分库的数量
 	Addr                      string
 	SlaveAddr                 string
 	DB                        string
@@ -24,70 +23,35 @@ type MysqlOptions struct {
 type KiteMysqlStore struct {
 	convertor    convertor
 	sqlwrapper   *sqlwrapper
-	db           *sql.DB
-	dbslave      *sql.DB
+	dbshard      DbShard
 	batchUpChan  []chan *MessageEntity
 	batchDelChan []chan string
 	batchComChan []chan string
 	batchUpSize  int
 	batchDelSize int
 	flushPeriod  time.Duration
-	stmtPools    map[batchType][]*StmtPool
+	stmtPools    map[batchType][][]*StmtPool //第一层dblevel 第二维table level
 	stop         bool
 }
 
 func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 
-	master := openDb(
-		options.Username+":"+options.Password+"@tcp("+options.Addr+")/"+options.DB,
-		options.MaxIdleConn, options.MaxOpenConn)
-	slave := master
-	if len(options.SlaveAddr) > 0 {
-		slave = openDb(
-			options.Username+":"+options.Password+"@tcp("+options.SlaveAddr+")/"+options.DB,
-			options.MaxIdleConn, options.MaxOpenConn)
-	}
+	shard := newDbShard(options)
 
-	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, MessageEntity{})
-
-	//创建Hash的channel
-	batchDelChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
-	batchUpChan := make([]chan *MessageEntity, 0, sqlwrapper.hashshard.ShardCnt())
-	batchComChan := make([]chan string, 0, sqlwrapper.hashshard.ShardCnt())
-	for i := 0; i < sqlwrapper.hashshard.ShardCnt(); i++ {
-		batchUpChan = append(batchUpChan, make(chan *MessageEntity, options.BatchUpSize))
-		batchDelChan = append(batchDelChan, make(chan string, options.BatchDelSize))
-		batchComChan = append(batchComChan, make(chan string, options.BatchUpSize))
-	}
+	sqlwrapper := newSqlwrapper("kite_msg", shard, MessageEntity{})
 
 	ins := &KiteMysqlStore{
-		db:           master,
-		dbslave:      slave,
+		dbshard:      shard,
 		convertor:    convertor{columns: sqlwrapper.columns},
 		sqlwrapper:   sqlwrapper,
-		batchUpChan:  batchUpChan,
-		batchUpSize:  cap(batchDelChan),
-		batchDelChan: batchDelChan,
-		batchDelSize: cap(batchDelChan),
-		batchComChan: batchComChan,
+		batchUpSize:  options.BatchUpSize,
+		batchDelSize: options.BatchDelSize,
 		flushPeriod:  options.FlushPeriod,
 		stop:         false}
 	ins.Start()
 
 	log.Info("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	return ins
-}
-
-func openDb(addr string, idleConn, maxConn int) *sql.DB {
-	db, err := sql.Open("mysql", addr)
-	if err != nil {
-		log.Error("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
-		panic(err)
-	}
-
-	db.SetMaxIdleConns(idleConn)
-	db.SetMaxOpenConns(maxConn)
-	return db
 }
 
 var filternothing = func(colname string) bool {
@@ -98,7 +62,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 
 	var entity *MessageEntity
 	s := self.sqlwrapper.hashQuerySQL(messageId)
-	rows, err := self.dbslave.Query(s, messageId)
+	rows, err := self.dbshard.FindSlave(messageId).Query(s, messageId)
 	if nil != err {
 		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
@@ -129,7 +93,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	fvs := self.convertor.Convert2Params(entity)
 	s := self.sqlwrapper.hashSaveSQL(entity.MessageId)
-	result, err := self.db.Exec(s, fvs...)
+	result, err := self.dbshard.FindMaster(entity.MessageId).Exec(s, fvs...)
 	if err != nil {
 		log.Error("KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
 		return false
@@ -141,14 +105,6 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 
 func (self *KiteMysqlStore) Commit(messageId string) bool {
 	return self.AsyncCommit(messageId)
-	// s := self.sqlwrapper.hashCommitSQL(messageId)
-	// result, err := self.db.Exec(s, 1, messageId)
-	// if err != nil {
-	// 	log.Printf("KiteMysqlStore|Commit|FAIL|%s|%s\n", err, messageId)
-	// 	return false
-	// }
-	// num, _ := result.RowsAffected()
-	// return true
 }
 
 func (self *KiteMysqlStore) Rollback(messageId string) bool {
@@ -156,15 +112,6 @@ func (self *KiteMysqlStore) Rollback(messageId string) bool {
 }
 
 func (self *KiteMysqlStore) Delete(messageId string) bool {
-
-	// s := self.sqlwrapper.hashDeleteSQL(messageId)
-	// result, err := self.db.Exec(s, messageId)
-	// if err != nil {
-	// 	log.Printf("KiteMysqlStore|Delete|FAIL|%s|%s\n", err, messageId)
-	// 	return false
-	// }
-	// num, _ := result.RowsAffected()
-	// return num == 1
 	return self.AsyncDelete(messageId)
 }
 
@@ -178,7 +125,8 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
 	// log.Println(s)
-	rows, err := self.dbslave.Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
+	rows, err := self.dbshard.FindSlave(hashKey).
+		Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
 		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil

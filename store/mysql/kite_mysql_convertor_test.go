@@ -12,8 +12,21 @@ import (
 
 func TestConvertFields(t *testing.T) {
 
+	options := MysqlOptions{
+		Addr:         "localhost:3306",
+		Username:     "root",
+		Password:     "",
+		ShardNum:     4,
+		BatchUpSize:  1000,
+		BatchDelSize: 1000,
+		FlushPeriod:  1 * time.Minute,
+		MaxIdleConn:  2,
+		MaxOpenConn:  4}
+
+	hs := newDbShard(options)
+
 	c := convertor{}
-	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, store.MessageEntity{})
+	sqlwrapper := newSqlwrapper("kite_msg", hs, store.MessageEntity{})
 	sqlwrapper.initSQL()
 	c.columns = sqlwrapper.columns
 
@@ -28,8 +41,22 @@ func TestConvertFields(t *testing.T) {
 }
 
 func TestConvert2Entity(t *testing.T) {
+
+	options := MysqlOptions{
+		Addr:         "localhost:3306",
+		Username:     "root",
+		Password:     "",
+		ShardNum:     4,
+		BatchUpSize:  1000,
+		BatchDelSize: 1000,
+		FlushPeriod:  1 * time.Minute,
+		MaxIdleConn:  2,
+		MaxOpenConn:  4}
+
+	hs := newDbShard(options)
+
 	c := convertor{}
-	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, store.MessageEntity{})
+	sqlwrapper := newSqlwrapper("kite_msg", hs, store.MessageEntity{})
 	sqlwrapper.initSQL()
 	c.columns = sqlwrapper.columns
 
@@ -69,8 +96,22 @@ func TestConvert2Entity(t *testing.T) {
 }
 
 func TestConvert2Params(t *testing.T) {
+
+	options := MysqlOptions{
+		Addr:         "localhost:3306",
+		Username:     "root",
+		Password:     "",
+		ShardNum:     4,
+		BatchUpSize:  1000,
+		BatchDelSize: 1000,
+		FlushPeriod:  1 * time.Minute,
+		MaxIdleConn:  2,
+		MaxOpenConn:  4}
+
+	hs := newDbShard(options)
+
 	c := convertor{}
-	sqlwrapper := newSqlwrapper("kite_msg", HashShard{}, store.MessageEntity{})
+	sqlwrapper := newSqlwrapper("kite_msg", hs, store.MessageEntity{})
 	sqlwrapper.initSQL()
 	c.columns = sqlwrapper.columns
 

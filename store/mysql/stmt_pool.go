@@ -227,10 +227,10 @@ func (self *StmtPool) Shutdown() {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	self.running = false
-
+	//等待五秒中结束
+	time.Sleep(1 * time.Second)
 	for i := 0; i < 3; {
-		//等待五秒中结束
-		time.Sleep(5 * time.Second)
+
 		if self.numWork <= 0 {
 			break
 		}

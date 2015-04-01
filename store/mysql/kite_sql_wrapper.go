@@ -30,10 +30,10 @@ type sqlwrapper struct {
 	queryPrepareSQL []string
 	pageQuerySQL    []string
 	savePrepareSQL  []string
-	hashshard       HashShard
+	dbshard         DbShard
 }
 
-func newSqlwrapper(tablename string, hashshard HashShard, i interface{}) *sqlwrapper {
+func newSqlwrapper(tablename string, dbshard DbShard, i interface{}) *sqlwrapper {
 
 	columns := make([]column, 0, 10)
 	//开始反射得到所有的field->column
@@ -58,25 +58,25 @@ func newSqlwrapper(tablename string, hashshard HashShard, i interface{}) *sqlwra
 		columns = append(columns, c)
 	}
 
-	sw := &sqlwrapper{columns: columns, hashshard: hashshard, tablename: tablename}
+	sw := &sqlwrapper{columns: columns, dbshard: dbshard, tablename: tablename}
 	sw.initSQL()
 	return sw
 }
 
 func (self *sqlwrapper) hashQuerySQL(hashkey string) string {
-	return self.queryPrepareSQL[self.hashshard.FindForKey(hashkey)]
+	return self.queryPrepareSQL[self.dbshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashSaveSQL(hashkey string) string {
-	return self.savePrepareSQL[self.hashshard.FindForKey(hashkey)]
+	return self.savePrepareSQL[self.dbshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashCommitSQL(hashkey string) string {
-	return self.batchSQL[COMMIT][self.hashshard.FindForKey(hashkey)]
+	return self.batchSQL[COMMIT][self.dbshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashDeleteSQL(hashkey string) string {
-	return self.batchSQL[DELETE][self.hashshard.FindForKey(hashkey)]
+	return self.batchSQL[DELETE][self.dbshard.FindForKey(hashkey)]
 }
 func (self *sqlwrapper) hashPQSQL(hashkey string) string {
-	return self.pageQuerySQL[self.hashshard.FindForKey(hashkey)]
+	return self.pageQuerySQL[self.dbshard.FindForKey(hashkey)]
 }
 
 func (self *sqlwrapper) initSQL() {
@@ -98,8 +98,8 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(" where message_id=?")
 	sql := s.String()
 
-	self.queryPrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.queryPrepareSQL = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.queryPrepareSQL = append(self.queryPrepareSQL, strings.Replace(sql, "{}", st, -1))
 	}
@@ -129,8 +129,8 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.savePrepareSQL = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.savePrepareSQL = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.savePrepareSQL = append(self.savePrepareSQL, strings.Replace(sql, "{}", st, -1))
 	}
@@ -171,8 +171,8 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.pageQuerySQL = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.pageQuerySQL = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.pageQuerySQL = append(self.pageQuerySQL, strings.Replace(sql, "{}", st, -1))
 	}
@@ -190,8 +190,8 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.batchSQL[COMMIT] = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.batchSQL[COMMIT] = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.batchSQL[COMMIT] = append(self.batchSQL[COMMIT], strings.Replace(sql, "{}", st, -1))
 	}
@@ -205,8 +205,8 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.batchSQL[DELETE] = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.batchSQL[DELETE] = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.batchSQL[DELETE] = append(self.batchSQL[DELETE], strings.Replace(sql, "{}", st, -1))
 	}
@@ -221,8 +221,8 @@ func (self *sqlwrapper) initSQL() {
 
 	sql = s.String()
 
-	self.batchSQL[UPDATE] = make([]string, 0, self.hashshard.ShardCnt())
-	for i := 0; i < self.hashshard.ShardCnt(); i++ {
+	self.batchSQL[UPDATE] = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.batchSQL[UPDATE] = append(self.batchSQL[UPDATE], strings.Replace(sql, "{}", st, -1))
 	}

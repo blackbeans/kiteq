@@ -115,9 +115,21 @@ func parseDB(db string) store.IKiteStore {
 			password = ""
 		}
 
+		//shard的数量
+		shardnum := 4
+		sd, sdok := params["shardnum"]
+		if sdok {
+			v, e := strconv.ParseInt(sd, 10, 32)
+			if nil != e {
+				log.Crashf("NewKiteQServer|INVALID|ShardNum|%s\n", db)
+			}
+			shardnum = int(v)
+		}
+
 		options := smq.MysqlOptions{
 			Addr:         master,
 			SlaveAddr:    slave,
+			ShardNum:     shardnum,
 			DB:           params["db"],
 			Username:     username,
 			Password:     password,
