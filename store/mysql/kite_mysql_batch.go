@@ -16,9 +16,9 @@ func (self *KiteMysqlStore) Start() {
 	batchUpChan := make([]chan *MessageEntity, 0, count)
 	batchComChan := make([]chan string, 0, count)
 	for i := 0; i < count; i++ {
-		batchUpChan = append(batchUpChan, make(chan *MessageEntity, self.batchUpSize))
-		batchDelChan = append(batchDelChan, make(chan string, self.batchDelSize))
-		batchComChan = append(batchComChan, make(chan string, self.batchUpSize))
+		batchUpChan = append(batchUpChan, make(chan *MessageEntity, self.batchUpSize*2))
+		batchDelChan = append(batchDelChan, make(chan string, self.batchDelSize*2))
+		batchComChan = append(batchComChan, make(chan string, self.batchUpSize*2))
 	}
 
 	//批量的channel
