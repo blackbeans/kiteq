@@ -2,6 +2,7 @@ package mysql
 
 import (
 	"encoding/json"
+
 	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	"kiteq/store"
@@ -87,7 +88,8 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 				if ok && hok {
 					var header protocol.Header
 					if hok {
-						err := json.Unmarshal(hd, &header)
+						//头部用PB反序列化
+						err := protocol.UnmarshalPbMessage(hd, &header)
 						if nil != err {
 							log.Error("convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
 						}
@@ -155,7 +157,8 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 			case reflect.Ptr:
 				header, ok := f.Interface().(*protocol.Header)
 				if ok {
-					data, err := json.Marshal(header)
+					//头部用Pb序列化
+					data, err := protocol.MarshalPbMessage(header)
 					if err != nil {
 						log.Error("convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
 						return nil

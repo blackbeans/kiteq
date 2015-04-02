@@ -86,6 +86,7 @@ kiteq
         -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
         -topics //本机可以处理的topics列表逗号分隔
         -zkhost //zk的地址
+        -logxml=./log.xml //log4go的配置
 
     启动客户端：
         对于KiteQClient需要实现消息监听器，我们定义了如下的接口：

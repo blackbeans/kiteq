@@ -14,10 +14,9 @@ var ERROR_PERSISTENT = errors.New("persistent msg error!")
 //----------------持久化的handler
 type PersistentHandler struct {
 	BaseForwardHandler
-	kitestore       store.IKiteStore
-	deliverTimeout  time.Duration
-	deliverOptimize chan bool
-	flowstat        *stat.FlowStat //当前优化是否开启 true为开启，false为关闭
+	kitestore      store.IKiteStore
+	deliverTimeout time.Duration
+	flowstat       *stat.FlowStat //当前优化是否开启 true为开启，false为关闭
 }
 
 //------创建persitehandler
