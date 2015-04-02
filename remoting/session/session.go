@@ -232,7 +232,7 @@ func (self *Session) Close() error {
 		self.conn.Close()
 		close(self.WriteChannel)
 		close(self.ReadChannel)
-		log.Info("Session|Close|%s...\n", self.remoteAddr)
+		log.Debug("Session|Close|%s...\n", self.remoteAddr)
 	}
 	return nil
 }

@@ -64,7 +64,7 @@ func (self *RemotingServer) serve(l *StoppedListener) error {
 			continue
 		} else {
 
-			log.Info("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
+			log.Debug("RemotingServer|serve|AcceptTCP|SUCC|%s\n", conn.RemoteAddr())
 			//创建remotingClient对象
 			remoteClient := NewRemotingClient(conn, self.packetDispatcher, self.rc)
 			remoteClient.Start()

@@ -68,7 +68,7 @@ func (self *RemotingClient) Start() {
 	//启动读取
 	go self.remoteSession.ReadPacket()
 
-	log.Info("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
+	log.Debug("RemotingClient|Start|SUCC|local:%s|remote:%s\n", self.LocalAddr(), self.RemoteAddr())
 }
 
 //重连
