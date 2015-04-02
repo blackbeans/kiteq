@@ -6,6 +6,7 @@ import (
 	"kiteq/handler"
 	. "kiteq/pipe"
 	"kiteq/protocol"
+	"kiteq/remoting/packet"
 	"kiteq/store"
 	"time"
 )
@@ -106,9 +107,9 @@ func (self *RecoverManager) delivery(entity *store.MessageEntity) {
 func (self *RecoverManager) txAck(entity *store.MessageEntity) {
 
 	txack := protocol.MarshalTxACKPacket(entity.Header, protocol.TX_UNKNOWN, "Server Check")
-	packet := protocol.NewPacket(protocol.CMD_TX_ACK, txack)
+	p := packet.NewPacket(protocol.CMD_TX_ACK, txack)
 	//向头部的发送分组发送txack消息
 	groupId := entity.PublishGroup
-	event := NewRemotingEvent(packet, nil, groupId)
+	event := NewRemotingEvent(p, nil, groupId)
 	self.pipeline.FireWork(event)
 }

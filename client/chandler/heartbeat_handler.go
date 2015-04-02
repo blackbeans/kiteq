@@ -5,6 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	rcclient "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"time"
 )
 
@@ -36,7 +37,7 @@ func (self *HeartbeatHandler) keepAlive() {
 			func() {
 				id := time.Now().Unix()
 				clients := self.clientMangager.ClientsClone()
-				packet := protocol.MarshalHeartbeatPacket(id)
+				p := protocol.MarshalHeartbeatPacket(id)
 				for h, c := range clients {
 					i := 0
 					//关闭的时候发起重连
@@ -46,7 +47,7 @@ func (self *HeartbeatHandler) keepAlive() {
 						//如果是空闲的则发起心跳
 						if c.Idle() {
 							for ; i < 3; i++ {
-								hp := protocol.NewPacket(protocol.CMD_HEARTBEAT, packet)
+								hp := packet.NewPacket(protocol.CMD_HEARTBEAT, p)
 								err := c.Ping(hp, time.Duration(self.heartbeatTimeout))
 								//如果有错误则需要记录
 								if nil != err {

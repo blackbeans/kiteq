@@ -5,6 +5,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"time"
 )
 
@@ -12,8 +13,8 @@ import (
 func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool, error) {
 
 	for i := 0; i < 3; i++ {
-		packet := protocol.MarshalConnMeta(ga.GroupId, ga.SecretKey)
-		rpacket := protocol.NewPacket(protocol.CMD_CONN_META, packet)
+		p := protocol.MarshalConnMeta(ga.GroupId, ga.SecretKey)
+		rpacket := packet.NewPacket(protocol.CMD_CONN_META, p)
 		resp, err := remoteClient.WriteAndGet(*rpacket, 5*time.Second)
 		if nil != err {
 			//两秒后重试

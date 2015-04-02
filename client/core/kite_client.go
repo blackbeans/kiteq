@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	// 	log "github.com/blackbeans/log4go"
 	"time"
 )
@@ -40,9 +41,9 @@ func (self *kiteClient) sendMessage(message *protocol.QMessage) error {
 
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
-func (self *kiteClient) innerSendMessage(cmdType uint8, packet []byte, timeout time.Duration) error {
+func (self *kiteClient) innerSendMessage(cmdType uint8, p []byte, timeout time.Duration) error {
 
-	msgpacket := protocol.NewPacket(cmdType, packet)
+	msgpacket := packet.NewPacket(cmdType, p)
 
 	//如果是需要等待结果的则等待
 	if timeout <= 0 {

@@ -3,33 +3,26 @@ package stat
 import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"sync/atomic"
+	"kiteq/remoting"
 	"time"
 )
 
 type FlowStat struct {
-	name               string
-	OptimzeStatus      bool //当前优化的状态
-	ReadFlow           *flow
-	DispatcherWorkPool *flow //处理
-	DispatcherFlow     *flow
-	WriteFlow          *flow
-	DeliverFlow        *flow
-	DeliverPool        *flow
-	stop               bool
+	RemotingFlow  *remoting.RemotingFlow
+	OptimzeStatus bool
+	DeliverFlow   *remoting.Flow
+	DeliverPool   *remoting.Flow
+	stop          bool
 }
 
 func NewFlowStat(name string) *FlowStat {
-	return &FlowStat{
-		OptimzeStatus:      true,
-		name:               name,
-		ReadFlow:           &flow{},
-		DispatcherWorkPool: &flow{},
-		DispatcherFlow:     &flow{},
-		WriteFlow:          &flow{},
-		DeliverFlow:        &flow{},
-		DeliverPool:        &flow{},
-		stop:               false}
+	f := &FlowStat{
+		OptimzeStatus: true,
+		DeliverFlow:   &remoting.Flow{},
+		DeliverPool:   &remoting.Flow{},
+		stop:          false}
+	f.RemotingFlow = remoting.NewRemotingFlow(name)
+	return f
 }
 
 func (self *FlowStat) Start() {
@@ -37,15 +30,7 @@ func (self *FlowStat) Start() {
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
-			line := fmt.Sprintf("%s:\tread:%d\tdispatcher:%d\twrite:%d\t", self.name, self.ReadFlow.changes(),
-				self.DispatcherFlow.changes(), self.WriteFlow.changes())
-			if nil != self.DispatcherWorkPool {
-				line = fmt.Sprintf("%sdispatcher-pool:%d\t", line, self.DispatcherWorkPool.count)
-			}
-			if nil != self.DeliverFlow {
-				line = fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.changes(), self.DeliverPool.count)
-			}
-
+			line := self.Monitor()
 			log.Info(line)
 			<-t.C
 		}
@@ -53,23 +38,12 @@ func (self *FlowStat) Start() {
 	}()
 }
 
-func (self *FlowStat) Stop() {
-	self.stop = true
-}
+func (self *FlowStat) Monitor() string {
 
-type flow struct {
-	count     int32
-	lastcount int32
-}
+	line := self.RemotingFlow.Monitor()
+	if nil != self.DeliverFlow {
+		line = fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.Changes(), self.DeliverPool.Count())
+	}
 
-func (self *flow) Incr(num int32) {
-	atomic.AddInt32(&self.count, num)
-}
-
-func (self *flow) changes() int32 {
-	tmpc := self.count
-	tmpl := self.lastcount
-	c := tmpc - tmpl
-	self.lastcount = tmpc
-	return c
+	return line
 }

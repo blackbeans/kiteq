@@ -1,12 +1,14 @@
 package server
 
 import (
-	"kiteq/protocol"
+	"kiteq/remoting"
+	"kiteq/stat"
 	"time"
 )
 
 type KiteQConfig struct {
-	rc                *protocol.RemotingConfig
+	flowstat          *stat.FlowStat
+	rc                *remoting.RemotingConfig
 	server            string
 	zkhost            string
 	deliverTimeout    time.Duration //投递超时时间
@@ -16,12 +18,14 @@ type KiteQConfig struct {
 	db                string        //持久层配置
 }
 
-func NewKiteQConfig(server, zkhost string, deliverTimeout time.Duration, maxDeliverWorkers int,
+func NewKiteQConfig(flowstat *stat.FlowStat, server, zkhost string, deliverTimeout time.Duration, maxDeliverWorkers int,
 	recoverPeriod time.Duration,
 	topics []string,
 	db string,
-	rc *protocol.RemotingConfig) KiteQConfig {
+	rc *remoting.RemotingConfig) KiteQConfig {
+	rc.FlowStat = flowstat.RemotingFlow
 	return KiteQConfig{
+		flowstat:          flowstat,
 		rc:                rc,
 		server:            server,
 		zkhost:            zkhost,

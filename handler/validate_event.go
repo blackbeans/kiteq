@@ -5,6 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
+	"kiteq/remoting/packet"
 )
 
 //----------------鉴权handler
@@ -48,10 +49,10 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 		log.Warn("ValidateHandler|UnAuth CONNETION|%s\n", remoteClient.RemoteAddr())
 		cmd := protocol.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
 		//响应包
-		packet := protocol.NewPacket(protocol.CMD_CONN_AUTH, cmd)
+		p := packet.NewPacket(protocol.CMD_CONN_AUTH, cmd)
 
 		//直接写出去授权失败
-		remoteClient.Write(*packet)
+		remoteClient.Write(*p)
 		//断开连接
 		remoteClient.Shutdown()
 	}

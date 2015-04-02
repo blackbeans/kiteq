@@ -3,6 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
+	"kiteq/remoting/packet"
 	"sort"
 	"time"
 )
@@ -78,9 +79,9 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 	return nil
 }
 
-func storeAck(opaque int32, messageid string, succ bool, feedback string) *protocol.Packet {
+func storeAck(opaque int32, messageid string, succ bool, feedback string) *packet.Packet {
 
 	storeAck := protocol.MarshalMessageStoreAck(messageid, succ, feedback)
 	//响应包
-	return protocol.NewRespPacket(opaque, protocol.CMD_MESSAGE_STORE_ACK, storeAck)
+	return packet.NewRespPacket(opaque, protocol.CMD_MESSAGE_STORE_ACK, storeAck)
 }

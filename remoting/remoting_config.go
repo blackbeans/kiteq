@@ -1,7 +1,6 @@
-package protocol
+package remoting
 
 import (
-	"kiteq/stat"
 	// 	log "github.com/blackbeans/log4go"
 	"sync"
 	"sync/atomic"
@@ -14,7 +13,7 @@ const (
 
 //网络层参数
 type RemotingConfig struct {
-	FlowStat         *stat.FlowStat
+	FlowStat         *RemotingFlow //网络层流量
 	MaxDispatcherNum chan int      //最大分发处理协程数
 	ReadBufferSize   int           //读取缓冲大小
 	WriteBufferSize  int           //写入缓冲大小
@@ -25,7 +24,7 @@ type RemotingConfig struct {
 }
 
 func NewRemotingConfig(
-	name string,
+	rflow *RemotingFlow,
 	maxdispatcherNum,
 	readbuffersize, writebuffersize, writechannlesize, readchannelsize int,
 	idletime time.Duration, maxOpaque int) *RemotingConfig {
@@ -46,8 +45,7 @@ func NewRemotingConfig(
 
 	//初始化
 	rc := &RemotingConfig{
-		FlowStat: stat.NewFlowStat(name),
-
+		FlowStat:         rflow,
 		MaxDispatcherNum: make(chan int, maxdispatcherNum),
 		ReadBufferSize:   readbuffersize,
 		WriteBufferSize:  writebuffersize,

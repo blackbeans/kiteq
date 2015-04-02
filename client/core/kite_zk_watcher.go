@@ -4,8 +4,8 @@ import (
 	log "github.com/blackbeans/log4go"
 	"kiteq/binding"
 	"kiteq/pipe"
-	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"sort"
 	"strings"
 )
@@ -48,11 +48,11 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				continue
 			}
 			remoteClient = rclient.NewRemotingClient(conn,
-				func(rc *rclient.RemotingClient, packet *protocol.Packet) {
-					event := pipe.NewPacketEvent(rc, packet)
+				func(rc *rclient.RemotingClient, p *packet.Packet) {
+					event := pipe.NewPacketEvent(rc, p)
 					err := self.pipeline.FireWork(event)
 					if nil != err {
-						log.Error("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+						log.Error("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, p)
 					}
 				}, self.rc)
 			remoteClient.Start()

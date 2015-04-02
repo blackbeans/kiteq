@@ -6,6 +6,7 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	// 	log "github.com/blackbeans/log4go"
+	"kiteq/remoting/packet"
 	"kiteq/stat"
 	"time"
 )
@@ -94,9 +95,9 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 	//创建不同的packet
 	switch entity.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
-		deliverEvent.packet = protocol.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
+		deliverEvent.packet = packet.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
 	case protocol.CMD_STRING_MESSAGE:
-		deliverEvent.packet = protocol.NewPacket(protocol.CMD_STRING_MESSAGE, data)
+		deliverEvent.packet = packet.NewPacket(protocol.CMD_STRING_MESSAGE, data)
 	}
 
 	//填充订阅分组

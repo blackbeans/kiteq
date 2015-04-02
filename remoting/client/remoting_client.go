@@ -4,7 +4,8 @@ import (
 	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"kiteq/protocol"
+	"kiteq/remoting"
+	"kiteq/remoting/packet"
 	"kiteq/remoting/session"
 	"net"
 	"time"
@@ -17,13 +18,13 @@ type RemotingClient struct {
 	remoteAddr       string
 	heartbeat        int64
 	remoteSession    *session.Session
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet) //包处理函数
-	rc               *protocol.RemotingConfig
+	packetDispatcher func(remoteClient *RemotingClient, packet *packet.Packet) //包处理函数
+	rc               *remoting.RemotingConfig
 }
 
 func NewRemotingClient(conn *net.TCPConn,
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet),
-	rc *protocol.RemotingConfig) *RemotingClient {
+	packetDispatcher func(remoteClient *RemotingClient, packet *packet.Packet),
+	rc *remoting.RemotingConfig) *RemotingClient {
 
 	remoteSession := session.NewSession(conn, rc)
 
@@ -121,7 +122,7 @@ func (self *RemotingClient) dispatcherPacket(session *session.Session) {
 var ERROR_PONG = errors.New("ERROR PONG TYPE !")
 
 //同步发起ping的命令
-func (self *RemotingClient) Ping(heartbeat *protocol.Packet, timeout time.Duration) error {
+func (self *RemotingClient) Ping(heartbeat *packet.Packet, timeout time.Duration) error {
 	pong, err := self.WriteAndGet(*heartbeat, timeout)
 	if nil != err {
 		return err
@@ -145,7 +146,7 @@ func (self *RemotingClient) Pong(opaque int32, version int64) {
 	self.updateHeartBeat(version)
 }
 
-func (self *RemotingClient) fillOpaque(packet *protocol.Packet) (int32, chan interface{}) {
+func (self *RemotingClient) fillOpaque(packet *packet.Packet) (int32, chan interface{}) {
 	tid := packet.Opaque
 	//只有在默认值没有赋值的时候才去赋值
 	if tid < 0 {
@@ -170,7 +171,7 @@ func (self *RemotingClient) Attach(opaque int32, obj interface{}) {
 }
 
 //只是写出去
-func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, error) {
+func (self *RemotingClient) Write(packet packet.Packet) (chan interface{}, error) {
 
 	opaque, future := self.fillOpaque(&packet)
 	self.rc.RequestHolder.Attach(opaque, future)
@@ -181,7 +182,7 @@ func (self *RemotingClient) Write(packet protocol.Packet) (chan interface{}, err
 var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
 
 //写数据并且得到相应
-func (self *RemotingClient) WriteAndGet(packet protocol.Packet,
+func (self *RemotingClient) WriteAndGet(packet packet.Packet,
 	timeout time.Duration) (interface{}, error) {
 
 	//同步写出

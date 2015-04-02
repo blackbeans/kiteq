@@ -3,6 +3,7 @@ package handler
 import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
+	"kiteq/remoting/packet"
 	// 	log "github.com/blackbeans/log4go"
 )
 
@@ -38,7 +39,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 	hevent.RemoteClient.Pong(hevent.Opaque, hevent.Version)
 
 	//发起一个ping对应的响应
-	packet := protocol.NewRespPacket(hevent.Opaque, protocol.CMD_HEARTBEAT, protocol.MarshalHeartbeatPacket(hevent.Version))
+	packet := packet.NewRespPacket(hevent.Opaque, protocol.CMD_HEARTBEAT, protocol.MarshalHeartbeatPacket(hevent.Version))
 	//发起一个网络请求
 	remoteEvent := NewRemotingEvent(packet, []string{hevent.RemoteClient.RemoteAddr()})
 

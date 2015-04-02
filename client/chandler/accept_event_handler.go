@@ -6,6 +6,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 )
 
 //接受消息事件
@@ -77,7 +78,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 		txData, _ := protocol.MarshalPbMessage(txPacket)
 
-		txResp := protocol.NewRespPacket(acceptEvent.opaque, acceptEvent.msgType, txData)
+		txResp := packet.NewRespPacket(acceptEvent.opaque, acceptEvent.msgType, txData)
 
 		//发送提交结果确认的Packet
 		remotingEvent := NewRemotingEvent(txResp, []string{acceptEvent.remoteClient.RemoteAddr()})
@@ -94,7 +95,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 		dpacket := protocol.MarshalDeliverAckPacket(message.GetHeader(), succ)
 
-		respPacket := protocol.NewRespPacket(acceptEvent.opaque, protocol.CMD_DELIVER_ACK, dpacket)
+		respPacket := packet.NewRespPacket(acceptEvent.opaque, protocol.CMD_DELIVER_ACK, dpacket)
 
 		remotingEvent := NewRemotingEvent(respPacket, []string{acceptEvent.remoteClient.RemoteAddr()})
 

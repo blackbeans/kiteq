@@ -8,7 +8,9 @@ import (
 	"kiteq/client/listener"
 	"kiteq/pipe"
 	"kiteq/protocol"
+	"kiteq/remoting"
 	rclient "kiteq/remoting/client"
+	"kiteq/stat"
 	"math/rand"
 	"net"
 	"os"
@@ -32,13 +34,15 @@ type KiteClientManager struct {
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
 	lock          sync.RWMutex
-	rc            *protocol.RemotingConfig
+	rc            *remoting.RemotingConfig
+	flowstat      *stat.FlowStat
 }
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
-	rc := protocol.NewRemotingConfig(
-		"kiteclient-"+groupId,
+	flowstat := stat.NewFlowStat("kiteclient-" + groupId)
+	rc := remoting.NewRemotingConfig(
+		flowstat.RemotingFlow,
 		50, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
@@ -60,7 +64,8 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		topics:        make([]string, 0, 10),
 		pipeline:      pipeline,
 		clientManager: clientm,
-		rc:            rc}
+		rc:            rc,
+		flowstat:      flowstat}
 	manager.zkManager = binding.NewZKManager(zkAddr, manager)
 
 	return manager
@@ -70,7 +75,7 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 func (self *KiteClientManager) Start() {
 
 	//开启流量统计
-	self.rc.FlowStat.Start()
+	self.flowstat.Start()
 
 	hostname, _ := os.Hostname()
 	//推送本机到

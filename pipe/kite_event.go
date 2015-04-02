@@ -1,8 +1,8 @@
 package pipe
 
 import (
-	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 )
 
 type IEvent interface {
@@ -20,11 +20,11 @@ type IForwardEvent interface {
 
 type PacketEvent struct {
 	IForwardEvent
-	Packet       *protocol.Packet //本次的数据包
+	Packet       *packet.Packet //本次的数据包
 	RemoteClient *rclient.RemotingClient
 }
 
-func NewPacketEvent(remoteClient *rclient.RemotingClient, packet *protocol.Packet) *PacketEvent {
+func NewPacketEvent(remoteClient *rclient.RemotingClient, packet *packet.Packet) *PacketEvent {
 	return &PacketEvent{Packet: packet, RemoteClient: remoteClient}
 }
 
@@ -50,10 +50,10 @@ type RemotingEvent struct {
 	futures    chan map[string]chan interface{} //所有的回调的future
 	TargetHost []string                         //发送的特定hostport
 	GroupIds   []string                         //本次发送的分组
-	Packet     *protocol.Packet                 //tlv的packet数据
+	Packet     *packet.Packet                   //tlv的packet数据
 }
 
-func NewRemotingEvent(packet *protocol.Packet, targetHost []string, groupIds ...string) *RemotingEvent {
+func NewRemotingEvent(packet *packet.Packet, targetHost []string, groupIds ...string) *RemotingEvent {
 	revent := &RemotingEvent{
 		TargetHost: targetHost,
 		GroupIds:   groupIds,

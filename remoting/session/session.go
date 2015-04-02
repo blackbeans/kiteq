@@ -7,7 +7,8 @@ import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"io"
-	"kiteq/protocol"
+	"kiteq/remoting"
+	"kiteq/remoting/packet"
 	"net"
 	"syscall"
 	"time"
@@ -18,14 +19,14 @@ type Session struct {
 	remoteAddr   string
 	br           *bufio.Reader
 	bw           *bufio.Writer
-	idleTimer    *time.Timer          //空闲timer
-	ReadChannel  chan protocol.Packet //request的channel
-	WriteChannel chan protocol.Packet //response的channel
+	idleTimer    *time.Timer        //空闲timer
+	ReadChannel  chan packet.Packet //request的channel
+	WriteChannel chan packet.Packet //response的channel
 	isClose      bool
-	rc           *protocol.RemotingConfig
+	rc           *remoting.RemotingConfig
 }
 
-func NewSession(conn *net.TCPConn, rc *protocol.RemotingConfig) *Session {
+func NewSession(conn *net.TCPConn, rc *remoting.RemotingConfig) *Session {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(3 * time.Second)
@@ -38,8 +39,8 @@ func NewSession(conn *net.TCPConn, rc *protocol.RemotingConfig) *Session {
 		conn:         conn,
 		br:           bufio.NewReaderSize(conn, rc.ReadBufferSize),
 		bw:           bufio.NewWriterSize(conn, rc.WriteBufferSize),
-		ReadChannel:  make(chan protocol.Packet, rc.ReadChannelSize),
-		WriteChannel: make(chan protocol.Packet, rc.WriteChannelSize),
+		ReadChannel:  make(chan packet.Packet, rc.ReadChannelSize),
+		WriteChannel: make(chan packet.Packet, rc.WriteChannelSize),
 		isClose:      false,
 		remoteAddr:   conn.RemoteAddr().String(),
 		rc:           rc,
@@ -76,7 +77,7 @@ func (self *Session) ReadPacket() {
 	buff := bytes.NewBuffer(packetBuff)
 
 	for !self.isClose {
-		slice, err := self.br.ReadSlice(protocol.CMD_CRLF[0])
+		slice, err := self.br.ReadSlice(packet.CMD_CRLF[0])
 		//如果没有达到请求头的最小长度则继续读取
 		if nil != err {
 			buff.Reset()
@@ -90,7 +91,7 @@ func (self *Session) ReadPacket() {
 			continue
 		}
 
-		if buff.Len()+len(slice) >= protocol.MAX_PACKET_BYTES {
+		if buff.Len()+len(slice) >= packet.MAX_PACKET_BYTES {
 			log.Error("Session|ReadPacket|%s|WRITE|TOO LARGE|CLOSE SESSION|%s\n", self.remoteAddr, err)
 			self.Close()
 			return
@@ -125,9 +126,9 @@ func (self *Session) ReadPacket() {
 		}
 
 		//如果是\n那么就是一个完整的包
-		if buff.Len() > protocol.PACKET_HEAD_LEN && delim == protocol.CMD_CRLF[1] {
+		if buff.Len() > packet.PACKET_HEAD_LEN && delim == packet.CMD_CRLF[1] {
 
-			packet, err := protocol.UnmarshalTLV(buff.Bytes())
+			packet, err := packet.UnmarshalTLV(buff.Bytes())
 
 			if nil != err || nil == packet {
 				log.Error("Session|ReadPacket|UnmarshalTLV|FAIL|%s|%d|%s\n", err, buff.Len(), buff.Bytes())
@@ -149,7 +150,7 @@ func (self *Session) ReadPacket() {
 }
 
 //写出数据
-func (self *Session) Write(packet protocol.Packet) error {
+func (self *Session) Write(packet packet.Packet) error {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Error("Session|Write|%s|recover|FAIL|%s\n", self.remoteAddr, err)
@@ -168,9 +169,9 @@ func (self *Session) Write(packet protocol.Packet) error {
 }
 
 //真正写入网络的流
-func (self *Session) write0(tlv protocol.Packet) {
+func (self *Session) write0(tlv packet.Packet) {
 
-	packet := protocol.MarshalPacket(&tlv)
+	packet := packet.MarshalPacket(&tlv)
 	if nil == packet || len(packet) <= 0 {
 		log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s\n", tlv)
 		//如果是同步写出
@@ -202,7 +203,7 @@ func (self *Session) write0(tlv protocol.Packet) {
 //写入响应
 func (self *Session) WritePacket() {
 
-	var packet protocol.Packet
+	var packet packet.Packet
 	for !self.isClose {
 		packet = <-self.WriteChannel
 		self.write0(packet)

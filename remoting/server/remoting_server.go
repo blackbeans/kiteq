@@ -2,8 +2,9 @@ package server
 
 import (
 	log "github.com/blackbeans/log4go"
-	"kiteq/protocol"
+	"kiteq/remoting"
 	. "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"net"
 	"time"
 )
@@ -13,12 +14,12 @@ type RemotingServer struct {
 	keepalive        time.Duration
 	stopChan         chan bool
 	isShutdown       bool
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)
-	rc               *protocol.RemotingConfig
+	packetDispatcher func(remoteClient *RemotingClient, packet *packet.Packet)
+	rc               *remoting.RemotingConfig
 }
 
-func NewRemotionServer(hostport string, rc *protocol.RemotingConfig,
-	packetDispatcher func(remoteClient *RemotingClient, packet *protocol.Packet)) *RemotingServer {
+func NewRemotionServer(hostport string, rc *remoting.RemotingConfig,
+	packetDispatcher func(remoteClient *RemotingClient, packet *packet.Packet)) *RemotingServer {
 
 	//设置为8个并发
 	// runtime.GOMAXPROCS(runtime.NumCPU()/2 + 1)
@@ -51,9 +52,20 @@ func (self *RemotingServer) ListenAndServer() error {
 
 	//开始服务获取连接
 	go self.serve(stopListener)
-
+	go self.Start()
 	return nil
 
+}
+
+func (self *RemotingServer) Start() {
+
+	t := time.NewTicker(1 * time.Second)
+	for !self.isShutdown {
+		line := self.rc.FlowStat.Monitor()
+		log.Info(line)
+		<-t.C
+	}
+	t.Stop()
 }
 
 func (self *RemotingServer) serve(l *StoppedListener) error {

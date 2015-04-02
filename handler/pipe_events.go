@@ -4,6 +4,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	rclient "kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"kiteq/store"
 	// 	log "github.com/blackbeans/log4go"
 	"time"
@@ -113,11 +114,11 @@ type deliverEvent struct {
 	topic          string
 	messageType    string
 	expiredTime    int64
-	publishtime    int64            //消息发布时间
-	fly            bool             //是否为fly模式的消息
-	packet         *protocol.Packet //消息包
-	succGroups     []string         //已经投递成功的分组
-	deliverGroups  []string         //需要投递的群组
+	publishtime    int64          //消息发布时间
+	fly            bool           //是否为fly模式的消息
+	packet         *packet.Packet //消息包
+	succGroups     []string       //已经投递成功的分组
+	deliverGroups  []string       //需要投递的群组
 	deliverLimit   int32
 	deliverCount   int32 //已经投递的次数
 	attemptDeliver chan []string

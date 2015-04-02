@@ -5,8 +5,8 @@ import (
 	"kiteq/binding"
 	"kiteq/handler"
 	"kiteq/pipe"
-	"kiteq/protocol"
 	"kiteq/remoting/client"
+	"kiteq/remoting/packet"
 	"kiteq/remoting/server"
 	"kiteq/store"
 	"os"
@@ -60,9 +60,9 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.topics))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.rc.FlowStat))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.flowstat))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.rc.FlowStat, kc.maxDeliverWorkers))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.maxDeliverWorkers))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
@@ -85,11 +85,11 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 func (self *KiteQServer) Start() {
 
 	self.remotingServer = server.NewRemotionServer(self.kc.server, self.kc.rc,
-		func(rclient *client.RemotingClient, packet *protocol.Packet) {
-			event := pipe.NewPacketEvent(rclient, packet)
+		func(rclient *client.RemotingClient, p *packet.Packet) {
+			event := pipe.NewPacketEvent(rclient, p)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
-				log.Error("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, packet)
+				log.Error("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, p)
 			} else {
 				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
@@ -110,7 +110,7 @@ func (self *KiteQServer) Start() {
 	}
 
 	//开启流量统计
-	self.kc.rc.FlowStat.Start()
+	self.kc.flowstat.Start()
 
 	//开启recover
 	self.recoverManager.Start()

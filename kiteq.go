@@ -4,8 +4,9 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"kiteq/protocol"
+	"kiteq/remoting"
 	"kiteq/server"
+	"kiteq/stat"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -42,13 +43,14 @@ func main() {
 		}
 	}()
 
-	rc := protocol.NewRemotingConfig(
-		"KiteQ-"+*bindHost,
+	flowstat := stat.NewFlowStat("KiteQ-" + *bindHost)
+	rc := remoting.NewRemotingConfig(
+		flowstat.RemotingFlow,
 		2000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(*bindHost, *zkhost, 1*time.Second, 8000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
+	kc := server.NewKiteQConfig(flowstat, *bindHost, *zkhost, 1*time.Second, 8000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()

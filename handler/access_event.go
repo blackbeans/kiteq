@@ -5,6 +5,7 @@ import (
 	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/remoting/client"
+	"kiteq/remoting/packet"
 )
 
 //----------------鉴权handler
@@ -52,7 +53,7 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包
-	packet := protocol.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
+	packet := packet.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
 
 	//向当前连接写入当前包
 	remoteEvent := NewRemotingEvent(packet, []string{aevent.remoteClient.RemoteAddr()})
