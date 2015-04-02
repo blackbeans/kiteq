@@ -3,25 +3,25 @@ package stat
 import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"kiteq/remoting"
+	"github.com/blackbeans/turbo"
 	"time"
 )
 
 type FlowStat struct {
-	RemotingFlow  *remoting.RemotingFlow
+	RemotingFlow  *turbo.RemotingFlow
 	OptimzeStatus bool
-	DeliverFlow   *remoting.Flow
-	DeliverPool   *remoting.Flow
+	DeliverFlow   *turbo.Flow
+	DeliverPool   *turbo.Flow
 	stop          bool
 }
 
 func NewFlowStat(name string) *FlowStat {
 	f := &FlowStat{
 		OptimzeStatus: true,
-		DeliverFlow:   &remoting.Flow{},
-		DeliverPool:   &remoting.Flow{},
+		DeliverFlow:   &turbo.Flow{},
+		DeliverPool:   &turbo.Flow{},
 		stop:          false}
-	f.RemotingFlow = remoting.NewRemotingFlow(name)
+	f.RemotingFlow = turbo.NewRemotingFlow(name)
 	return f
 }
 

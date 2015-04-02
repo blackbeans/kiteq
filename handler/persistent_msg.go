@@ -2,7 +2,7 @@ package handler
 
 import (
 	"errors"
-	. "kiteq/pipe"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/stat"
 	"kiteq/store"
 	"time"

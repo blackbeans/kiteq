@@ -2,10 +2,10 @@ package core
 
 import (
 	log "github.com/blackbeans/log4go"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
+	"github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
-	"kiteq/pipe"
-	rclient "kiteq/remoting/client"
-	"kiteq/remoting/packet"
 	"sort"
 	"strings"
 )
@@ -47,8 +47,8 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				log.Error("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
 				continue
 			}
-			remoteClient = rclient.NewRemotingClient(conn,
-				func(rc *rclient.RemotingClient, p *packet.Packet) {
+			remoteClient = c.NewRemotingClient(conn,
+				func(rc *c.RemotingClient, p *packet.Packet) {
 					event := pipe.NewPacketEvent(rc, p)
 					err := self.pipeline.FireWork(event)
 					if nil != err {
@@ -81,11 +81,11 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 	outter:
 		for _, o := range old {
 			for _, c := range clients {
-				if c.remoteClient.RemoteAddr() == o.remoteClient.RemoteAddr() {
+				if c.remotec.RemoteAddr() == o.remotec.RemoteAddr() {
 					continue outter
 				}
 			}
-			del = append(del, o.remoteClient.RemoteAddr())
+			del = append(del, o.remotec.RemoteAddr())
 		}
 
 		if len(del) > 0 {

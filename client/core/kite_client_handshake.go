@@ -3,14 +3,14 @@ package core
 import (
 	"errors"
 	log "github.com/blackbeans/log4go"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
 	"kiteq/protocol"
-	"kiteq/remoting/client"
-	"kiteq/remoting/packet"
 	"time"
 )
 
 //握手包
-func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool, error) {
+func handshake(ga *c.GroupAuth, remoteClient *c.RemotingClient) (bool, error) {
 
 	for i := 0; i < 3; i++ {
 		p := protocol.MarshalConnMeta(ga.GroupId, ga.SecretKey)

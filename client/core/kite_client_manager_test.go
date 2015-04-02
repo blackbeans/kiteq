@@ -1,17 +1,16 @@
 package core
 
 import (
+	"github.com/blackbeans/turbo"
+	"github.com/golang/protobuf/proto"
 	"kiteq/binding"
 	"kiteq/protocol"
-	"kiteq/remoting"
 	"kiteq/server"
 	"kiteq/stat"
 	"kiteq/store"
 	"log"
 	"testing"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 )
 
 func buildStringMessage(commit bool) *protocol.StringMessage {
@@ -77,7 +76,7 @@ func init() {
 	l := &MockListener{rc: rc, txc: txc}
 
 	flowstat := stat.NewFlowStat("KiteQ-" + "127.0.0.1:13800")
-	rc := remoting.NewRemotingConfig(
+	rc := turbo.NewRemotingConfig(
 		flowstat.RemotingFlow,
 		2000, 16*1024,
 		16*1024, 10000, 10000,

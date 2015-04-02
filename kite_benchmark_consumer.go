@@ -47,7 +47,7 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 }
 
 func main() {
-	logxml := flag.String("logxml", "./log4go.xml", "-logxml=./log_consumer.xml")
+	logxml := flag.String("logxml", "./log/log_consumer.xml", "-logxml=./log/log_consumer.xml")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
 	runtime.GOMAXPROCS(8)

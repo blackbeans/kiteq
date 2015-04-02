@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	log "github.com/blackbeans/log4go"
-	"kiteq/remoting"
+	"github.com/blackbeans/turbo"
 	"kiteq/server"
 	"kiteq/stat"
 	"net"
@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	logxml := flag.String("logxml", "./log4go.xml", "-logxml=./log4go.xml")
+	logxml := flag.String("logxml", "./log/log.xml", "-logxml=./log/log.xml")
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
@@ -44,7 +44,7 @@ func main() {
 	}()
 
 	flowstat := stat.NewFlowStat("KiteQ-" + *bindHost)
-	rc := remoting.NewRemotingConfig(
+	rc := turbo.NewRemotingConfig(
 		flowstat.RemotingFlow,
 		2000, 16*1024,
 		16*1024, 10000, 10000,

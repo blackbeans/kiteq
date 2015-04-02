@@ -1,12 +1,12 @@
 package handler
 
 import (
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
-	. "kiteq/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
 	// 	log "github.com/blackbeans/log4go"
-	"kiteq/remoting/packet"
+	packet "github.com/blackbeans/turbo/packet"
 	"kiteq/stat"
 	"time"
 )

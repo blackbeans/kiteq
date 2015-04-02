@@ -65,7 +65,7 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 }
 
 func main() {
-	logxml := flag.String("logxml", "./log4go.xml", "-logxml=./log_producer.xml")
+	logxml := flag.String("logxml", "./log/log_producer.xml", "-logxml=./log/log_producer.xml")
 	k := flag.Int("k", 1, "-k=1  //kiteclient num ")
 	c := flag.Int("c", 10, "-c=100")
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")

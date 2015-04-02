@@ -1,14 +1,14 @@
 package server
 
 import (
-	"kiteq/remoting"
+	"github.com/blackbeans/turbo"
 	"kiteq/stat"
 	"time"
 )
 
 type KiteQConfig struct {
 	flowstat          *stat.FlowStat
-	rc                *remoting.RemotingConfig
+	rc                *turbo.RemotingConfig
 	server            string
 	zkhost            string
 	deliverTimeout    time.Duration //投递超时时间
@@ -22,7 +22,7 @@ func NewKiteQConfig(flowstat *stat.FlowStat, server, zkhost string, deliverTimeo
 	recoverPeriod time.Duration,
 	topics []string,
 	db string,
-	rc *remoting.RemotingConfig) KiteQConfig {
+	rc *turbo.RemotingConfig) KiteQConfig {
 	rc.FlowStat = flowstat.RemotingFlow
 	return KiteQConfig{
 		flowstat:          flowstat,

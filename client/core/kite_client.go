@@ -3,21 +3,21 @@ package core
 import (
 	"errors"
 	"fmt"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
 	"kiteq/protocol"
-	"kiteq/remoting/client"
-	"kiteq/remoting/packet"
 	// 	log "github.com/blackbeans/log4go"
 	"time"
 )
 
 type kiteClient struct {
-	remoteClient *client.RemotingClient
+	remotec *c.RemotingClient
 }
 
-func newKitClient(remoteClient *client.RemotingClient) *kiteClient {
+func newKitClient(remoteClient *c.RemotingClient) *kiteClient {
 
 	client := &kiteClient{
-		remoteClient: remoteClient}
+		remotec: remoteClient}
 
 	return client
 }
@@ -47,10 +47,10 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, p []byte, timeout time.D
 
 	//如果是需要等待结果的则等待
 	if timeout <= 0 {
-		_, err := self.remoteClient.Write(*msgpacket)
+		_, err := self.remotec.Write(*msgpacket)
 		return err
 	} else {
-		resp, err := self.remoteClient.WriteAndGet(*msgpacket, timeout)
+		resp, err := self.remotec.WriteAndGet(*msgpacket, timeout)
 		if nil != err {
 			return err
 		} else {

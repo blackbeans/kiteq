@@ -2,11 +2,11 @@ package chandler
 
 import (
 	"errors"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/client/listener"
-	. "kiteq/pipe"
 	"kiteq/protocol"
-	rclient "kiteq/remoting/client"
-	"kiteq/remoting/packet"
 )
 
 //接受消息事件
@@ -14,11 +14,11 @@ type acceptEvent struct {
 	IForwardEvent
 	msgType      uint8
 	msg          interface{} //attach的数据message
-	remoteClient *rclient.RemotingClient
+	remoteClient *c.RemotingClient
 	opaque       int32
 }
 
-func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *rclient.RemotingClient, opaque int32) *acceptEvent {
+func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *c.RemotingClient, opaque int32) *acceptEvent {
 	return &acceptEvent{
 		msgType:      msgType,
 		msg:          msg,

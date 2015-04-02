@@ -2,23 +2,23 @@ package chandler
 
 import (
 	log "github.com/blackbeans/log4go"
-	. "kiteq/pipe"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/packet"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/protocol"
-	rcclient "kiteq/remoting/client"
-	"kiteq/remoting/packet"
 	"time"
 )
 
 type HeartbeatHandler struct {
 	BaseForwardHandler
-	clientMangager   *rcclient.ClientManager
+	clientMangager   *c.ClientManager
 	heartbeatPeriod  time.Duration
 	heartbeatTimeout time.Duration
 }
 
 //------创建heartbeat
 func NewHeartbeatHandler(name string, heartbeatPeriod time.Duration,
-	heartbeatTimeout time.Duration, clientMangager *rcclient.ClientManager) *HeartbeatHandler {
+	heartbeatTimeout time.Duration, clientMangager *c.ClientManager) *HeartbeatHandler {
 	phandler := &HeartbeatHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.clientMangager = clientMangager

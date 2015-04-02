@@ -2,10 +2,10 @@ package handler
 
 import (
 	log "github.com/blackbeans/log4go"
-	. "kiteq/pipe"
+	client "github.com/blackbeans/turbo/client"
+	packet "github.com/blackbeans/turbo/packet"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/protocol"
-	"kiteq/remoting/client"
-	"kiteq/remoting/packet"
 )
 
 //----------------鉴权handler

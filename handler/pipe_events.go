@@ -1,18 +1,19 @@
 package handler
 
 import (
-	. "kiteq/pipe"
+	client "github.com/blackbeans/turbo/client"
+	packet "github.com/blackbeans/turbo/packet"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/protocol"
-	rclient "kiteq/remoting/client"
-	"kiteq/remoting/packet"
 	"kiteq/store"
+
 	// 	log "github.com/blackbeans/log4go"
 	"time"
 )
 
 type iauth interface {
 	IForwardEvent
-	getClient() *rclient.RemotingClient
+	getClient() *client.RemotingClient
 }
 
 type accessEvent struct {
@@ -20,14 +21,14 @@ type accessEvent struct {
 	groupId      string
 	secretKey    string
 	opaque       int32
-	remoteClient *rclient.RemotingClient
+	remoteClient *client.RemotingClient
 }
 
-func (self *accessEvent) getClient() *rclient.RemotingClient {
+func (self *accessEvent) getClient() *client.RemotingClient {
 	return self.remoteClient
 }
 
-func newAccessEvent(groupId, secretKey string, remoteClient *rclient.RemotingClient, opaque int32) *accessEvent {
+func newAccessEvent(groupId, secretKey string, remoteClient *client.RemotingClient, opaque int32) *accessEvent {
 	access := &accessEvent{
 		groupId:      groupId,
 		secretKey:    secretKey,
@@ -42,14 +43,14 @@ type acceptEvent struct {
 	msgType      uint8
 	msg          interface{} //attach的数据message
 	opaque       int32
-	remoteClient *rclient.RemotingClient
+	remoteClient *client.RemotingClient
 }
 
-func (self *acceptEvent) getClient() *rclient.RemotingClient {
+func (self *acceptEvent) getClient() *client.RemotingClient {
 	return self.remoteClient
 }
 
-func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *rclient.RemotingClient, opaque int32) *acceptEvent {
+func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *client.RemotingClient, opaque int32) *acceptEvent {
 	ae := &acceptEvent{
 		msgType:      msgType,
 		msg:          msg,
@@ -62,14 +63,14 @@ type txAckEvent struct {
 	iauth
 	txPacket     *protocol.TxACKPacket
 	opaque       int32
-	remoteClient *rclient.RemotingClient
+	remoteClient *client.RemotingClient
 }
 
-func (self *txAckEvent) getClient() *rclient.RemotingClient {
+func (self *txAckEvent) getClient() *client.RemotingClient {
 	return self.remoteClient
 }
 
-func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *rclient.RemotingClient) *txAckEvent {
+func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *client.RemotingClient) *txAckEvent {
 	tx := &txAckEvent{
 		txPacket:     txPacket,
 		opaque:       opaque,
@@ -81,11 +82,11 @@ func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *r
 type persistentEvent struct {
 	IForwardEvent
 	entity       *store.MessageEntity
-	remoteClient *rclient.RemotingClient
+	remoteClient *client.RemotingClient
 	opaque       int32
 }
 
-func newPersistentEvent(entity *store.MessageEntity, remoteClient *rclient.RemotingClient, opaque int32) *persistentEvent {
+func newPersistentEvent(entity *store.MessageEntity, remoteClient *client.RemotingClient, opaque int32) *persistentEvent {
 	return &persistentEvent{entity: entity, remoteClient: remoteClient, opaque: opaque}
 
 }

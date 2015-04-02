@@ -3,13 +3,13 @@ package core
 import (
 	"errors"
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
+	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
 	"kiteq/client/chandler"
 	"kiteq/client/listener"
-	"kiteq/pipe"
 	"kiteq/protocol"
-	"kiteq/remoting"
-	rclient "kiteq/remoting/client"
 	"kiteq/stat"
 	"math/rand"
 	"net"
@@ -25,41 +25,41 @@ type DoTranscation func(message *protocol.QMessage) (bool, error)
 const MAX_CLIENT_CONN = 10
 
 type KiteClientManager struct {
-	ga *rclient.GroupAuth
+	ga *c.GroupAuth
 
 	topics        []string
 	binds         []*binding.Binding //订阅的关系
-	clientManager *rclient.ClientManager
+	clientManager *c.ClientManager
 	kiteClients   map[string] /*topic*/ []*kiteClient //topic对应的kiteclient
 	zkManager     *binding.ZKManager
 	pipeline      *pipe.DefaultPipeline
 	lock          sync.RWMutex
-	rc            *remoting.RemotingConfig
+	rc            *turbo.RemotingConfig
 	flowstat      *stat.FlowStat
 }
 
 func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.IListener) *KiteClientManager {
 
 	flowstat := stat.NewFlowStat("kiteclient-" + groupId)
-	rc := remoting.NewRemotingConfig(
+	rc := turbo.NewRemotingConfig(
 		flowstat.RemotingFlow,
 		50, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
 	//重连管理器
-	reconnManager := rclient.NewReconnectManager(true, 30*time.Second, 100, handshake)
+	reconnManager := c.NewReconnectManager(true, 30*time.Second, 100, handshake)
 
 	//构造pipeline的结构
 	pipeline := pipe.NewDefaultPipeline()
-	clientm := rclient.NewClientManager(reconnManager)
+	clientm := c.NewClientManager(reconnManager)
 	pipeline.RegisteHandler("kiteclient-packet", chandler.NewPacketHandler("kiteclient-packet"))
 	pipeline.RegisteHandler("kiteclient-heartbeat", chandler.NewHeartbeatHandler("kiteclient-heartbeat", 10*time.Second, 5*time.Second, clientm))
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
 	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
 
 	manager := &KiteClientManager{
-		ga:            rclient.NewGroupAuth(groupId, secretKey),
+		ga:            c.NewGroupAuth(groupId, secretKey),
 		kiteClients:   make(map[string][]*kiteClient, 10),
 		topics:        make([]string, 0, 10),
 		pipeline:      pipeline,

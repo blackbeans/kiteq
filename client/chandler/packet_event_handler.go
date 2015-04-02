@@ -2,7 +2,7 @@ package chandler
 
 import (
 	"errors"
-	. "kiteq/pipe"
+	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/protocol"
 
 	// 	log "github.com/blackbeans/log4go"

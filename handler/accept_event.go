@@ -3,7 +3,7 @@ package handler
 import (
 	"errors"
 	log "github.com/blackbeans/log4go"
-	. "kiteq/pipe"
+	"github.com/blackbeans/turbo/pipe"
 	"kiteq/protocol"
 	"kiteq/store"
 	"os"
@@ -12,37 +12,37 @@ import (
 
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
-	BaseForwardHandler
+	pipe.BaseForwardHandler
 	topics     []string
 	kiteserver string
 }
 
 func NewAcceptHandler(name string) *AcceptHandler {
 	ahandler := &AcceptHandler{}
-	ahandler.BaseForwardHandler = NewBaseForwardHandler(name, ahandler)
+	ahandler.BaseForwardHandler = pipe.NewBaseForwardHandler(name, ahandler)
 	hn, _ := os.Hostname()
 	ahandler.kiteserver = hn
 	return ahandler
 }
 
-func (self *AcceptHandler) TypeAssert(event IEvent) bool {
+func (self *AcceptHandler) TypeAssert(event pipe.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *AcceptHandler) cast(event IEvent) (val *acceptEvent, ok bool) {
+func (self *AcceptHandler) cast(event pipe.IEvent) (val *acceptEvent, ok bool) {
 	val, ok = event.(*acceptEvent)
 	return
 }
 
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
-func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.IEvent) error {
 	// log.Debug("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
 	ae, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return pipe.ERROR_INVALID_EVENT_TYPE
 	}
 	//这里处理一下ae,做一下校验
 	var msg *store.MessageEntity
@@ -53,7 +53,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		return nil
 	case protocol.CMD_HEARTBEAT:
 		hb := ae.msg.(*protocol.HeartBeat)
-		event = NewHeartbeatEvent(ae.remoteClient, ae.opaque, hb.GetVersion())
+		event = pipe.NewHeartbeatEvent(ae.remoteClient, ae.opaque, hb.GetVersion())
 		ctx.SendForward(event)
 		return nil
 
