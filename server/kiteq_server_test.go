@@ -5,6 +5,8 @@ import (
 	"kiteq/binding"
 	"kiteq/client"
 	"kiteq/protocol"
+	"kiteq/remoting"
+	"kiteq/stat"
 	"kiteq/store"
 	"log"
 	"testing"
@@ -53,13 +55,14 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 
 func init() {
 
-	rc := protocol.NewRemotingConfig(
-		"KiteQ-localhost:13800",
-		1000, 16*1024,
+	flowstat := stat.NewFlowStat("KiteQ-" + "localhost:13800")
+	rc := remoting.NewRemotingConfig(
+		flowstat.RemotingFlow,
+		2000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := NewKiteQConfig("localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.", rc)
+	kc := NewKiteQConfig(flowstat, "localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.", rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()
