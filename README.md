@@ -23,11 +23,9 @@ kiteq
     ├── client            KiteQ的客户端
     ├── doc               文档
     ├── handler           KiteQ所需要的处理Handler
-    ├── kite_benchmark.go KiteQ的Benchmark程序
+    ├── kite_benchmark_xxx.go KiteQ的Benchmark程序
     ├── kiteq.go          KiteQ对外启动入口
-    ├── pipe              类似netty的pipeline结构的框架，组织event和handler流转
     ├── protocol          KiteQ的协议包，基于PB和定义的Packet
-    ├── remoting          网络层包括remoting-server和client及重连逻辑、客户端管理
     ├── server            KiteQ的Server端组装需要的组件
     ├── stat              状态信息统计
     └── store             KiteQ的存储结构
