@@ -91,7 +91,12 @@ func (s DbShard) FindShardById(id int) shardrange {
 }
 
 func (s DbShard) HashId(key string) int {
-	i, err := strconv.ParseInt(string(key[len(key)-1]), 16, 8)
+	num := key
+	if len(key) > 1 {
+		num = string(key[len(key)-1])
+	}
+
+	i, err := strconv.ParseInt(num, 16, 8)
 	if nil != err {
 		log.Error("DbShard|HashId|INVALID HASHKEY|%s\n", key)
 		return 0
