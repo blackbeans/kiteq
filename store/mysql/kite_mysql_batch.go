@@ -60,7 +60,7 @@ func (self *KiteMysqlStore) Start() {
 
 	for i := 0; i < count; i++ {
 		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s\n", sqlu, sqld)
-		go self.startBatch(i, self.batchUpChan[i],
+		self.startBatch(i, self.batchUpChan[i],
 			self.batchDelChan[i], self.batchComChan[i])
 	}
 	log.Info("KiteMysqlStore|Start...")
@@ -73,8 +73,15 @@ func (self *KiteMysqlStore) startBatch(hash int,
 	//启动的entity更新的携程
 	go func(hashId int, ch chan *MessageEntity, batchSize int,
 		do func(sql int, d []*MessageEntity) bool) {
+
+		//批量提交的池子
+		batchPool := make(chan []*MessageEntity, 8)
+		for i := 0; i < 8; i++ {
+			batchPool <- make([]*MessageEntity, 0, batchSize)
+		}
+		data := <-batchPool
+
 		timer := time.NewTimer(self.flushPeriod)
-		data := make([]*MessageEntity, 0, batchSize)
 		flush := false
 		for !self.stop {
 			select {
@@ -85,8 +92,16 @@ func (self *KiteMysqlStore) startBatch(hash int,
 			}
 			//强制提交: 达到批量提交的阀值或者超时没有数据则提交
 			if len(data) >= batchSize || flush {
-				do(hashId, data)
-				data = data[:0]
+				tmp := data
+				go func() {
+					defer func() {
+						batchPool <- tmp[:0]
+					}()
+					do(hashId, tmp)
+				}()
+
+				//重新获取一个data
+				data = <-batchPool
 				flush = false
 				timer.Reset(self.flushPeriod)
 			}
@@ -96,8 +111,15 @@ func (self *KiteMysqlStore) startBatch(hash int,
 
 	batchFun := func(hashid int, ch chan string, batchSize int,
 		do func(hashid int, d []string) bool) {
-		timer := time.NewTimer(self.flushPeriod)
+
+		//批量提交池子
+		batchPool := make(chan []string, 8)
+		for i := 0; i < 8; i++ {
+			batchPool <- make([]string, 0, batchSize)
+		}
 		data := make([]string, 0, batchSize)
+
+		timer := time.NewTimer(self.flushPeriod)
 		flush := false
 		for !self.stop {
 			select {
@@ -108,8 +130,17 @@ func (self *KiteMysqlStore) startBatch(hash int,
 			}
 			//强制提交: 达到批量提交的阀值或者超时没有数据则提交
 			if len(data) >= batchSize || flush {
-				do(hashid, data)
-				data = data[:0]
+
+				tmp := data
+				go func() {
+					defer func() {
+						batchPool <- tmp[:0]
+					}()
+					do(hashid, tmp)
+				}()
+
+				//重新获取一个data
+				data = <-batchPool
 				flush = false
 				timer.Reset(self.flushPeriod)
 			}
