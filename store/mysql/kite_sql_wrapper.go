@@ -9,6 +9,18 @@ import (
 
 type batchType uint8
 
+func (s batchType) String() string {
+	switch s {
+	case 1:
+		return "Stmt-Commit"
+	case 2:
+		return "Stmt-Upate"
+	case 3:
+		return "Stmt-Delete"
+	}
+	return "Stmt-Unknown"
+}
+
 const (
 	COMMIT batchType = 1
 	UPDATE batchType = 2

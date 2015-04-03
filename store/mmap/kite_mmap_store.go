@@ -53,11 +53,8 @@ func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := self.datalink.Len()
 	if cl >= self.maxcap {
-		log.Info("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
-		back := self.datalink.Back()
-		delete(self.idx, back.Value.(*MessageEntity).MessageId)
-		back.Value = entity
-		self.datalink.MoveToFront(back)
+		log.Warn("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		return false
 
 	} else {
 		front := self.datalink.PushFront(entity)

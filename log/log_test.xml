@@ -1,15 +1,9 @@
 <logging>
   <filter enabled="true">
     <tag>stdout</tag>
-    <type>file</type>
-    <property name="filename">./logs/kiteq_stdout.log</property>
-    <property name="format">[%D %T] [%L] (%S) %M</property>
-    <property name="rotate">false</property>
-    <property name="maxsize">100M</property>
-    <property name="maxlines">10M</property>
-    <property name="daily">true</property> 
+    <type>console</type>
     <!-- level is (:?FINEST|FINE|DEBUG|TRACE|INFO|WARNING|ERROR) -->
-    <level>INFO</level>
+    <level>DEBUG</level>
   </filter>
   <filter enabled="true">
     <tag>kite_info</tag>
