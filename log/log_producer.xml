@@ -1,13 +1,7 @@
 <logging>
   <filter enabled="true">
     <tag>stdout</tag>
-    <type>file</type>
-    <property name="filename">/home/logs/kiteq/stdout_producer.log</property>
-    <property name="format">[%D %T] [%L] (%S) %M</property>
-    <property name="rotate">false</property>
-    <property name="maxsize">100M</property>
-    <property name="maxlines">10M</property>
-    <property name="daily">true</property> 
+    <type>console</type>
     <!-- level is (:?FINEST|FINE|DEBUG|TRACE|INFO|WARNING|ERROR) -->
     <level>INFO</level>
   </filter>
@@ -27,7 +21,7 @@
        It ignores unknown format strings (and removes them)
        Recommended: "[%D %T] [%L] (%S) %M"
     -->
-    <property name="format">[%D %T] [%L] (%S) %M</property>
+    <property name="format">[%D %T] [%L]  %M</property>
     <property name="rotate">false</property> <!-- true enables log rotation, otherwise append -->
     <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->
     <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
@@ -38,7 +32,7 @@
     <type>file</type>
     <level>WARNING</level>
     <property name="filename">/home/logs/kiteq/kite_producer_warn.log</property>
-    <property name="format">[%D %T] [%L] (%S) %M</property>
+    <property name="format">[%D %T] [%L]  %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
     <property name="maxlines">10M</property>
