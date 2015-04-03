@@ -76,7 +76,7 @@ func (self *KiteMysqlStore) Monitor() string {
 		}
 
 		line +=
-			fmt.Sprintf("%s[work-stmt:%d\tactive-stmt:%d\tidle-stmt:%d]\t", k, numWork, active, idle)
+			fmt.Sprintf("%s-[work:%d\tactive:%d\tidle:%d]\t", k, numWork, active, idle)
 	}
 	return line
 }
