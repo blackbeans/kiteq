@@ -65,7 +65,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 
 	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
 	//或者消息本身就是一个未提交的消息也是先持久化
-	if len(self.maxDeliverNum)*5/4 <= cap(self.maxDeliverNum) {
+	if len(self.maxDeliverNum)*5/4 >= cap(self.maxDeliverNum) {
 		self.flowstat.OptimzeStatus = false
 	} else {
 		self.flowstat.OptimzeStatus = true

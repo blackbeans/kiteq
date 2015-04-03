@@ -2,11 +2,11 @@ package handler
 
 import (
 	"errors"
+	log "github.com/blackbeans/log4go"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/stat"
 	"kiteq/store"
 	"time"
-	// 	log "github.com/blackbeans/log4go"
 )
 
 var ERROR_PERSISTENT = errors.New("persistent msg error!")
@@ -90,6 +90,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 		case fg := <-ch:
 			failGroups = &fg
 		case <-time.After(self.deliverTimeout):
+
 		}
 		//失败或者超时的持久化
 		if nil == failGroups || len(*failGroups) > 0 {
