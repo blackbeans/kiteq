@@ -32,20 +32,13 @@ func (self *FlowStat) Start() {
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
-			line := self.Monitor()
+			line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
 			log.Info(line)
+			if nil != self.Kitestore {
+				log.Info(self.Kitestore.Monitor())
+			}
 			<-t.C
 		}
 		t.Stop()
 	}()
-}
-
-func (self *FlowStat) Monitor() string {
-
-	line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
-	if nil != self.Kitestore {
-		line = fmt.Sprintf("%s\t%s\n", line, self.Kitestore.Monitor())
-	}
-
-	return line
 }
