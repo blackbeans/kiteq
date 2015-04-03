@@ -4,11 +4,13 @@ import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/store"
 	"time"
 )
 
 type FlowStat struct {
 	name          string
+	Kitestore     store.IKiteStore
 	OptimzeStatus bool
 	DeliverFlow   *turbo.Flow
 	DeliverPool   *turbo.Flow
@@ -39,8 +41,11 @@ func (self *FlowStat) Start() {
 }
 
 func (self *FlowStat) Monitor() string {
-	if nil != self.DeliverFlow {
-		return fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
+
+	line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
+	if nil != self.Kitestore {
+		line = fmt.Sprintf("%s\t%s\n", line, self.Kitestore.Monitor())
 	}
-	return fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", self.name, 0, 0)
+
+	return line
 }

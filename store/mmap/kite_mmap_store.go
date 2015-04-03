@@ -2,6 +2,7 @@ package mmap
 
 import (
 	"container/list"
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"sync"
@@ -25,6 +26,10 @@ func NewKiteMMapStore(path string, initcap, maxcap int) *KiteMMapStore {
 
 func (self *KiteMMapStore) Start() {}
 func (self *KiteMMapStore) Stop()  {}
+
+func (self *KiteMMapStore) Monitor() string {
+	return fmt.Sprintf("mmap-msg-length:%d\n", self.datalink.Len())
+}
 
 func (self *KiteMMapStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
 func (self *KiteMMapStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }

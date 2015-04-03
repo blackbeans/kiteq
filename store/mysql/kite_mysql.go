@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	. "kiteq/store"
@@ -56,6 +57,28 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 
 var filternothing = func(colname string) bool {
 	return false
+}
+
+func (self *KiteMysqlStore) Monitor() string {
+	line := "mysql-stmt:"
+	for k, v := range self.stmtPools {
+		numWork := 0
+		active := 0
+		idle := 0
+
+		for _, t := range v {
+			for _, p := range t {
+				n, a, i := p.MonitorPool()
+				numWork += n
+				active += a
+				idle += i
+			}
+		}
+
+		line +=
+			fmt.Sprintf("%x|work-stmt:%d\tactive-stmt:%d\tidle-stmt:%d\n", k, numWork, active, idle)
+	}
+	return line
 }
 
 func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {

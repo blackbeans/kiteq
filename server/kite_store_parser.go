@@ -11,7 +11,9 @@ import (
 	"time"
 )
 
-func parseDB(db string) store.IKiteStore {
+func parseDB(kc KiteQConfig) store.IKiteStore {
+	db := kc.db
+
 	var kitedb store.IKiteStore
 	if strings.HasPrefix(db, "mock://") {
 		kitedb = &store.MockKiteStore{}
@@ -142,6 +144,6 @@ func parseDB(db string) store.IKiteStore {
 	} else {
 		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
-
+	kc.flowstat.Kitestore = kitedb
 	return kitedb
 }

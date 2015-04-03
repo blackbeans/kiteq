@@ -71,6 +71,7 @@ func NewMessageEntity(msg *protocol.QMessage) *MessageEntity {
 type IKiteStore interface {
 	Start()
 	Stop()
+	Monitor() string
 
 	//批量提交channel
 	AsyncUpdate(entity *MessageEntity) bool
