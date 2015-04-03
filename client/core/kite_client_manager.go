@@ -71,10 +71,21 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	return manager
 }
 
+func (self *KiteClientManager) remointflow() {
+	go func() {
+		t := time.NewTicker(1 * time.Second)
+		for {
+			log.Info(self.rc.FlowStat.Monitor())
+			<-t.C
+		}
+	}()
+}
+
 //启动
 func (self *KiteClientManager) Start() {
 
 	//开启流量统计
+	self.remointflow()
 	self.flowstat.Start()
 
 	hostname, _ := os.Hostname()
