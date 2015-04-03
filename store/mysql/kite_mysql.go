@@ -60,7 +60,7 @@ var filternothing = func(colname string) bool {
 }
 
 func (self *KiteMysqlStore) Monitor() string {
-	line := "\n\t\t"
+	line := "Stmt-Pool\t"
 	for k, v := range self.stmtPools {
 		numWork := 0
 		active := 0
@@ -76,7 +76,7 @@ func (self *KiteMysqlStore) Monitor() string {
 		}
 
 		line +=
-			fmt.Sprintf("%s-[work:%d\tactive:%d\tidle:%d]\t", k, numWork, active, idle)
+			fmt.Sprintf("%s[work:%d\tactive:%d\tidle:%d]\t", k, numWork, active, idle)
 	}
 	return line
 }
