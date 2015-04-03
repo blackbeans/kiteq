@@ -149,17 +149,17 @@ func (self *sqlwrapper) initSQL() {
 
 	//page query
 
+	// explain
 	// select
-	// a.message_id,a.header,a.msg_type,a.topic,a.message_type,
-	// a.publish_group,a.commit,a.publish_time,a.expired_time,
-	// a.deliver_count,a.deliver_limit,a.kite_server,
-	// a.fail_groups,a.succ_groups,a.next_deliver_time
-	// from kite_msg_10 a  force index(idx_recover)
-	// where
-	// a.kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit
-	// and expired_time>=1427731537 and next_deliver_time<=1427731536
-	// order by a.next_deliver_time asc
-	// limit 1000,20;
+	// a.message_id,a.header,a.msg_type,a.topic,a.message_type,a.publish_group,a.commit,
+	// a.publish_time,a.expired_time,a.deliver_count,a.deliver_limit,a.kite_server,a.fail_groups,a.succ_groups,a.next_deliver_time
+	// from kite_msg_1 a force index(idx_recover),
+	// (select message_id from kite_msg_1  force index(idx_recover) where
+	// kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit
+	// and expired_time>=1428056088 and next_deliver_time<=1428055507
+	// order by next_deliver_time asc limit 5000
+	// ) b
+	// where a.message_id= b.message_id  limit 4000,51;
 
 	s.Reset()
 	s.WriteString("select  ")
@@ -177,9 +177,14 @@ func (self *sqlwrapper) initSQL() {
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} a ")
-	s.WriteString("  force index(idx_recover) ") //强制使用idx_recover索引
-	s.WriteString(" where a.kite_server=? and a.deliver_count<a.deliver_limit and a.expired_time>=? and a.next_deliver_time<=? ")
-	s.WriteString(" order by a.next_deliver_time asc  limit ?,? ")
+	s.WriteString("  force index(idx_recover) , ") //强制使用idx_recover索引
+	s.WriteString(" ( select  message_id  from ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{}  ")
+	s.WriteString(" force index(idx_recover) ")
+	s.WriteString(" where kite_server=? and deliver_count<deliver_limit and expired_time>=? and next_deliver_time<=? ")
+	s.WriteString(" order by next_deliver_time asc  limit 5000) b")
+	s.WriteString(" where a.message_id=b.message_id limit ?,? ")
 
 	sql = s.String()
 
