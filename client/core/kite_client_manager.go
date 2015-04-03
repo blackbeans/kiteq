@@ -42,7 +42,7 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 
 	flowstat := stat.NewFlowStat("kiteclient-" + groupId)
 	rc := turbo.NewRemotingConfig(
-		flowstat.RemotingFlow,
+		"remoting-"+groupId,
 		50, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)

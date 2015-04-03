@@ -18,14 +18,13 @@ type KiteQConfig struct {
 	db                string        //持久层配置
 }
 
-func NewKiteQConfig(flowstat *stat.FlowStat, server, zkhost string, deliverTimeout time.Duration, maxDeliverWorkers int,
+func NewKiteQConfig(name string, server, zkhost string, deliverTimeout time.Duration, maxDeliverWorkers int,
 	recoverPeriod time.Duration,
 	topics []string,
 	db string,
 	rc *turbo.RemotingConfig) KiteQConfig {
-	rc.FlowStat = flowstat.RemotingFlow
 	return KiteQConfig{
-		flowstat:          flowstat,
+		flowstat:          stat.NewFlowStat(name),
 		rc:                rc,
 		server:            server,
 		zkhost:            zkhost,

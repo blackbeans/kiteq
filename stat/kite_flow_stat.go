@@ -8,7 +8,7 @@ import (
 )
 
 type FlowStat struct {
-	RemotingFlow  *turbo.RemotingFlow
+	name          string
 	OptimzeStatus bool
 	DeliverFlow   *turbo.Flow
 	DeliverPool   *turbo.Flow
@@ -17,11 +17,11 @@ type FlowStat struct {
 
 func NewFlowStat(name string) *FlowStat {
 	f := &FlowStat{
+		name:          name,
 		OptimzeStatus: true,
 		DeliverFlow:   &turbo.Flow{},
 		DeliverPool:   &turbo.Flow{},
 		stop:          false}
-	f.RemotingFlow = turbo.NewRemotingFlow(name)
 	return f
 }
 
@@ -39,11 +39,8 @@ func (self *FlowStat) Start() {
 }
 
 func (self *FlowStat) Monitor() string {
-
-	line := self.RemotingFlow.Monitor()
 	if nil != self.DeliverFlow {
-		line = fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", line, self.DeliverFlow.Changes(), self.DeliverPool.Count())
+		return fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
 	}
-
-	return line
+	return fmt.Sprintf("%sdeliver:%d\tdeliver-go:%d\t", self.name, 0, 0)
 }

@@ -6,7 +6,6 @@ import (
 	"kiteq/binding"
 	"kiteq/protocol"
 	"kiteq/server"
-	"kiteq/stat"
 	"kiteq/store"
 	"log"
 	"testing"
@@ -75,14 +74,13 @@ func init() {
 
 	l := &MockListener{rc: rc, txc: txc}
 
-	flowstat := stat.NewFlowStat("KiteQ-" + "127.0.0.1:13800")
 	rc := turbo.NewRemotingConfig(
-		flowstat.RemotingFlow,
+		"remoting-127.0.0.1:13800",
 		2000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(flowstat, "127.0.0.1:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rc)
+	kc := server.NewKiteQConfig("KiteQ-"+"127.0.0.1:13800", "127.0.0.1:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.&initcap=1000&maxcap=2000", rc)
 	kiteQ = server.NewKiteQServer(kc)
 
 	// 创建客户端
