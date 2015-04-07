@@ -3,7 +3,7 @@ package server
 import (
 	log "github.com/blackbeans/log4go"
 	"kiteq/store"
-	smm "kiteq/store/mmap"
+	sm "kiteq/store/memory"
 	smq "kiteq/store/mysql"
 
 	"strconv"
@@ -17,8 +17,8 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 	var kitedb store.IKiteStore
 	if strings.HasPrefix(db, "mock://") {
 		kitedb = &store.MockKiteStore{}
-	} else if strings.HasPrefix(db, "mmap://") {
-		url := strings.TrimPrefix(db, "mmap://")
+	} else if strings.HasPrefix(db, "memory://") {
+		url := strings.TrimPrefix(db, "memory://")
 		split := strings.Split(url, "&")
 		params := make(map[string]string, len(split))
 		for _, v := range split {
@@ -26,10 +26,6 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			params[p[0]] = p[1]
 		}
 
-		file := params["file"]
-		if len(file) <= 0 {
-			log.Crashf("NewKiteQServer|INVALID|FILE PATH|%s\n", db)
-		}
 		initval := 10 * 10000
 		initcap, ok := params["initcap"]
 		if ok {
@@ -48,7 +44,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			}
 			max = int(v)
 		}
-		kitedb = smm.NewKiteMMapStore(file, initval, max)
+		kitedb = sm.NewKiteMemoryStore(initval, max)
 	} else if strings.HasPrefix(db, "mysql://") {
 		url := strings.TrimPrefix(db, "mysql://")
 		mp := strings.Split(url, "?")

@@ -1,4 +1,4 @@
-package mmap
+package memory
 
 import (
 	"container/list"
@@ -8,34 +8,32 @@ import (
 	"sync"
 )
 
-type KiteMMapStore struct {
+type KiteMemoryStore struct {
 	datalink *list.List                              //用于LRU
 	idx      map[string] /*messageId*/ *list.Element //用于LRU
 	lock     sync.RWMutex
 	maxcap   int
-	path     string
 }
 
-func NewKiteMMapStore(path string, initcap, maxcap int) *KiteMMapStore {
-	return &KiteMMapStore{
+func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
+	return &KiteMemoryStore{
 		datalink: list.New(),
 		idx:      make(map[string]*list.Element, initcap),
-		maxcap:   maxcap,
-		path:     path}
+		maxcap:   maxcap}
 }
 
-func (self *KiteMMapStore) Start() {}
-func (self *KiteMMapStore) Stop()  {}
+func (self *KiteMemoryStore) Start() {}
+func (self *KiteMemoryStore) Stop()  {}
 
-func (self *KiteMMapStore) Monitor() string {
+func (self *KiteMemoryStore) Monitor() string {
 	return fmt.Sprintf("mmap-msg-length:%d\n", self.datalink.Len())
 }
 
-func (self *KiteMMapStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
-func (self *KiteMMapStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
-func (self *KiteMMapStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
+func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteMemoryStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
+func (self *KiteMemoryStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
 
-func (self *KiteMMapStore) Query(messageId string) *MessageEntity {
+func (self *KiteMemoryStore) Query(messageId string) *MessageEntity {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	e, ok := self.idx[messageId]
@@ -46,14 +44,14 @@ func (self *KiteMMapStore) Query(messageId string) *MessageEntity {
 	return e.Value.(*MessageEntity)
 }
 
-func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
+func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := self.datalink.Len()
 	if cl >= self.maxcap {
-		log.Warn("KiteMMapStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
 		return false
 
 	} else {
@@ -63,7 +61,7 @@ func (self *KiteMMapStore) Save(entity *MessageEntity) bool {
 
 	return true
 }
-func (self *KiteMMapStore) Commit(messageId string) bool {
+func (self *KiteMemoryStore) Commit(messageId string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	e, ok := self.idx[messageId]
@@ -74,7 +72,7 @@ func (self *KiteMMapStore) Commit(messageId string) bool {
 	entity.Commit = true
 	return true
 }
-func (self *KiteMMapStore) Rollback(messageId string) bool {
+func (self *KiteMemoryStore) Rollback(messageId string) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	e, ok := self.idx[messageId]
@@ -85,7 +83,7 @@ func (self *KiteMMapStore) Rollback(messageId string) bool {
 	self.datalink.Remove(e)
 	return true
 }
-func (self *KiteMMapStore) UpdateEntity(entity *MessageEntity) bool {
+func (self *KiteMemoryStore) UpdateEntity(entity *MessageEntity) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	v, ok := self.idx[entity.MessageId]
@@ -100,13 +98,13 @@ func (self *KiteMMapStore) UpdateEntity(entity *MessageEntity) bool {
 	e.FailGroups = entity.FailGroups
 	return true
 }
-func (self *KiteMMapStore) Delete(messageId string) bool {
+func (self *KiteMemoryStore) Delete(messageId string) bool {
 	return self.Rollback(messageId)
 
 }
 
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
-func (self *KiteMMapStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
+func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 	pe := make([]*MessageEntity, 0, limit+1)
 	self.lock.RLock()
 	defer self.lock.RUnlock()

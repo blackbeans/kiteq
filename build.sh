@@ -15,7 +15,8 @@ go build -a kiteq/protocol
 go build -a kiteq/binding
 go build -a kiteq/store
 go build -a kiteq/store/mysql
-go build -a kiteq/store/mmap
+# go build -a kiteq/store/mmap
+go build -a kiteq/store/memory
 go build -a kiteq/handler
 go build -a kiteq/client/chandler
 go build -a kiteq/server
@@ -28,7 +29,8 @@ go install kiteq/protocol
 go install kiteq/binding
 go install kiteq/store
 go install kiteq/store/mysql
-go install kiteq/store/mmap
+go install kiteq/store/memory
+# go install kiteq/store/mmap
 go install kiteq/handler
 go install kiteq/client/chandler
 go install kiteq/server
