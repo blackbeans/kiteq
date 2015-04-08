@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	fly := flag.Bool("fly", true, "-fly=true //开启服务端飞行模式")
+	fly := flag.Bool("fly", false, "-fly=true //开启服务端飞行模式")
 	logxml := flag.String("logxml", "./log/log.xml", "-logxml=./log/log.xml")
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
@@ -30,9 +30,12 @@ func main() {
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 
 	flag.Parse()
-
 	//加载log4go的配置
 	log.LoadConfiguration(*logxml)
+
+	flag.VisitAll(func(f *flag.Flag) {
+		log.Info("KiteQ[%s:%s]", f.Name, f.Value.String())
+	})
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
