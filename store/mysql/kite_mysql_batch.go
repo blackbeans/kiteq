@@ -10,7 +10,7 @@ import (
 
 func (self *KiteMysqlStore) Start() {
 
-	count := self.dbshard.ShardNum() * self.dbshard.HashNum()
+	count := SHARD_SEED
 	//创建Hash的channel
 	batchDelChan := make([]chan string, 0, count)
 	batchUpChan := make([]chan *MessageEntity, 0, count)
@@ -37,7 +37,7 @@ func (self *KiteMysqlStore) Start() {
 			for j, s := range v {
 				psql := s
 				db := self.dbshard.FindShardById(i*self.dbshard.HashNum() + j).master
-				err, p := NewStmtPool(10, 20, 50, 1*time.Minute, func() (error, *sql.Stmt) {
+				err, p := NewStmtPool(5, 10, 20, 1*time.Minute, func() (error, *sql.Stmt) {
 					stmt, err := db.Prepare(psql)
 					if nil != err {
 						log.Error("StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)

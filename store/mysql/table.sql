@@ -23,6 +23,11 @@ CREATE Database  IF NOT EXISTS kite_0;
 CREATE Database  IF NOT EXISTS kite_1;
 CREATE Database  IF NOT EXISTS kite_2;
 CREATE Database  IF NOT EXISTS kite_3;
+CREATE Database  IF NOT EXISTS kite_4;
+CREATE Database  IF NOT EXISTS kite_5;
+CREATE Database  IF NOT EXISTS kite_6;
+CREATE Database  IF NOT EXISTS kite_7;
+
 
 
 DROP TABLE IF EXISTS `kite_msg_0`;

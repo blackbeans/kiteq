@@ -36,14 +36,15 @@ func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline 
 
 //开始启动恢复程序
 func (self *RecoverManager) Start() {
-	for i := 0; i < 16; i++ {
-		go self.startRecoverTask(fmt.Sprintf("%x", i))
+	for i := 0; i < 32; i++ {
+		go self.startRecoverTask(fmt.Sprintf("%x%x", i/16, i%16))
 	}
 
 	log.Info("RecoverManager|Start|SUCC....")
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
+	log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
 	ticker := time.NewTicker(self.recoverPeriod)
 	defer ticker.Stop()
 	for !self.isClose {

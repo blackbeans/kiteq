@@ -18,7 +18,7 @@ func TestPageQuery(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     4,
+		ShardNum:     8,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -32,7 +32,7 @@ func TestPageQuery(t *testing.T) {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String(fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5a6c"),
+			MessageId:    proto.String(fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -89,7 +89,7 @@ func TestPageQuery(t *testing.T) {
 	hasMore = true
 	//开始分页查询未过期的消息实体
 	for hasMore {
-		more, entities := kiteMysql.PageQueryEntity("c", hn,
+		more, entities := kiteMysql.PageQueryEntity("6c", hn,
 			time.Now().Add(8*time.Minute).Unix(), startIdx, 1)
 		if len(entities) <= 0 {
 			t.Logf("TestPageQuery|CHECK|NO DATA|%s\n", entities)
@@ -112,7 +112,7 @@ func TestPageQuery(t *testing.T) {
 		t.Fail()
 	}
 
-	// truncate(kiteMysql)
+	truncate(kiteMysql)
 
 }
 
@@ -122,7 +122,7 @@ func TestBatch(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     4,
+		ShardNum:     8,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -134,11 +134,11 @@ func TestBatch(t *testing.T) {
 	truncate(kiteMysql)
 
 	mids := make([]string, 0, 16)
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 32; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("26c03f00665862591f696a980b5a6c4" + fmt.Sprintf("%x", i)),
+			MessageId:    proto.String("c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -173,7 +173,7 @@ func TestBatch(t *testing.T) {
 	for _, v := range mids {
 		e := kiteMysql.Query(v)
 		if nil == e || len(e.SuccGroups) < 1 {
-			t.Fatalf("TestBatch|Update FAIL|%s\n", e)
+			t.Fatalf("TestBatch|Update FAIL|%s|%s\n", e, v)
 			t.Fail()
 			return
 		}
@@ -198,7 +198,7 @@ func TestBatch(t *testing.T) {
 }
 
 func truncate(k *KiteMysqlStore) {
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 8; i++ {
 		for j := 0; j < 4; j++ {
 			m := k.dbshard.FindShardById(i*4 + j).master
 			_, err := m.Exec(fmt.Sprintf("truncate table kite_msg_%d", j))
@@ -218,7 +218,7 @@ func TestStringSave(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     4,
+		ShardNum:     8,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -227,11 +227,11 @@ func TestStringSave(t *testing.T) {
 
 	kiteMysql := NewKiteMysql(options)
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 32; i++ {
 		//创建消息
 		msg := &protocol.StringMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("26c03f00665862591f696a980b5a6c4" + fmt.Sprintf("%x", i)),
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -253,7 +253,7 @@ func TestBytesSave(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     4,
+		ShardNum:     8,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
@@ -262,11 +262,11 @@ func TestBytesSave(t *testing.T) {
 
 	kiteMysql := NewKiteMysql(options)
 
-	for i := 0; i < 16; i++ {
+	for i := 0; i < 32; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("26c03f00665862591f696a980b5a6c4" + fmt.Sprintf("%x", i)),
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -278,6 +278,8 @@ func TestBytesSave(t *testing.T) {
 		msg.Body = []byte("hello world")
 		innerT(kiteMysql, msg, msg.GetHeader().GetMessageId(), t)
 	}
+
+	truncate(kiteMysql)
 
 	kiteMysql.Stop()
 }

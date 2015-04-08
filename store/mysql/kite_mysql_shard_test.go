@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"regexp"
 	"testing"
 	"time"
 )
@@ -11,7 +12,7 @@ func TestHash(t *testing.T) {
 		Addr:         "localhost:3306",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     4,
+		ShardNum:     8,
 		BatchUpSize:  1000,
 		BatchDelSize: 1000,
 		FlushPeriod:  1 * time.Minute,
@@ -25,10 +26,29 @@ func TestHash(t *testing.T) {
 		t.Fail()
 	}
 
+	hash := hs.FindForKey("26c03f00665862591f696a980b5a6c4f")
+	if hash != 3 {
+		t.Fail()
+	}
+
+	// !regexp.MatchString(, id)
+	rc := regexp.MustCompile("[0-9a-f]{32}")
+	match := rc.MatchString("26c03f00665862591f696a980b5a6c4f")
+	if !match {
+		t.Fail()
+		t.Log("26c03f00665862591f696a980b5a6c4f|FAIL")
+	}
+
+	match = rc.MatchString("26c03f006-65862591f696a980b5a6c4")
+	if match {
+		t.Fail()
+		t.Log("26c03f006-65862591f696a980b5a6c4|FAIL")
+	}
+
 	t.Logf("FindForShard|%d\n", fk)
 
 	sc := hs.ShardNum()
-	if sc != 4 {
+	if sc != 8 {
 		t.Fail()
 	}
 

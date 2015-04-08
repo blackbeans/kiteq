@@ -7,6 +7,10 @@ import (
 	"strconv"
 )
 
+const (
+	SHARD_SEED = 32
+)
+
 type shardrange struct {
 	min     int
 	max     int
@@ -22,7 +26,7 @@ type DbShard struct {
 }
 
 func newDbShard(options MysqlOptions) DbShard {
-	hash := 16 / options.ShardNum
+	hash := SHARD_SEED / options.ShardNum
 
 	shardranges := make([]shardrange, 0, hash)
 	for i := 0; i < options.ShardNum; i++ {
@@ -92,16 +96,17 @@ func (s DbShard) FindShardById(id int) shardrange {
 
 func (s DbShard) HashId(key string) int {
 	num := key
-	if len(key) > 1 {
-		num = string(key[len(key)-1])
+	if len(key) > 2 {
+		num = string(key[len(key)-2:])
 	}
 
-	i, err := strconv.ParseInt(num, 16, 8)
+	i, err := strconv.ParseInt(num, 16, 16)
 	if nil != err {
-		log.Error("DbShard|HashId|INVALID HASHKEY|%s\n", key)
+		log.Error("DbShard|HashId|INVALID HASHKEY|%s|%s\n", key, err)
 		return 0
 	}
-	return int(i)
+	// log.Debug("HashId|%s|%d\n", key, i)
+	return int(i) % SHARD_SEED
 }
 
 func (s DbShard) ShardNum() int {
