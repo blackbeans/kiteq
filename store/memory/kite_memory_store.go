@@ -6,6 +6,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"sync"
+	"time"
 )
 
 type KiteMemoryStore struct {
@@ -106,18 +107,36 @@ func (self *KiteMemoryStore) Delete(messageId string) bool {
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 	pe := make([]*MessageEntity, 0, limit+1)
+	var delMessage []string
+
 	self.lock.RLock()
-	defer self.lock.RUnlock()
+
+	now := time.Now().Unix()
 	for e := self.datalink.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
 		if entity.NextDeliverTime <= nextDeliveryTime &&
 			entity.DeliverCount < entity.Header.GetDeliverLimit() &&
-			entity.ExpiredTime > entity.Header.GetExpiredTime() {
+			entity.ExpiredTime <= now {
 			pe = append(pe, entity)
 			if len(pe) > limit {
 				return true, pe[:limit]
 			}
+		} else if entity.DeliverCount >= entity.Header.GetDeliverLimit() ||
+			entity.ExpiredTime > now {
+			if nil == delMessage {
+				delMessage = make([]string, 0, 10)
+			}
+			delMessage = append(delMessage, entity.MessageId)
 		}
 	}
+
+	self.lock.RUnlock()
+	//删除过期的message
+	if nil != delMessage {
+		for _, v := range delMessage {
+			self.Delete(v)
+		}
+	}
+
 	return false, pe
 }
