@@ -17,16 +17,18 @@ type PersistentHandler struct {
 	kitestore      store.IKiteStore
 	deliverTimeout time.Duration
 	flowstat       *stat.FlowStat //当前优化是否开启 true为开启，false为关闭
+	fly            bool           //是否开启飞行模式
 }
 
 //------创建persitehandler
 func NewPersistentHandler(name string, deliverTimeout time.Duration,
-	kitestore store.IKiteStore, flowstat *stat.FlowStat) *PersistentHandler {
+	kitestore store.IKiteStore, fly bool, flowstat *stat.FlowStat) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.deliverTimeout = deliverTimeout
 	phandler.flowstat = flowstat
+	phandler.fly = fly
 	return phandler
 }
 
@@ -78,7 +80,8 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	saveSucc := true
 
 	//提交并且开启优化
-	if pevent.entity.Commit && self.flowstat.OptimzeStatus {
+	if self.fly &&
+		pevent.entity.Commit && self.flowstat.OptimzeStatus {
 		//先投递再去根据结果写存储
 		ch := make(chan []string, 3) //用于返回尝试投递结果
 		self.send(ctx, pevent, ch)

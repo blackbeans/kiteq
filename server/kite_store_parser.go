@@ -23,7 +23,9 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 		params := make(map[string]string, len(split))
 		for _, v := range split {
 			p := strings.SplitN(v, "=", 2)
-			params[p[0]] = p[1]
+			if len(p) >= 2 {
+				params[p[0]] = p[1]
+			}
 		}
 
 		initval := 10 * 10000

@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
 		10*time.Second, 160000)
 
 	kc := NewKiteQConfig("kiteq-localhost:138000", "localhost:138000",
-		"localhost:2181", 1*time.Second, 8000, 5*time.Second,
+		"localhost:2181", true, 1*time.Second, 8000, 5*time.Second,
 		strings.Split("trade", ","),
 		"mysql://localhost:3306,localhost:3306?db=kite&username=root", rc)
 

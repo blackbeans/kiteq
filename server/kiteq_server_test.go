@@ -59,7 +59,7 @@ func init() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := NewKiteQConfig("kiteq-localhost:13800", "localhost:13800", "localhost:2181", 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "mmap://file=.", rc)
+	kc := NewKiteQConfig("kiteq-localhost:13800", "localhost:13800", "localhost:2181", true, 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "memory://", rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()

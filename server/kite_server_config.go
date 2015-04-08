@@ -7,6 +7,7 @@ import (
 )
 
 type KiteQConfig struct {
+	fly               bool //投递的飞行模式是否开启
 	flowstat          *stat.FlowStat
 	rc                *turbo.RemotingConfig
 	server            string
@@ -18,12 +19,13 @@ type KiteQConfig struct {
 	db                string        //持久层配置
 }
 
-func NewKiteQConfig(name string, server, zkhost string, deliverTimeout time.Duration, maxDeliverWorkers int,
+func NewKiteQConfig(name string, server, zkhost string, fly bool, deliverTimeout time.Duration, maxDeliverWorkers int,
 	recoverPeriod time.Duration,
 	topics []string,
 	db string,
 	rc *turbo.RemotingConfig) KiteQConfig {
 	return KiteQConfig{
+		fly:               fly,
 		flowstat:          stat.NewFlowStat(name),
 		rc:                rc,
 		server:            server,
