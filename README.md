@@ -39,7 +39,7 @@ kiteq
     * MessageType: 第二级别的消息类型，比如Trade下存在支付成功的pay-succ-200的消息类型
 
 #### 架构图
-  ![image](./doc/kiteq.002.png)
+  ![image](./doc/kiteq_arch.png)
 
 #### Zookeeper数据结构
         KiteServer : /kiteq/server/${topic}/ip:port
@@ -72,19 +72,29 @@ kiteq
         4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
 
 ##### Benchmark
-      Env: 4Core * 2 CPU  8G RAM 
-      
+k:为代表链接数量
+c:为并发数
+
+Memory:
+
+ ![image](./doc/kiteq_bench_memory.png)
+
+Mysql:
+
+ ![image](./doc/kiteq_bench_mysql.png)
+
 #####  QuickStart
     1.编译：sh build.sh 
     2.安装装Zookeeper:省略
     启动KiteQ:
-        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="mock://kiteq" -topics=trade,feed -zkhost=localhost:2181
+        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="memory://initcap=10000&maxcap=20000" -topics=trade,feed -zkhost=localhost:2181
         -bind  //绑定本地IP:Port
         -pport //pprof的Http端口
         -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
         -topics //本机可以处理的topics列表逗号分隔
         -zkhost //zk的地址
         -logxml=./log.xml //log4go的配置
+        -fly=true //是否开启投递优化
 
     启动客户端：
         对于KiteQClient需要实现消息监听器，我们定义了如下的接口：
