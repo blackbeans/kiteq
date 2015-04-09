@@ -5,39 +5,86 @@ import (
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
+	"strconv"
 	"sync"
 	"time"
 )
 
+const (
+	CONCURRENT_LEVEL = 16
+)
+
 type KiteMemoryStore struct {
-	datalink *list.List                              //用于LRU
-	idx      map[string] /*messageId*/ *list.Element //用于LRU
-	lock     sync.RWMutex
-	maxcap   int
+	datalinks []*list.List                              //用于LRU
+	stores    []map[string] /*messageId*/ *list.Element //用于LRU
+	locks     []*sync.RWMutex
+	maxcap    int
 }
 
 func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
+
+	//定义holder
+	datalinks := make([]*list.List, 0, CONCURRENT_LEVEL)
+	stores := make([]map[string] /*messageId*/ *list.Element, 0, CONCURRENT_LEVEL)
+	locks := make([]*sync.RWMutex, 0, CONCURRENT_LEVEL)
+	for i := 0; i < CONCURRENT_LEVEL; i++ {
+		splitMap := make(map[string] /*messageId*/ *list.Element, maxcap/CONCURRENT_LEVEL)
+		stores = append(stores, splitMap)
+		locks = append(locks, &sync.RWMutex{})
+		datalinks = append(datalinks, list.New())
+	}
+
 	return &KiteMemoryStore{
-		datalink: list.New(),
-		idx:      make(map[string]*list.Element, initcap),
-		maxcap:   maxcap}
+		datalinks: datalinks,
+		stores:    stores,
+		locks:     locks,
+		maxcap:    maxcap / CONCURRENT_LEVEL}
 }
 
 func (self *KiteMemoryStore) Start() {}
 func (self *KiteMemoryStore) Stop()  {}
 
 func (self *KiteMemoryStore) Monitor() string {
-	return fmt.Sprintf("mmap-msg-length:%d\n", self.datalink.Len())
+	l := 0
+	for i := 0; i < CONCURRENT_LEVEL; i++ {
+		lock, _, dl := self.hash(fmt.Sprintf("%x", i))
+		lock.RLock()
+		l += dl.Len()
+		lock.RUnlock()
+	}
+	return fmt.Sprintf("memory-length:%d\n", l)
 }
 
 func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
 func (self *KiteMemoryStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
 func (self *KiteMemoryStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
 
+//hash get elelment
+func (self *KiteMemoryStore) hash(messageid string) (l *sync.RWMutex, e map[string]*list.Element, lt *list.List) {
+	id := string(messageid[len(messageid)-1])
+	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
+	hashId := int(i)
+	if nil != err {
+		log.Error("KiteMemoryStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		hashId = 0
+	} else {
+		hashId = hashId % CONCURRENT_LEVEL
+	}
+
+	// log.Debug("KiteMemoryStore|hash|%s|%d\n", messageid, hashId)
+
+	//hash part
+	l = self.locks[hashId]
+	e = self.stores[hashId]
+	lt = self.datalinks[hashId]
+	return
+}
+
 func (self *KiteMemoryStore) Query(messageId string) *MessageEntity {
-	self.lock.RLock()
-	defer self.lock.RUnlock()
-	e, ok := self.idx[messageId]
+	lock, el, _ := self.hash(messageId)
+	lock.RLock()
+	defer lock.RUnlock()
+	e, ok := el[messageId]
 	if !ok {
 		return nil
 	}
@@ -46,26 +93,28 @@ func (self *KiteMemoryStore) Query(messageId string) *MessageEntity {
 }
 
 func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
-	self.lock.Lock()
-	defer self.lock.Unlock()
+	lock, el, dl := self.hash(entity.MessageId)
+	lock.Lock()
+	defer lock.Unlock()
 
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
-	cl := self.datalink.Len()
+	cl := dl.Len()
 	if cl >= self.maxcap {
 		log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
 		return false
 
 	} else {
-		front := self.datalink.PushFront(entity)
-		self.idx[entity.MessageId] = front
+		front := dl.PushFront(entity)
+		el[entity.MessageId] = front
 	}
 
 	return true
 }
 func (self *KiteMemoryStore) Commit(messageId string) bool {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	e, ok := self.idx[messageId]
+	lock, el, _ := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	e, ok := el[messageId]
 	if !ok {
 		return false
 	}
@@ -74,20 +123,13 @@ func (self *KiteMemoryStore) Commit(messageId string) bool {
 	return true
 }
 func (self *KiteMemoryStore) Rollback(messageId string) bool {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	e, ok := self.idx[messageId]
-	if !ok {
-		return true
-	}
-	delete(self.idx, messageId)
-	self.datalink.Remove(e)
-	return true
+	return self.Delete(messageId)
 }
 func (self *KiteMemoryStore) UpdateEntity(entity *MessageEntity) bool {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-	v, ok := self.idx[entity.MessageId]
+	lock, el, _ := self.hash(entity.MessageId)
+	lock.Lock()
+	defer lock.Unlock()
+	v, ok := el[entity.MessageId]
 	if !ok {
 		return true
 	}
@@ -100,29 +142,47 @@ func (self *KiteMemoryStore) UpdateEntity(entity *MessageEntity) bool {
 	return true
 }
 func (self *KiteMemoryStore) Delete(messageId string) bool {
-	return self.Rollback(messageId)
+	lock, el, dl := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	self.innerDelete(messageId, el, dl)
+	return true
 
+}
+
+func (self *KiteMemoryStore) innerDelete(messageId string,
+	el map[string]*list.Element, dl *list.List) {
+	e, ok := el[messageId]
+	if !ok {
+		return
+	}
+	delete(el, messageId)
+	dl.Remove(e)
+	e = nil
+	// log.Info("KiteMemoryStore|innerDelete|%s\n", messageId)
 }
 
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
+
 	pe := make([]*MessageEntity, 0, limit+1)
 	var delMessage []string
 
-	self.lock.RLock()
+	lock, el, dl := self.hash(hashKey)
+	lock.RLock()
 
 	now := time.Now().Unix()
-	for e := self.datalink.Back(); nil != e; e = e.Prev() {
+	for e := dl.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
 		if entity.NextDeliverTime <= nextDeliveryTime &&
 			entity.DeliverCount < entity.Header.GetDeliverLimit() &&
-			entity.ExpiredTime <= now {
+			entity.ExpiredTime > now {
 			pe = append(pe, entity)
 			if len(pe) > limit {
 				break
 			}
 		} else if entity.DeliverCount >= entity.Header.GetDeliverLimit() ||
-			entity.ExpiredTime > now {
+			entity.ExpiredTime <= now {
 			if nil == delMessage {
 				delMessage = make([]string, 0, 10)
 			}
@@ -130,13 +190,15 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 		}
 	}
 
-	self.lock.RUnlock()
+	lock.RUnlock()
 
 	//删除过期的message
 	if nil != delMessage {
+		lock.Lock()
 		for _, v := range delMessage {
-			self.Delete(v)
+			self.innerDelete(v, el, dl)
 		}
+		lock.Unlock()
 	}
 
 	if len(pe) > limit {
@@ -144,4 +206,5 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 	} else {
 		return false, pe
 	}
+
 }
