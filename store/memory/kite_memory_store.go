@@ -119,7 +119,7 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 			entity.ExpiredTime <= now {
 			pe = append(pe, entity)
 			if len(pe) > limit {
-				return true, pe[:limit]
+				break
 			}
 		} else if entity.DeliverCount >= entity.Header.GetDeliverLimit() ||
 			entity.ExpiredTime > now {
@@ -131,6 +131,7 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 	}
 
 	self.lock.RUnlock()
+
 	//删除过期的message
 	if nil != delMessage {
 		for _, v := range delMessage {
@@ -138,5 +139,9 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 		}
 	}
 
-	return false, pe
+	if len(pe) > limit {
+		return true, pe[:limit]
+	} else {
+		return false, pe
+	}
 }

@@ -17,7 +17,7 @@ const (
 var rc *regexp.Regexp
 
 func init() {
-	rc = regexp.MustCompile("[0-9a-f]{32}")
+	rc = regexp.MustCompile("[0-9a-fA-F]{32}")
 }
 
 //----------------持久化的handler
