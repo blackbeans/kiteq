@@ -82,6 +82,7 @@ func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 		message := &BytesMessage{}
 		message.Header = header
 		message.Body = body.([]byte)
+
 		data, err := proto.Marshal(message)
 		if nil != err {
 			log.Error("MarshalMessage|%s|%d|%s\n", header, msgType, err)
