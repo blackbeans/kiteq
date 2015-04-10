@@ -45,7 +45,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
-	rw = append(rw, handler.NewRedeliveryWindow(3, 10, 2*60))
+	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 30))
+	rw = append(rw, handler.NewRedeliveryWindow(4, 10, 2*60))
 	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 4*60))
 	rw = append(rw, handler.NewRedeliveryWindow(20, 30, 8*60))
 	rw = append(rw, handler.NewRedeliveryWindow(30, 40, 16*60))

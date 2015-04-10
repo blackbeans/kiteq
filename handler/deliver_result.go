@@ -83,7 +83,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
 
-	// log.Info("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
+	// log.Warn("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	attemptDeliver := (nil != fevent.attemptDeliver && fevent.deliverCount <= 1)
 	//第一次尝试投递失败了立即通知

@@ -73,6 +73,9 @@ type IKiteStore interface {
 	Stop()
 	Monitor() string
 
+	//recover数量
+	RecoverNum() int
+
 	//批量提交channel
 	AsyncUpdate(entity *MessageEntity) bool
 	AsyncDelete(messageId string) bool

@@ -36,7 +36,7 @@ func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline 
 
 //开始启动恢复程序
 func (self *RecoverManager) Start() {
-	for i := 0; i < 32; i++ {
+	for i := 0; i < self.kitestore.RecoverNum(); i++ {
 		go self.startRecoverTask(fmt.Sprintf("%x%x", i/16, i%16))
 	}
 
@@ -45,12 +45,11 @@ func (self *RecoverManager) Start() {
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
 	log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
-	ticker := time.NewTicker(self.recoverPeriod)
-	defer ticker.Stop()
 	for !self.isClose {
-		now := <-ticker.C
+
 		//开始
-		self.redeliverMsg(hashKey, now)
+		self.redeliverMsg(hashKey, time.Now())
+		time.Sleep(self.recoverPeriod)
 	}
 
 }
@@ -74,20 +73,23 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 
 		//开始发起重投
 		for _, entity := range entities {
-			self.recoverWorkers <- 1
-			go func() {
-				defer func() {
-					<-self.recoverWorkers
-				}()
-				//如果为未提交的消息则需要发送一个事务检查的消息
-				if !entity.Commit {
-					self.txAck(entity)
-				} else {
 
-					//发起投递事件
-					self.delivery(entity)
-				}
-			}()
+			//如果为未提交的消息则需要发送一个事务检查的消息
+			if !entity.Commit {
+
+				self.recoverWorkers <- 1
+				go func() {
+					defer func() {
+						<-self.recoverWorkers
+					}()
+					self.txAck(entity)
+				}()
+			} else {
+
+				//发起投递事件
+				self.delivery(entity)
+			}
+
 		}
 		startIdx += len(entities)
 		hasMore = more

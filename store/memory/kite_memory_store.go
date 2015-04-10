@@ -7,7 +7,6 @@ import (
 	. "kiteq/store"
 	"strconv"
 	"sync"
-	"time"
 )
 
 const (
@@ -43,6 +42,10 @@ func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
 
 func (self *KiteMemoryStore) Start() {}
 func (self *KiteMemoryStore) Stop()  {}
+
+func (self *KiteMemoryStore) RecoverNum() int {
+	return CONCURRENT_LEVEL
+}
 
 func (self *KiteMemoryStore) Monitor() string {
 	l := 0
@@ -171,18 +174,22 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 	lock, el, dl := self.hash(hashKey)
 	lock.RLock()
 
-	now := time.Now().Unix()
+	i := 0
 	for e := dl.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
 		if entity.NextDeliverTime <= nextDeliveryTime &&
 			entity.DeliverCount < entity.Header.GetDeliverLimit() &&
-			entity.ExpiredTime > now {
-			pe = append(pe, entity)
+			entity.ExpiredTime > nextDeliveryTime {
+			if startIdx <= i {
+				pe = append(pe, entity)
+			}
+
+			i++
 			if len(pe) > limit {
 				break
 			}
 		} else if entity.DeliverCount >= entity.Header.GetDeliverLimit() ||
-			entity.ExpiredTime <= now {
+			entity.ExpiredTime <= nextDeliveryTime {
 			if nil == delMessage {
 				delMessage = make([]string, 0, 10)
 			}

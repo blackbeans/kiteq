@@ -55,6 +55,10 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 	return ins
 }
 
+func (self *KiteMysqlStore) RecoverNum() int {
+	return self.dbshard.ShardNum() * self.dbshard.HashNum()
+}
+
 var filternothing = func(colname string) bool {
 	return false
 }
