@@ -112,11 +112,10 @@ func main() {
 		for i := 0; i < *c; i++ {
 			go func(kite *client.KiteQClient) {
 				wg.Add(1)
-				msg := buildBytesMessage(false)
-				txmsg := buildBytesMessage(true)
+
 				for !stop {
 					if *tx {
-
+						msg := buildBytesMessage(false)
 						err := kite.SendTxBytesMessage(msg, doTranscation)
 						if nil != err {
 							fmt.Printf("SEND TxMESSAGE |FAIL|%s\n", err)
@@ -125,6 +124,7 @@ func main() {
 							atomic.AddInt32(&count, 1)
 						}
 					} else {
+						txmsg := buildBytesMessage(true)
 						err := kite.SendBytesMessage(txmsg)
 						if nil != err {
 							// fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)

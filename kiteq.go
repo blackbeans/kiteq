@@ -28,8 +28,8 @@ func main() {
 	db := flag.String("db", "memory://initcap=100000&maxcap=200000",
 		"-db=mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushPeriod=1000")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
-
 	flag.Parse()
+
 	//加载log4go的配置
 	log.LoadConfiguration(*logxml)
 

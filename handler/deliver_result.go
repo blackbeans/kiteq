@@ -2,6 +2,7 @@ package handler
 
 import (
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/store"
 	"sort"
@@ -42,6 +43,7 @@ type DeliverResultHandler struct {
 	deliverTimeout time.Duration
 	updateChan     chan store.MessageEntity
 	deleteChan     chan string
+	tw             *turbo.TimeWheel
 }
 
 //------创建投递结果处理器
@@ -52,6 +54,14 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
 
+	dhandler.tw = turbo.NewTimeWheel(time.Duration(int64(deliverTimeout)/10), 10, 5)
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			log.Info(dhandler.tw.Monitor())
+		}
+	}()
 	//排好序
 	sort.Sort(dhandler.rw)
 	log.Info("DeliverResultHandler|RedeliveryWindows|%s\n ", dhandler.rw)
@@ -75,15 +85,19 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
+	ch := make(chan bool, 1)
+
+	self.tw.After(self.deliverTimeout, func() {
+		ch <- true
+		close(ch)
+	})
 	//等待回调结果
-	fevent.wait(self.deliverTimeout)
+	fevent.wait(self.deliverTimeout, ch)
 
 	//增加投递成功的分组
 	if len(fevent.deliverySuccGroups) > 0 {
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
-
-	// log.Warn("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|%s|%s|%s\n", self.GetName(), fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	attemptDeliver := (nil != fevent.attemptDeliver && fevent.deliverCount <= 1)
 	//第一次尝试投递失败了立即通知
@@ -91,11 +105,13 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
 		close(fevent.attemptDeliver)
 	}
+
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
 		if !fevent.fly && !attemptDeliver {
 			//async batch remove
 			self.kitestore.AsyncDelete(fevent.messageId)
+			// log.Warn("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%s|%s|%s|%s\n", self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 		}
 	} else {
 		//重投策略
