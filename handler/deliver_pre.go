@@ -82,7 +82,7 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 		//查询消息
 		entity = self.kitestore.Query(pevent.messageId)
 		if nil == entity {
-			log.Warn("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
+			log.Debug("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
 			return
 		}
 	}
