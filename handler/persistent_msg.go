@@ -118,6 +118,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
 		pevent.entity.Header.GetMessageId(), saveSucc, ""), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
+
 }
 
 func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persistentEvent, ch chan []string) {
