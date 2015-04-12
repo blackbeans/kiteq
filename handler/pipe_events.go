@@ -155,44 +155,34 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 }
 
 //等待响应
-func (self *deliverResultEvent) wait(ch <-chan bool) {
+func (self *deliverResultEvent) wait(ch chan bool) {
 
-	do := func() chan interface{} {
-		var lastchan chan interface{}
-		//统计回调结果
-		for g, f := range self.futures {
+	timeout := false
+	//统计回调结果
+	for g, f := range self.futures {
 
-			resp := <-f
-			// log.Printf("deliverResultEvent|wait|%s\n", resp)
-			ack, ok := resp.(*protocol.DeliverAck)
-			if !ok || !ack.GetStatus() {
-				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-			} else {
-				self.deliverySuccGroups = append(self.deliverySuccGroups, g)
-			}
-
-			lastchan = f
-		}
-		return lastchan
-
-	}
-
-	//wait
-	select {
-	//timeout
-	case <-ch:
-	outter:
-		for g, _ := range self.futures {
-			for _, sg := range self.deliverySuccGroups {
-				if g == sg {
-					continue outter
-				}
-			}
-			//等待结果超时
+		if timeout {
+			//结果超时
 			self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+
+		} else {
+			select {
+			case <-ch:
+				//timeout
+				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+				break
+			case resp := <-f:
+				// log.Printf("deliverResultEvent|wait|%s\n", resp)
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
+					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+				} else {
+					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
+				}
+
+			}
 		}
-		//do
-	case <-do():
+
 	}
 
 }

@@ -85,9 +85,11 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	ch := self.tw.After(self.deliverTimeout, func() {})
-	//等待回调结果
-	fevent.wait(ch)
+	if len(fevent.futures) > 0 {
+		ch := self.tw.After(self.deliverTimeout, func() {})
+		//等待回调结果
+		fevent.wait(ch)
+	}
 
 	//增加投递成功的分组
 	if len(fevent.deliverySuccGroups) > 0 {
