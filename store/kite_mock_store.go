@@ -15,7 +15,7 @@ func NewMockKiteStore() *MockKiteStore {
 
 func (self *MockKiteStore) Start()          {}
 func (self *MockKiteStore) Stop()           {}
-func (self *MockKiteStore) Monitor() string { return "" }
+func (self *MockKiteStore) Monitor() string { return "mock" }
 
 func (self *MockKiteStore) RecoverNum() int {
 	return 0
@@ -67,8 +67,8 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		MessageId:    proto.String(id),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Unix()),
-		DeliverLimit: proto.Int32(-1),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+		DeliverLimit: proto.Int32(100),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(true),
 		Fly:          proto.Bool(false)}
@@ -84,8 +84,8 @@ func buildBytesMessage(id string) *protocol.BytesMessage {
 		MessageId:    proto.String(id),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Unix()),
-		DeliverLimit: proto.Int32(-1),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+		DeliverLimit: proto.Int32(100),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(true),
 		Fly:          proto.Bool(false)}

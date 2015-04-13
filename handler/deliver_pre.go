@@ -104,6 +104,7 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 	//填充订阅分组
 	self.fillGroupIds(deliverEvent, entity)
 	self.fillDeliverExt(deliverEvent, entity)
+
 	//向后投递发送
 	ctx.SendForward(deliverEvent)
 }

@@ -155,7 +155,7 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 }
 
 //等待响应
-func (self *deliverResultEvent) wait(ch chan bool) {
+func (self *deliverResultEvent) wait(ch chan bool) bool {
 
 	timeout := false
 	//统计回调结果
@@ -164,13 +164,12 @@ func (self *deliverResultEvent) wait(ch chan bool) {
 		if timeout {
 			//结果超时
 			self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-
 		} else {
 			select {
 			case <-ch:
 				//timeout
 				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-				break
+				timeout = true
 			case resp := <-f:
 				// log.Printf("deliverResultEvent|wait|%s\n", resp)
 				ack, ok := resp.(*protocol.DeliverAck)
@@ -185,4 +184,5 @@ func (self *deliverResultEvent) wait(ch chan bool) {
 
 	}
 
+	return timeout
 }

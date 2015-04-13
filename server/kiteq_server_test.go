@@ -23,7 +23,7 @@ func buildStringMessage(id string) *protocol.StringMessage {
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
-		DeliverLimit: proto.Int32(-1),
+		DeliverLimit: proto.Int32(100),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(true),
 		Fly:          proto.Bool(false)}
@@ -31,15 +31,6 @@ func buildStringMessage(id string) *protocol.StringMessage {
 
 	return entity
 }
-
-//初始化存储
-var kitestore = &store.MockKiteStore{}
-var ch = make(chan bool, 1)
-
-var kiteClient *client.KiteQClient
-var kiteQServer *KiteQServer
-var c int32 = 0
-var lc int32 = 0
 
 type defualtListener struct {
 }
@@ -55,7 +46,15 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 	return nil
 }
 
-func init() {
+func BenchmarkRemotingServer(t *testing.B) {
+
+	//初始化存储
+
+	var kiteClient *client.KiteQClient
+	var kiteQServer *KiteQServer
+	var c int32 = 0
+	var lc int32 = 0
+
 	rc := turbo.NewRemotingConfig(
 		"remoting-localhost:13800",
 		2000, 16*1024,
@@ -82,9 +81,7 @@ func init() {
 			lc = c
 		}
 	}()
-}
 
-func BenchmarkRemotingServer(t *testing.B) {
 	t.SetParallelism(4)
 	t.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
@@ -94,9 +91,45 @@ func BenchmarkRemotingServer(t *testing.B) {
 			}
 		}
 	})
+
+	kiteClient.Destory()
+	kiteQServer.Shutdown()
 }
 
 func TestRemotingServer(t *testing.T) {
+
+	//初始化存储
+	var kiteClient *client.KiteQClient
+	var kiteQServer *KiteQServer
+	var c int32 = 0
+	var lc int32 = 0
+
+	rc := turbo.NewRemotingConfig(
+		"remoting-localhost:13800",
+		2000, 16*1024,
+		16*1024, 10000, 10000,
+		10*time.Second, 160000)
+
+	kc := NewKiteQConfig("kiteq-localhost:13800", "localhost:13800", "localhost:2181", true, 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "memory://", rc)
+
+	kiteQServer = NewKiteQServer(kc)
+	kiteQServer.Start()
+	log.Println("KiteQServer START....")
+
+	kiteClient = client.NewKiteQClient("localhost:2181", "s-trade-a", "123456", &defualtListener{})
+	kiteClient.SetTopics([]string{"trade"})
+	kiteClient.SetBindings([]*binding.Binding{
+		binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
+	})
+	kiteClient.Start()
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			log.Printf("%d\n", (c - lc))
+			lc = c
+		}
+	}()
 
 	err := kiteClient.SendStringMessage(buildStringMessage("1"))
 	if nil != err {
@@ -130,4 +163,7 @@ func TestRemotingServer(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
+
+	kiteClient.Destory()
+	kiteQServer.Shutdown()
 }

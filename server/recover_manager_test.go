@@ -4,8 +4,10 @@ import (
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
 	"kiteq/handler"
+	"kiteq/protocol"
 	"kiteq/stat"
 	"kiteq/store"
+	"kiteq/store/memory"
 	"log"
 	"os"
 	"testing"
@@ -40,8 +42,21 @@ func TestRecoverManager(t *testing.T) {
 
 	pipeline := NewDefaultPipeline()
 
-	kitedb := &store.MockKiteStore{}
+	kitedb := memory.NewKiteMemoryStore(100, 100)
+
+	messageid := store.MessageId()
+	t.Logf("messageid:%s\b", messageid)
+	entity := store.NewMessageEntity(protocol.NewQMessage(buildStringMessage(messageid)))
+	kitedb.Save(entity)
+	go func() {
+		for {
+			log.Println(kitedb.Monitor())
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
 	fs := stat.NewFlowStat("recover")
+	fs.Start()
 	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger
@@ -49,7 +64,7 @@ func TestRecoverManager(t *testing.T) {
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
-	rm := NewRecoverManager(hostname, 1*time.Second, pipeline, kitedb)
+	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb)
 	rm.Start()
 	select {
 	case succ := <-ch:
