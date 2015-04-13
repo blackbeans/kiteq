@@ -15,8 +15,11 @@ import (
 func buildStringMessage(id string) *protocol.StringMessage {
 	//创建消息
 	entity := &protocol.StringMessage{}
+	mid := store.MessageId()
+	mid = string(mid[:len(mid)-1]) + id
+	// mid[len(mid)-1] = id[0]
 	entity.Header = &protocol.Header{
-		MessageId:    proto.String(store.MessageId() + id),
+		MessageId:    proto.String(mid),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),

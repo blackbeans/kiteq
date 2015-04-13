@@ -42,6 +42,7 @@ func TestRecoverManager(t *testing.T) {
 
 	kitedb := &store.MockKiteStore{}
 	fs := stat.NewFlowStat("recover")
+	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger("localhost:2181", "127.0.0.1:13800")
@@ -53,7 +54,7 @@ func TestRecoverManager(t *testing.T) {
 	select {
 	case succ := <-ch:
 		log.Printf("--------------recover %s\n", succ)
-	case <-time.After(20 * time.Second):
+	case <-time.After(5 * time.Second):
 		t.Fail()
 		log.Println("waite recover  deliver timeout\n")
 	}

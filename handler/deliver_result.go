@@ -86,7 +86,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	}
 
 	if len(fevent.futures) > 0 {
-		ch := self.tw.After(self.deliverTimeout, func() {})
+		_, ch := self.tw.After(self.deliverTimeout, func() {})
 		//等待回调结果
 		fevent.wait(ch)
 	}
