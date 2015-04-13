@@ -97,3 +97,10 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 func (self *KiteClientManager) DataChange(path string, binds []*binding.Binding) {
 	//IGNORE
 }
+
+func (self *KiteClientManager) OnSessionExpired() {
+	//推送订阅关系和topics
+	self.Start()
+
+	log.Info("KiteClientManager|OnSessionExpired|Restart...")
+}

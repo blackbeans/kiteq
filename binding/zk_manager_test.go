@@ -40,11 +40,11 @@ func TestPublishQServer(t *testing.T) {
 
 func cleanUp(t *testing.T, zk *ZKManager, path string) {
 
-	children, _, _ := zk.session.Children(path, nil)
+	children, _, _ := zk.session.Children(path)
 
 	//循环遍历当前孩子节点并删除
 	for _, v := range children {
-		tchildren, _, _ := zk.session.Children(path+"/"+v, nil)
+		tchildren, _, _ := zk.session.Children(path + "/" + v)
 		if len(tchildren) <= 0 {
 			//开始删除
 			zk.session.Delete(path+"/"+v, -1)

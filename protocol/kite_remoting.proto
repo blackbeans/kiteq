@@ -47,6 +47,7 @@ message Entry {
     required string value  = 2;
 }
 
+
 message Header{
     required string messageId = 1;
     required string topic = 2; //topic类型

@@ -25,8 +25,8 @@ type DoTranscation func(message *protocol.QMessage) (bool, error)
 const MAX_CLIENT_CONN = 10
 
 type KiteClientManager struct {
-	ga *c.GroupAuth
-
+	ga            *c.GroupAuth
+	zkAddr        string
 	topics        []string
 	binds         []*binding.Binding //订阅的关系
 	clientManager *c.ClientManager
@@ -65,9 +65,11 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		pipeline:      pipeline,
 		clientManager: clientm,
 		rc:            rc,
-		flowstat:      flowstat}
-	manager.zkManager = binding.NewZKManager(zkAddr, manager)
-
+		flowstat:      flowstat,
+		zkAddr:        zkAddr}
+	//开启流量统计
+	manager.remointflow()
+	manager.flowstat.Start()
 	return manager
 }
 
@@ -84,9 +86,7 @@ func (self *KiteClientManager) remointflow() {
 //启动
 func (self *KiteClientManager) Start() {
 
-	//开启流量统计
-	self.remointflow()
-	self.flowstat.Start()
+	self.zkManager = binding.NewZKManager(self.zkAddr, self)
 
 	hostname, _ := os.Hostname()
 	//推送本机到

@@ -4,7 +4,7 @@ go get  github.com/golang/protobuf/{proto,protoc-gen-go}
 go get  github.com/blackbeans/go-uuid
 go get  github.com/go-sql-driver/mysql
 go get  github.com/blackbeans/log4go
-go get  github.com/blackbeans/zk
+go get -u github.com/blackbeans/go-zookeeper/zk
 go get -u  github.com/blackbeans/turbo
 
 

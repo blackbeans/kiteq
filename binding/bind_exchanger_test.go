@@ -15,6 +15,10 @@ func filter(b *Binding) bool {
 type MockWatcher struct {
 }
 
+func (self *MockWatcher) OnSessionExpired() {
+
+}
+
 func (self *MockWatcher) DataChange(path string, binds []*Binding) {
 
 	//订阅关系变更才处理
@@ -27,9 +31,9 @@ func (self *MockWatcher) DataChange(path string, binds []*Binding) {
 		}
 
 		//开始处理变化的订阅关系
-		// log.Printf("MockWatcher|DataChange|SUB节点变更|%s|%s\n", path, binds)
+		log.Printf("MockWatcher|DataChange|SUB节点变更|%s|%s\n", path, binds)
 	} else {
-		// log.Printf("MockWatcher|DataChange|非SUB节点变更|%s\n", path)
+		log.Printf("MockWatcher|DataChange|非SUB节点变更|%s\n", path)
 	}
 
 }
@@ -43,12 +47,12 @@ func (self *MockWatcher) NodeChange(path string, eventType ZkEvent, childNode []
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
 			//不合法的订阅璐姐
-			// log.Printf("MockWatcher|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
+			log.Printf("MockWatcher|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
 			return
 		}
-		// log.Printf("MockWatcher|NodeChange|SUB节点变更|%s|%s\n", path, childNode)
+		log.Printf("MockWatcher|NodeChange|SUB节点变更|%s|%s\n", path, childNode)
 	} else {
-		// log.Printf("MockWatcher|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
+		log.Printf("MockWatcher|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
 	}
 }
 
@@ -82,12 +86,12 @@ func TestSubscribeBindings(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	tradeBind := exchanger.FindBinds("trade", "trade-succ-200", filter)
+	t.Logf("trade trade-succ-200|%t\n", tradeBind)
 	if len(tradeBind) != 1 {
 		t.Fail()
 		return
 	}
 
-	t.Logf("trade trade-succ-200|%t\n", tradeBind)
 	if !tradeBind[0].matches("trade", "trade-succ-200") {
 		t.Fail()
 		return
@@ -127,7 +131,7 @@ func TestSubscribeBindings(t *testing.T) {
 	//删除掉topic+groupId
 	path := KITEQ_SUB + "/trade/s-trade-001-bind"
 	zkmanager.session.Delete(path, -1)
-	nodes, _, _ := zkmanager.session.Children(KITEQ_SUB+"/trade", nil)
+	nodes, _, _ := zkmanager.session.Children(KITEQ_SUB + "/trade")
 	t.Logf("trade trade-succ-200|delete|s-trade-001-bind|%t\n", nodes)
 	time.Sleep(5 * time.Second)
 

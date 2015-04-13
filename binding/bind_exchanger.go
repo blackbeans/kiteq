@@ -93,8 +93,10 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 		//获取topic
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
-			//不合法的订阅璐姐
-			log.Error("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
+			if eventType == Created {
+				//不合法的订阅璐姐
+				log.Error("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t\n", path, childNode)
+			}
 			return
 		}
 		//获取topic
@@ -130,7 +132,7 @@ func (self *BindExchanger) NodeChange(path string, eventType ZkEvent, childNode 
 		}
 
 	} else {
-		log.Warn("BindExchanger|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
+		// log.Warn("BindExchanger|NodeChange|非SUB节点变更|%s|%s\n", path, childNode)
 	}
 }
 
@@ -181,9 +183,16 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Bind
 	}
 }
 
+//当zk断开链接时
+func (self *BindExchanger) OnSessionExpired() {
+	self.PushQServer(self.kiteqserver, self.topics)
+	log.Info("BindExchanger|OnSessionExpired|Restart...")
+}
+
 //关闭掉exchanger
 func (self *BindExchanger) Shutdown() {
 	//删除掉当前的QServer
 	self.zkmanager.UnpushlishQServer(self.kiteqserver, self.topics)
 	self.zkmanager.Close()
+	log.Info("BindExchanger|Shutdown...")
 }
