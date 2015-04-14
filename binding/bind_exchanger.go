@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 //用于管理订阅关系，对接zookeeper的订阅关系变更
@@ -193,6 +194,7 @@ func (self *BindExchanger) OnSessionExpired() {
 func (self *BindExchanger) Shutdown() {
 	//删除掉当前的QServer
 	self.zkmanager.UnpushlishQServer(self.kiteqserver, self.topics)
+	time.Sleep(10 * time.Second)
 	self.zkmanager.Close()
 	log.Info("BindExchanger|Shutdown...")
 }
