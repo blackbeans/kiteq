@@ -11,7 +11,7 @@ type ChunkFlag uint8
 
 const (
 	MAX_SEGEMENT_SIZE   = 64 * 1024 * 1024 //最大的分段大仙
-	MAX_CHUNK_SIZE      = 128 * 1024       //最大的chunk
+	MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
 	SEGMENT_PREFIX      = "segement-"
 	SEGMENT_IDX_SUFFIX  = ".idx"
 	SEGMENT_DATA_SUFFIX = ".kiteq"
@@ -61,6 +61,7 @@ func (self *Segement) Close() error {
 
 //apend data
 func (self *Segement) Append(data []byte) error {
+
 	l, err := self.bw.Write(data)
 	if nil != err || l != len(data) {
 		log.Error("Segement|Append|FAIL|%s|%d/%d\n", err, l, len(data))
@@ -69,8 +70,8 @@ func (self *Segement) Append(data []byte) error {
 	self.bw.Flush()
 
 	//move offset
-	self.offset += int64(l)
-	self.byteSize += int32(l)
+	self.offset += int64(len(data))
+	self.byteSize += int32(len(data))
 	return nil
 }
 

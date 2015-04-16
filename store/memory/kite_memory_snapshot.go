@@ -123,22 +123,24 @@ func (self *MemorySnapshot) recoverSnapshot() {
 		//scan offset
 		br := bufio.NewReader(s.file)
 		header := make([]byte, CHUNK_HEADER)
+
 		chunkId := int64(0)
 		byteSize := int32(0)
+	outter:
 		for {
 
-			l, err := br.Read(header)
+			hl, err := io.ReadFull(br, header)
 			if nil != err {
 				if io.EOF != err {
 					log.Error("MemorySnapshot|Load Segement|Read Header|FAIL|%s|%s\n", err, s.name)
+					continue
 				}
-				break
+				break outter
 			}
 
-			if l <= 0 {
+			if hl <= 0 || hl < CHUNK_HEADER {
+				log.Error("MemorySnapshot|Load Segement|Read Header|FAIL|%s|%d\n", s.name, hl)
 				break
-			} else if l < CHUNK_HEADER {
-				log.Error("MemorySnapshot|Load Segement|Read Header|FAIL|%s|%s|%d\n", err, s.name, l)
 			}
 
 			//length
@@ -147,8 +149,7 @@ func (self *MemorySnapshot) recoverSnapshot() {
 			al := soffset + int64(length)
 			//checklength
 			if al > filesize {
-				log.Error("MemorySnapshot|Load Segement|FILE SIZE|ERROR|%s|%s|%d/%d\n",
-					err, s.name, al, filesize)
+				log.Error("MemorySnapshot|Load Segement|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", s.name, al, filesize, soffset, length)
 				break
 			}
 
@@ -156,20 +157,18 @@ func (self *MemorySnapshot) recoverSnapshot() {
 			checksum := binary.BigEndian.Uint32(header[4:8])
 
 			//read data
-			dl := length - CHUNK_HEADER
-			data := make([]byte, dl)
-			bl, err := br.Read(data)
-			if nil != err || bl < int(dl) {
-				log.Error("MemorySnapshot|Load Segement|Read Data|FAIL|%s|%s|%d/%d\n", err, s.name, bl, dl)
-				break
+			l := length - CHUNK_HEADER
+			data := make([]byte, l)
+			dl, err := io.ReadFull(br, data)
+			if nil != err || dl < int(l) {
+				log.Error("MemorySnapshot|Load Segement|Read Data|FAIL|%s|%s|%d/%d\n", err, s.name, l, dl)
+				break outter
 			}
 
-			// log.Debug("MemorySnapshot|Chunk:%s\n", string(data))
 			csum := crc32.ChecksumIEEE(data)
 			//checkdata
 			if csum != checksum {
-				log.Error("MemorySnapshot|Load Segement|Data Checksum|FAIL|%s|%s|%d/%d\n",
-					err, s.name, csum, checksum)
+				log.Error("MemorySnapshot|Load Segement|Data Checksum|FAIL|%s|%d/%d\n", s.name, csum, checksum)
 				break
 			}
 
@@ -177,8 +176,14 @@ func (self *MemorySnapshot) recoverSnapshot() {
 
 			//read chunkid
 			chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
+
+			//flag
+			// flag := header[16]
+
 			//add byteSize
 			byteSize += int32(length)
+
+			// log.Debug("MemorySnapshot|Chunk:%s|chunkId:%d|flag:%d\n", string(data), chunkId, flag)
 		}
 
 		s.offset = soffset
@@ -215,7 +220,9 @@ func (self *MemorySnapshot) Append(msg []byte) int64 {
 
 func (self *MemorySnapshot) sync() {
 
-	batch := make([]byte, 0, 50)
+	batch := make([]*Chunk, 0, 10)
+	buff := make([]byte, 0, 1024)
+
 	var popChunk *Chunk
 	var lastSeg *Segement
 	for self.running {
@@ -231,15 +238,21 @@ func (self *MemorySnapshot) sync() {
 		}
 
 		if nil != popChunk {
-			batch = append(batch, popChunk.marshal()...)
+			c := popChunk
+			batch = append(batch, c)
 		}
 
 		//force flush
-		if nil == popChunk && len(batch) > 0 {
-			err := lastSeg.Append(batch)
+		if nil == popChunk && len(batch) > 0 || len(batch) >= cap(batch) {
+
+			for _, v := range batch {
+				buff = append(buff, v.marshal()...)
+			}
+			err := lastSeg.Append(buff)
 			if nil != err {
 				log.Error("MemorySnapshot|Append|FAIL|%s\n", err)
 			}
+			buff = buff[:0]
 			batch = batch[:0]
 		}
 
@@ -251,14 +264,14 @@ func (self *MemorySnapshot) sync() {
 		select {
 		case chunk := <-self.writeChannel:
 			if nil != chunk {
-				batch = append(batch, chunk.marshal()...)
+				buff = append(buff, chunk.marshal()...)
 			}
 
 		default:
-			if len(batch) > 0 {
+			if len(buff) > 0 {
 				// log.Debug("MemorySnapshot|CLOSE|SYNC|FAIL|%s|%s\n", lastSeg, batch)
 				//complete
-				lastSeg.Append(batch)
+				lastSeg.Append(buff)
 
 			}
 			lastSeg.Close()
