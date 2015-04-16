@@ -1,12 +1,10 @@
 package memory
 
 import (
-	"bufio"
-	"encoding/binary"
+	"container/list"
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"hash/crc32"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,20 +20,25 @@ type MemorySnapshot struct {
 	baseDir      *os.File
 	basename     string
 	segments     Segments
-	offset       int64 //global  segment offset
 	chunkId      int64
 	writeChannel chan *Chunk
 	running      bool
 	waitSync     *sync.WaitGroup
+	batchSize    int
+	segcache     chan int   //segment cache size
+	segemntCache *list.List //segment cached
 }
 
-func NewMemorySnapshot(filePath string, basename string) *MemorySnapshot {
+func NewMemorySnapshot(filePath string, basename string, batchSize int, segcacheSize int) *MemorySnapshot {
 	ms := &MemorySnapshot{
 		filePath:     filePath,
 		basename:     basename,
 		segments:     make(Segments, 0, 50),
 		writeChannel: make(chan *Chunk, 1000),
 		running:      true,
+		batchSize:    batchSize,
+		segcache:     make(chan int, segcacheSize),
+		segemntCache: list.New(),
 		waitSync:     &sync.WaitGroup{}}
 	ms.load()
 	go ms.sync()
@@ -104,97 +107,40 @@ func (self *MemorySnapshot) load() {
 		self.createSegment(0)
 	}
 
-	log.Info("MemorySnapshot|Load|SUCC|%s\n", self)
-}
+	//load fixed num  segments into memory
 
-func (self MemorySnapshot) String() string {
-	return fmt.Sprintf("\nfilePath:%s\noffset:%d\nchunkid:%d\nsegments:%d",
-		self.filePath, self.offset, self.chunkId, len(self.segments))
+	log.Info("MemorySnapshot|Load|SUCC|%s\n", self)
 }
 
 func (self *MemorySnapshot) recoverSnapshot() {
 	//current segmentid
 	if len(self.segments) > 0 {
 		s := self.segments[len(self.segments)-1]
-		fi, _ := s.file.Stat()
 
-		filesize := fi.Size()
-		soffset := int64(0)
-		//scan offset
-		br := bufio.NewReader(s.file)
-		header := make([]byte, CHUNK_HEADER)
-
-		chunkId := int64(0)
-		byteSize := int32(0)
-	outter:
-		for {
-
-			hl, err := io.ReadFull(br, header)
-			if nil != err {
-				if io.EOF != err {
-					log.Error("MemorySnapshot|Load Segement|Read Header|FAIL|%s|%s\n", err, s.name)
-					continue
-				}
-				break outter
-			}
-
-			if hl <= 0 || hl < CHUNK_HEADER {
-				log.Error("MemorySnapshot|Load Segement|Read Header|FAIL|%s|%d\n", s.name, hl)
-				break
-			}
-
-			//length
-			length := binary.BigEndian.Uint32(header[0:4])
-
-			al := soffset + int64(length)
-			//checklength
-			if al > filesize {
-				log.Error("MemorySnapshot|Load Segement|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", s.name, al, filesize, soffset, length)
-				break
-			}
-
-			//checksum
-			checksum := binary.BigEndian.Uint32(header[4:8])
-
-			//read data
-			l := length - CHUNK_HEADER
-			data := make([]byte, l)
-			dl, err := io.ReadFull(br, data)
-			if nil != err || dl < int(l) {
-				log.Error("MemorySnapshot|Load Segement|Read Data|FAIL|%s|%s|%d/%d\n", err, s.name, l, dl)
-				break outter
-			}
-
-			csum := crc32.ChecksumIEEE(data)
-			//checkdata
-			if csum != checksum {
-				log.Error("MemorySnapshot|Load Segement|Data Checksum|FAIL|%s|%d/%d\n", s.name, csum, checksum)
-				break
-			}
-
-			soffset += int64(length)
-
-			//read chunkid
-			chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
-
-			//flag
-			// flag := header[16]
-
-			//add byteSize
-			byteSize += int32(length)
-
-			// log.Debug("MemorySnapshot|Chunk:%s|chunkId:%d|flag:%d\n", string(data), chunkId, flag)
+		err := s.Open()
+		if nil != err {
+			panic("MemorySnapshot|Load Last Segment|FAIL|" + err.Error())
 		}
-
-		s.offset = soffset
-		s.byteSize = byteSize
-		s.Open()
-
 		//set snapshost status
-		self.chunkId = chunkId
-		self.offset = s.sid + s.offset
-
+		self.chunkId = s.chunks[len(s.chunks)-1].id
 	}
+}
+
+//query one chunk by  chunkid
+func (self *MemorySnapshot) Query(cid int64) *Chunk {
+	return nil
+}
+
+//return the header chunk
+func (self *MemorySnapshot) Head(n int) []*Chunk {
+	// hs := self.segemntCache.Front()
+	// if nil != hs {
+	// 	s := hs.Value.(*Segement)
+	// } else {
+	// 	//notify load segment
+
+	// }
+	return nil
 }
 
 //write
@@ -220,8 +166,8 @@ func (self *MemorySnapshot) Append(msg []byte) int64 {
 
 func (self *MemorySnapshot) sync() {
 
-	batch := make([]*Chunk, 0, 10)
-	buff := make([]byte, 0, 1024)
+	// buff := make([]byte, 0, 4*1024)
+	batch := make([]*Chunk, 0, self.batchSize)
 
 	var popChunk *Chunk
 	var lastSeg *Segement
@@ -244,15 +190,11 @@ func (self *MemorySnapshot) sync() {
 
 		//force flush
 		if nil == popChunk && len(batch) > 0 || len(batch) >= cap(batch) {
-
-			for _, v := range batch {
-				buff = append(buff, v.marshal()...)
-			}
-			err := lastSeg.Append(buff)
+			err := lastSeg.Append(batch)
 			if nil != err {
 				log.Error("MemorySnapshot|Append|FAIL|%s\n", err)
 			}
-			buff = buff[:0]
+			// buff = buff[:0]
 			batch = batch[:0]
 		}
 
@@ -264,14 +206,14 @@ func (self *MemorySnapshot) sync() {
 		select {
 		case chunk := <-self.writeChannel:
 			if nil != chunk {
-				buff = append(buff, chunk.marshal()...)
+				batch = append(batch, chunk)
 			}
 
 		default:
-			if len(buff) > 0 {
+			if len(batch) > 0 {
 				// log.Debug("MemorySnapshot|CLOSE|SYNC|FAIL|%s|%s\n", lastSeg, batch)
 				//complete
-				lastSeg.Append(buff)
+				lastSeg.Append(batch)
 
 			}
 			lastSeg.Close()
@@ -319,10 +261,14 @@ func (self *MemorySnapshot) checkRoll() *Segement {
 
 	s := self.segments[len(self.segments)-1]
 	if s.byteSize > MAX_SEGEMENT_SIZE {
-		nextStart := s.sid + s.offset
+		nextStart := self.chunkId
 		news, err := self.createSegment(nextStart)
 		if nil == err {
-			s.Close()
+			//left segments are larger than cached ,close current
+			if len(self.segments) >= cap(self.segcache) {
+				s.Close()
+			}
+
 			s = news
 		}
 	}
@@ -338,6 +284,11 @@ func (self *MemorySnapshot) Destory() {
 	self.running = false
 	self.waitSync.Wait()
 	log.Info("MemorySnapshot|Destory...")
+}
+
+func (self MemorySnapshot) String() string {
+	return fmt.Sprintf("\nfilePath:%s\nchunkid:%d\nsegments:%d",
+		self.filePath, self.chunkId, len(self.segments))
 }
 
 // 检查目录是否存在

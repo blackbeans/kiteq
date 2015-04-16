@@ -8,7 +8,7 @@ import (
 )
 
 func TestAppend(t *testing.T) {
-	snapshot := NewMemorySnapshot("./snapshot/", "kiteq")
+	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
 
 	run := true
 	i := 0
@@ -36,7 +36,7 @@ func TestAppend(t *testing.T) {
 }
 
 func BenchmarkAppend(t *testing.B) {
-	snapshot := NewMemorySnapshot("./snapshot/", "kiteq")
+	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
 	for i := 0; i < t.N; i++ {
 		snapshot.Append([]byte(fmt.Sprintf("hello snapshot-%d", i)))
 	}
