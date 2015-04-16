@@ -15,7 +15,7 @@ func TestAppend(t *testing.T) {
 	last := 0
 
 	go func() {
-		for ; i < 100000; i++ {
+		for ; i < 1000000; i++ {
 			snapshot.Append([]byte(fmt.Sprintf("hello snapshot|%d", i)))
 		}
 		run = false
@@ -29,7 +29,7 @@ func TestAppend(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	t.Logf("snapshot|%s", snapshot)
 
-	if snapshot.chunkId != 100000 {
+	if snapshot.chunkId != 1000000 {
 		t.Fail()
 	}
 	snapshot.Destory()

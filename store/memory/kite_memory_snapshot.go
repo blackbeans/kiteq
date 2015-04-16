@@ -34,7 +34,7 @@ func NewMemorySnapshot(filePath string, basename string, batchSize int, segcache
 		filePath:     filePath,
 		basename:     basename,
 		segments:     make(Segments, 0, 50),
-		writeChannel: make(chan *Chunk, 1000),
+		writeChannel: make(chan *Chunk, 10000),
 		running:      true,
 		batchSize:    batchSize,
 		segcache:     make(chan int, segcacheSize),
