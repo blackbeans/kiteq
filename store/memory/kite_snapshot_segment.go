@@ -7,14 +7,16 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"sort"
+	"sync/atomic"
 )
 
 type ChunkFlag uint8
 
 const (
-	MAX_SEGEMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
+	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
-	SEGMENT_PREFIX                = "segement-"
+	SEGMENT_PREFIX                = "segment-"
 	SEGMENT_IDX_SUFFIX            = ".idx"
 	SEGMENT_DATA_SUFFIX           = ".kiteq"
 	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
@@ -24,7 +26,7 @@ const (
 )
 
 //消息文件
-type Segement struct {
+type Segment struct {
 	path     string
 	name     string //basename_0000000000
 	file     *os.File
@@ -32,24 +34,28 @@ type Segement struct {
 	br       *bufio.Reader
 	sid      int64 //segment id
 	offset   int64 //segment current offset
-	byteSize int32 //segement size
+	byteSize int32 //segment size
 	chunks   []*Chunk
+	isOpen   int32
 }
 
-func (self *Segement) Open() error {
+func (self *Segment) Open() error {
 
-	self.br = bufio.NewReader(self.file)
-	self.bw = bufio.NewWriter(self.file)
+	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
+		self.br = bufio.NewReader(self.file)
+		self.bw = bufio.NewWriter(self.file)
 
-	//load
-	self.loadCheck()
+		//load
+		self.loadCheck()
 
-	log.Info("Segement|Open|SUCC|%s\n", self.name)
+		log.Info("Segment|Open|SUCC|%s\n", self.name)
+		return nil
+	}
 	return nil
 }
 
 //load check
-func (self *Segement) loadCheck() {
+func (self *Segment) loadCheck() {
 
 	header := make([]byte, CHUNK_HEADER)
 	chunkId := int64(0)
@@ -59,14 +65,14 @@ func (self *Segement) loadCheck() {
 		hl, err := io.ReadFull(self.br, header)
 		if nil != err {
 			if io.EOF != err {
-				log.Error("Segement|Load Segement|Read Header|FAIL|%s|%s\n", err, self.name)
+				log.Error("Segment|Load Segment|Read Header|FAIL|%s|%s\n", err, self.name)
 				continue
 			}
 			break
 		}
 
 		if hl <= 0 || hl < CHUNK_HEADER {
-			log.Error("Segement|Load Segement|Read Header|FAIL|%s|%d\n", self.name, hl)
+			log.Error("Segment|Load Segment|Read Header|FAIL|%s|%d\n", self.name, hl)
 			break
 		}
 
@@ -76,7 +82,7 @@ func (self *Segement) loadCheck() {
 		al := self.offset + int64(length)
 		//checklength
 		if al > fi.Size() {
-			log.Error("Segement|Load Segement|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", self.name, al, fi.Size(), self.offset, length)
+			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", self.name, al, fi.Size(), self.offset, length)
 			break
 		}
 
@@ -88,14 +94,14 @@ func (self *Segement) loadCheck() {
 		data := make([]byte, l)
 		dl, err := io.ReadFull(self.br, data)
 		if nil != err || dl < int(l) {
-			log.Error("Segement|Load Segement|Read Data|FAIL|%s|%s|%d/%d\n", err, self.name, l, dl)
+			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d\n", err, self.name, l, dl)
 			break
 		}
 
 		csum := crc32.ChecksumIEEE(data)
 		//checkdata
 		if csum != checksum {
-			log.Error("Segement|Load Segement|Data Checksum|FAIL|%s|%d/%d\n", self.name, csum, checksum)
+			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d/%d\n", self.name, csum, checksum)
 			break
 		}
 
@@ -119,30 +125,31 @@ func (self *Segement) loadCheck() {
 			data:     data}
 
 		self.chunks = append(self.chunks, chunk)
-		// log.Debug("Segement|Chunk:%s|chunkId:%d|flag:%d\n", string(data), chunkId, flag)
+
 	}
 
 }
 
-func (self *Segement) Close() error {
+//get chunk by chunkid
+func (self *Segment) Get(cid int64) *Chunk {
+	// log.Debug("Segment|Get|%d\n", len(self.chunks))
+	idx := sort.Search(len(self.chunks), func(i int) bool {
+		log.Debug("Segment|Get|%d\n", i)
+		return self.chunks[i].id > cid
+	})
 
-	err := self.bw.Flush()
-	if nil != err {
-		log.Error("Segement|Close|Writer|FLUSH|FAIL|%s|%s|%s\n", err, self.path, self.name)
+	//not exsit
+	if idx >= len(self.chunks) {
+		return nil
+	} else if self.chunks[idx].id == cid {
+		return self.chunks[idx]
+	} else {
+		return nil
 	}
-
-	//free chunk memory
-	self.chunks = nil
-
-	err = self.file.Close()
-	if nil != err {
-		log.Error("Segement|Close|FAIL|%s|%s|%s\n", err, self.path, self.name)
-	}
-	return err
 }
 
 //apend data
-func (self *Segement) Append(chunks []*Chunk) error {
+func (self *Segment) Append(chunks []*Chunk) error {
 
 	buff := make([]byte, 0, 2*1024)
 	for _, c := range chunks {
@@ -151,7 +158,7 @@ func (self *Segement) Append(chunks []*Chunk) error {
 
 	l, err := self.bw.Write(buff)
 	if nil != err || l != len(buff) {
-		log.Error("Segement|Append|FAIL|%s|%d/%d\n", err, l, len(buff))
+		log.Error("Segment|Append|FAIL|%s|%d/%d\n", err, l, len(buff))
 		return err
 	}
 	self.bw.Flush()
@@ -166,6 +173,30 @@ func (self *Segement) Append(chunks []*Chunk) error {
 	self.offset += int64(len(buff))
 	self.byteSize += int32(len(buff))
 	return nil
+}
+
+func (self *Segment) Close() error {
+
+	if atomic.CompareAndSwapInt32(&self.isOpen, 1, 0) {
+
+		err := self.bw.Flush()
+		if nil != err {
+			log.Error("Segment|Close|Writer|FLUSH|FAIL|%s|%s|%s\n", err, self.path, self.name)
+		}
+
+		//free chunk memory
+		self.chunks = nil
+
+		err = self.file.Close()
+		if nil != err {
+			log.Error("Segment|Close|FAIL|%s|%s|%s\n", err, self.path, self.name)
+		}
+		return err
+
+	} else {
+		return self.Close()
+	}
+
 }
 
 //----------------------------------------------------
@@ -193,7 +224,7 @@ func (self *Chunk) marshal() []byte {
 	return buff
 }
 
-type Segments []*Segement
+type Segments []*Segment
 
 func (self Segments) Len() int { return len(self) }
 func (self Segments) Swap(i, j int) {
