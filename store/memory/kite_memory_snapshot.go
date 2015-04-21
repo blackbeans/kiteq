@@ -53,14 +53,14 @@ func (self *MemorySnapshot) load() {
 	if !dirExist(self.filePath) {
 		err := os.MkdirAll(self.filePath, os.ModePerm)
 		if nil != err {
-			log.Error("MemorySnapshot|Load Segments|MKDIR|FAIL|%s|%s\n", err, self.filePath)
+			log.Error("MemorySnapshot|Load Segments|MKDIR|FAIL|%s|%s", err, self.filePath)
 			panic(err)
 		}
 	}
 
 	bashDir, err := os.Open(self.filePath)
 	if nil != err {
-		log.Error("MemorySnapshot|Load Segments|FAIL|%s|%s\n", err, self.filePath)
+		log.Error("MemorySnapshot|Load Segments|FAIL|%s|%s", err, self.filePath)
 		panic(err)
 	}
 
@@ -68,6 +68,7 @@ func (self *MemorySnapshot) load() {
 
 	//fetch all Segment
 	filepath.Walk(self.filePath, func(path string, f os.FileInfo, err error) error {
+
 		if !f.IsDir() {
 			name := strings.TrimSuffix(f.Name(), SEGMENT_DATA_SUFFIX)
 			split := strings.SplitN(name, "-", 2)
@@ -75,7 +76,7 @@ func (self *MemorySnapshot) load() {
 			if len(split) >= 2 {
 				id, err := strconv.ParseInt(split[1], 10, 64)
 				if nil != err {
-					log.Error("MemorySnapshot|Load Segments|Parse SegmentId|FAIL|%s|%s\n", err, name)
+					log.Error("MemorySnapshot|Load Segments|Parse SegmentId|FAIL|%s|%s", err, name)
 					return err
 				}
 				sid = id
@@ -88,6 +89,7 @@ func (self *MemorySnapshot) load() {
 				sid:  sid}
 
 			self.segments = append(self.segments, seg)
+			log.Info("MemorySnapshot|load|init Segment|%s/%s", path, f.Name())
 		}
 
 		return nil
@@ -103,7 +105,7 @@ func (self *MemorySnapshot) load() {
 
 	//load fixed num  segments into memory
 
-	log.Info("MemorySnapshot|Load|SUCC|%s\n", self)
+	log.Info("MemorySnapshot|Load|SUCC|%s", self)
 }
 
 func (self *MemorySnapshot) recoverSnapshot() {
@@ -295,8 +297,10 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 			self.Lock()
 			//append new
 			self.segments = append(self.segments, news)
+
 			self.Unlock()
 			s = news
+
 		}
 	} else {
 		self.RLock()
@@ -343,6 +347,7 @@ func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
 func (self *MemorySnapshot) Destory() {
 	self.running = false
 	self.waitSync.Wait()
+	self.baseDir.Close()
 	log.Info("MemorySnapshot|Destory...")
 }
 
@@ -352,7 +357,7 @@ func (self *MemorySnapshot) cid() int64 {
 }
 
 func (self MemorySnapshot) String() string {
-	return fmt.Sprintf("\nfilePath:%s\nchunkid:%d\nsegments:%d",
+	return fmt.Sprintf("filePath:%s\tchunkid:%d\tsegments:%d",
 		self.filePath, self.chunkId, len(self.segments))
 }
 

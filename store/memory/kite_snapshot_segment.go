@@ -57,7 +57,7 @@ type Segment struct {
 func (self *Segment) Open() error {
 
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
-
+		// log.Info("Segment|Open|BEGIN|%s|%s\n", self.path, self.name)
 		rf, err := os.OpenFile(self.path+string(filepath.Separator)+self.name,
 			os.O_CREATE|os.O_RDWR, os.ModePerm)
 		if nil != err {

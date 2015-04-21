@@ -64,6 +64,11 @@ func TestDelete(t *testing.T) {
 	}
 
 	time.Sleep(10 * time.Second)
+	// snapshot.Destory()
+	// log.Printf("TestDelete|Destory|snapshot...")
+
+	//reload
+	// snapshot = NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
 
 	for j := 0; j < 1000000; j++ {
 		id := int64(j)
