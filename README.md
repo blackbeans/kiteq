@@ -1,4 +1,4 @@
-kiteq
+KiteQ ![image](./doc/logo.jpg)
 =======
 
 基于go+protobuff实现的多种持久化方案的mq框架

@@ -32,6 +32,7 @@ type MemorySnapshot struct {
 
 func NewMemorySnapshot(filePath string, basename string, batchSize int, segcacheSize int) *MemorySnapshot {
 	ms := &MemorySnapshot{
+		chunkId:      -1,
 		filePath:     filePath,
 		basename:     basename,
 		segments:     make(Segments, 0, 50),
@@ -126,6 +127,16 @@ func (self *MemorySnapshot) recoverSnapshot() {
 //query one chunk by  chunkid
 func (self *MemorySnapshot) Query(cid int64) *Chunk {
 
+	curr := self.indexSegment(cid)
+	if nil == curr {
+		return nil
+	}
+	//find chunk
+	return curr.Get(cid)
+}
+
+//index segment
+func (self *MemorySnapshot) indexSegment(cid int64) *Segment {
 	var curr *Segment
 	self.RLock()
 	//check cid in cache
@@ -155,9 +166,7 @@ func (self *MemorySnapshot) Query(cid int64) *Chunk {
 		self.Unlock()
 
 	}
-
-	//find chunk
-	return curr.Get(cid)
+	return curr
 }
 
 //return the front chunk
@@ -180,8 +189,14 @@ func (self *MemorySnapshot) loadSegment(idx int) {
 	log.Info("MemorySnapshot|loadSegment|SUCC|%s\n", s.name)
 }
 
-func (self *MemorySnapshot) Delete(id int64) {
-
+//mark delete
+func (self *MemorySnapshot) Delete(cid int64) {
+	s := self.indexSegment(cid)
+	if nil != s {
+		s.Delete(cid)
+	} else {
+		// log.Debug("MemorySnapshot|Delete|chunkid:%d|%s\n", cid, s)
+	}
 }
 
 //write
@@ -275,7 +290,7 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 
 	var s *Segment
 	if len(self.segments) <= 0 {
-		news, err := self.createSegment(0)
+		news, err := self.createSegment(self.cid())
 		if nil == err {
 			self.Lock()
 			//append new
@@ -288,9 +303,8 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 		s = self.segments[len(self.segments)-1]
 		self.RUnlock()
 		if s.byteSize > MAX_SEGMENT_SIZE {
-			nextStart := self.chunkId
 			self.Lock()
-			news, err := self.createSegment(nextStart)
+			news, err := self.createSegment(self.cid())
 			if nil == err {
 				//left segments are larger than cached ,close current
 				if len(self.segments) >= self.segcacheSize {

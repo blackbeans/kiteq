@@ -50,6 +50,44 @@ func cleanSnapshot(path string) {
 
 }
 
+//test delete
+func TestDelete(t *testing.T) {
+	cleanSnapshot("./snapshot/")
+	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
+	var data [4]byte
+	for j := 0; j < 100; j++ {
+		snapshot.Append(append(data[:4], []byte{
+			byte((j >> 24) & 0xFF),
+			byte((j >> 16) & 0xFF),
+			byte((j >> 8) & 0xFF),
+			byte(j & 0xFF)}...))
+	}
+
+	time.Sleep(10 * time.Second)
+
+	chunk := snapshot.Query(2)
+	// log.Printf("TestDelete|Query|%s\n", chunk)
+	if nil == chunk || chunk.id != 2 {
+		if nil != chunk {
+			log.Printf("TestDelete|Query|FAIL|%d\n", chunk.id)
+		}
+		t.Fail()
+		return
+	}
+	// id := int64(100)
+	snapshot.Delete(2)
+
+	chunk = snapshot.Query(2)
+	if nil != chunk {
+		t.Fail()
+		log.Printf("TestDelete|DELETE-QUERY|FAIL|%s\n", chunk)
+		return
+	}
+
+	snapshot.Destory()
+	// cleanSnapshot("./snapshot/")
+}
+
 func TestQuery(t *testing.T) {
 
 	cleanSnapshot("./snapshot/")
@@ -80,7 +118,7 @@ func TestQuery(t *testing.T) {
 	}()
 
 	for ; i < 5000000; i++ {
-		id := int64(rand.Intn(10000)) + 1
+		id := int64(rand.Intn(100000)) + 1
 		// id := int64(100)
 		chunk := snapshot.Query(id)
 		if nil == chunk || chunk.id != id {

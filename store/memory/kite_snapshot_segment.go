@@ -14,12 +14,25 @@ import (
 
 type ChunkFlag uint8
 
+func (self ChunkFlag) String() string {
+
+	switch self {
+	case NORMAL:
+		return "NORMAL"
+	case DELETE:
+		return "DELETE"
+	case EXPIRED:
+		return "EXPIRED"
+	}
+	return ""
+}
+
 const (
 	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
 	SEGMENT_PREFIX                = "segment-"
 	SEGMENT_IDX_SUFFIX            = ".idx"
-	SEGMENT_DATA_SUFFIX           = ".kiteq"
+	SEGMENT_DATA_SUFFIX           = ".data"
 	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
 	NORMAL              ChunkFlag = 'n'
 	DELETE              ChunkFlag = 'd'
@@ -140,6 +153,7 @@ func (self *Segment) loadCheck() {
 
 		//create chunk
 		chunk := &Chunk{
+			offset:   offset,
 			length:   int32(length),
 			checksum: checksum,
 			id:       chunkId,
@@ -155,6 +169,21 @@ func (self *Segment) loadCheck() {
 
 }
 
+func (self *Segment) Delete(cid int64) {
+	idx := int(cid-self.sid) - 1
+	// log.Debug("Segment|Delete|chunkid:%d|%s\n", cid, idx)
+	if idx < len(self.chunks) {
+		//mark delete
+		s := self.chunks[idx]
+		// log.Debug("Segment|Delete|%s", s)
+		if s.flag != DELETE {
+			s.flag = DELETE
+			//flush to file
+			self.wf.WriteAt([]byte{byte(DELETE)}, CHUNK_HEADER-1)
+		}
+	}
+}
+
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
 	// log.Debug("Segment|Get|%d\n", len(self.chunks))
@@ -168,6 +197,10 @@ func (self *Segment) Get(cid int64) *Chunk {
 	if idx >= len(self.chunks) {
 		return nil
 	} else if self.chunks[idx].id == cid {
+		//delete data return nil
+		if self.chunks[idx].flag == DELETE {
+			return nil
+		}
 		return self.chunks[idx]
 	} else {
 		return nil
@@ -236,6 +269,7 @@ func (self *Segment) Close() error {
 //----------------------------------------------------
 //存储块
 type Chunk struct {
+	offset   int64
 	length   int32
 	checksum uint32
 	flag     ChunkFlag //chunk状态
