@@ -290,7 +290,7 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 
 	var s *Segment
 	if len(self.segments) <= 0 {
-		news, err := self.createSegment(self.cid())
+		news, err := self.createSegment(self.chunkId + 1)
 		if nil == err {
 			self.Lock()
 			//append new
@@ -304,7 +304,7 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 		self.RUnlock()
 		if s.byteSize > MAX_SEGMENT_SIZE {
 			self.Lock()
-			news, err := self.createSegment(self.cid())
+			news, err := self.createSegment(self.chunkId + 1)
 			if nil == err {
 				//left segments are larger than cached ,close current
 				if len(self.segments) >= self.segcacheSize {

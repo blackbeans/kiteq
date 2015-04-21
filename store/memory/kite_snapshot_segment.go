@@ -170,7 +170,7 @@ func (self *Segment) loadCheck() {
 }
 
 func (self *Segment) Delete(cid int64) {
-	idx := int(cid-self.sid) - 1
+	idx := int(cid - self.sid)
 	// log.Debug("Segment|Delete|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
@@ -192,7 +192,7 @@ func (self *Segment) Get(cid int64) *Chunk {
 		return self.chunks[i].id >= cid
 	})
 
-	// log.Debug("Segment|Get|Result|%d|%d\n", idx, cid)
+	// log.Debug("Segment|Get|Result|%d|%d|%d\n", idx, cid, len(self.chunks))
 	//not exsit
 	if idx >= len(self.chunks) {
 		return nil
