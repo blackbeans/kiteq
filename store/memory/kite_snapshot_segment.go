@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync/atomic"
 )
@@ -29,7 +30,8 @@ const (
 type Segment struct {
 	path     string
 	name     string //basename_0000000000
-	file     *os.File
+	rf       *os.File
+	wf       *os.File
 	bw       *bufio.Writer
 	br       *bufio.Reader
 	sid      int64 //segment id
@@ -42,8 +44,26 @@ type Segment struct {
 func (self *Segment) Open() error {
 
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
-		self.br = bufio.NewReader(self.file)
-		self.bw = bufio.NewWriter(self.file)
+
+		rf, err := os.OpenFile(self.path+string(filepath.Separator)+self.name,
+			os.O_CREATE|os.O_RDWR, os.ModePerm)
+		if nil != err {
+			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, self.name)
+			return err
+		}
+
+		wf, err := os.OpenFile(self.path+string(filepath.Separator)+self.name,
+			os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
+		if nil != err {
+			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, self.name)
+			return err
+		}
+		self.rf = rf
+		self.wf = wf
+
+		//buffer
+		self.br = bufio.NewReader(rf)
+		self.bw = bufio.NewWriter(wf)
 
 		//load
 		self.loadCheck()
@@ -59,7 +79,9 @@ func (self *Segment) loadCheck() {
 
 	header := make([]byte, CHUNK_HEADER)
 	chunkId := int64(0)
-	fi, _ := self.file.Stat()
+	fi, _ := self.rf.Stat()
+	offset := int64(0)
+	byteSize := int32(0)
 	for {
 
 		hl, err := io.ReadFull(self.br, header)
@@ -79,7 +101,7 @@ func (self *Segment) loadCheck() {
 		//length
 		length := binary.BigEndian.Uint32(header[0:4])
 
-		al := self.offset + int64(length)
+		al := offset + int64(length)
 		//checklength
 		if al > fi.Size() {
 			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", self.name, al, fi.Size(), self.offset, length)
@@ -105,7 +127,7 @@ func (self *Segment) loadCheck() {
 			break
 		}
 
-		self.offset += int64(length)
+		offset += int64(length)
 
 		//read chunkid
 		chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
@@ -114,7 +136,7 @@ func (self *Segment) loadCheck() {
 		flag := header[16]
 
 		//add byteSize
-		self.byteSize += int32(length)
+		byteSize += int32(length)
 
 		//create chunk
 		chunk := &Chunk{
@@ -128,16 +150,20 @@ func (self *Segment) loadCheck() {
 
 	}
 
+	self.offset = offset
+	self.byteSize = byteSize
+
 }
 
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
 	// log.Debug("Segment|Get|%d\n", len(self.chunks))
 	idx := sort.Search(len(self.chunks), func(i int) bool {
-		log.Debug("Segment|Get|%d\n", i)
-		return self.chunks[i].id > cid
+		// log.Debug("Segment|Get|%d|%d\n", i, cid)
+		return self.chunks[i].id >= cid
 	})
 
+	// log.Debug("Segment|Get|Result|%d|%d\n", idx, cid)
 	//not exsit
 	if idx >= len(self.chunks) {
 		return nil
@@ -187,11 +213,17 @@ func (self *Segment) Close() error {
 		//free chunk memory
 		self.chunks = nil
 
-		err = self.file.Close()
+		err = self.wf.Close()
 		if nil != err {
-			log.Error("Segment|Close|FAIL|%s|%s|%s\n", err, self.path, self.name)
+			log.Error("Segment|Close|Write FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
+			return err
+		} else {
+			err = self.rf.Close()
+			if nil != err {
+				log.Error("Segment|Close|Read FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
+			}
+			return err
 		}
-		return err
 
 	} else {
 		return self.Close()

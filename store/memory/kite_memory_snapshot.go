@@ -27,6 +27,7 @@ type MemorySnapshot struct {
 	batchSize    int
 	segcacheSize int        //segment cache size
 	segmentCache *list.List //segment cached
+	sync.RWMutex
 }
 
 func NewMemorySnapshot(filePath string, basename string, batchSize int, segcacheSize int) *MemorySnapshot {
@@ -67,12 +68,6 @@ func (self *MemorySnapshot) load() {
 	//fetch all Segment
 	filepath.Walk(self.filePath, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
-			df, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
-			if nil != err {
-				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, path)
-				return err
-			}
-
 			name := strings.TrimSuffix(f.Name(), SEGMENT_DATA_SUFFIX)
 			split := strings.SplitN(name, "-", 2)
 			sid := int64(0)
@@ -89,7 +84,6 @@ func (self *MemorySnapshot) load() {
 			seg := &Segment{
 				path: path,
 				name: f.Name(),
-				file: df,
 				sid:  sid}
 
 			self.segments = append(self.segments, seg)
@@ -103,9 +97,8 @@ func (self *MemorySnapshot) load() {
 	//recover snapshost
 	self.recoverSnapshot()
 
-	if len(self.segments) <= 0 {
-		self.createSegment(0)
-	}
+	//check roll
+	self.checkRoll()
 
 	//load fixed num  segments into memory
 
@@ -121,8 +114,12 @@ func (self *MemorySnapshot) recoverSnapshot() {
 		if nil != err {
 			panic("MemorySnapshot|Load Last Segment|FAIL|" + err.Error())
 		}
+
 		//set snapshost status
-		self.chunkId = s.chunks[len(s.chunks)-1].id
+		if len(s.chunks) > 0 {
+			self.chunkId = s.chunks[len(s.chunks)-1].id
+		}
+
 	}
 }
 
@@ -130,35 +127,32 @@ func (self *MemorySnapshot) recoverSnapshot() {
 func (self *MemorySnapshot) Query(cid int64) *Chunk {
 
 	var curr *Segment
+	self.RLock()
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
-		if s.sid <= cid {
-			next := e.Next()
-			//if next == nil ,proves the last seg  else cid< next.sid
-			if (nil != next && (cid < next.Value.(*Segment).sid)) || nil == next {
-				curr = s
-				break
-			}
+		if s.sid <= cid && cid <= (s.sid+int64(len(s.chunks))) {
+			curr = s
 		}
 	}
+	self.RUnlock()
 
 	// not exist In cache
 	if nil == curr {
-
+		self.Lock()
 		idx := sort.Search(len(self.segments), func(i int) bool {
-			log.Debug("MemorySnapshot|Query|%d\n", i)
-			return self.segments[i].sid >= cid
+			s := self.segments[i]
+			return s.sid >= cid
 		})
 
-		if idx >= len(self.segments) {
-			log.Warn("MemorySnapshot|Query|Invalid ChunkId|%d|%d\n", idx, cid)
-			return nil
+		if idx >= len(self.segments) || self.segments[idx].sid != cid {
+			idx = idx - 1
 		}
 
 		//load segment
 		self.loadSegment(idx)
 		curr = self.segments[idx]
+		self.Unlock()
 
 	}
 
@@ -174,6 +168,7 @@ func (self *MemorySnapshot) loadSegment(idx int) {
 	err := s.Open()
 	if nil != err {
 		log.Error("MemorySnapshot|loadSegment|FAIL|%s|%s\n", err, s.name)
+		return
 	} else {
 		//pop header
 		for e := self.segmentCache.Front(); self.segmentCache.Len() > self.segcacheSize; {
@@ -183,6 +178,10 @@ func (self *MemorySnapshot) loadSegment(idx int) {
 		self.segmentCache.PushBack(s)
 	}
 	log.Info("MemorySnapshot|loadSegment|SUCC|%s\n", s.name)
+}
+
+func (self *MemorySnapshot) Delete(id int64) {
+
 }
 
 //write
@@ -208,6 +207,8 @@ func (self *MemorySnapshot) Append(msg []byte) int64 {
 
 func (self *MemorySnapshot) sync() {
 
+	self.waitSync.Add(1)
+
 	batch := make([]*Chunk, 0, self.batchSize)
 
 	var popChunk *Chunk
@@ -221,7 +222,7 @@ func (self *MemorySnapshot) sync() {
 		case popChunk = <-self.writeChannel:
 		default:
 			//no write data flush
-			popChunk = nil
+
 		}
 
 		if nil != popChunk {
@@ -239,10 +240,11 @@ func (self *MemorySnapshot) sync() {
 			batch = batch[:0]
 		}
 
+		popChunk = nil
 	}
 
-	self.waitSync.Add(1)
 	// need flush left data
+outter:
 	for {
 		select {
 		case chunk := <-self.writeChannel:
@@ -251,49 +253,19 @@ func (self *MemorySnapshot) sync() {
 			}
 
 		default:
+
 			if len(batch) > 0 {
 				// log.Debug("MemorySnapshot|CLOSE|SYNC|FAIL|%s|%s\n", lastSeg, batch)
 				//complete
 				lastSeg.Append(batch)
 				batch = batch[:0]
 				lastSeg.Close()
-
 			}
-			break
+			break outter
 		}
 	}
+
 	self.waitSync.Done()
-}
-
-//create segemnt
-func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
-	name := SEGMENT_PREFIX + fmt.Sprintf("%d", nextStart) + SEGMENT_DATA_SUFFIX
-
-	df, err := os.OpenFile(self.filePath+string(filepath.Separator)+name,
-		os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
-	if nil != err {
-		log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, name)
-		return nil, err
-	}
-
-	news := &Segment{
-		path:     self.filePath,
-		name:     name,
-		file:     df,
-		sid:      nextStart,
-		offset:   0,
-		byteSize: 0}
-
-	err = news.Open()
-	if nil != err {
-		log.Error("MemorySnapshot|currentSegment|Open Segment|FAIL\n", news.path)
-		return nil, err
-	} else {
-		//append new
-		self.segments = append(self.segments, news)
-		return news, nil
-	}
-
 }
 
 //check if
@@ -301,31 +273,68 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 	//if current segment bytesize is larger than max segment size
 	//create a new segment for storage
 
-	s := self.segments[len(self.segments)-1]
-	if s.byteSize > MAX_SEGMENT_SIZE {
-		nextStart := self.chunkId
-		news, err := self.createSegment(nextStart)
+	var s *Segment
+	if len(self.segments) <= 0 {
+		news, err := self.createSegment(0)
 		if nil == err {
-			//left segments are larger than cached ,close current
-			if len(self.segments) >= self.segcacheSize {
-				s.Close()
-			}
-
+			self.Lock()
+			//append new
+			self.segments = append(self.segments, news)
+			self.Unlock()
 			s = news
+		}
+	} else {
+		self.RLock()
+		s = self.segments[len(self.segments)-1]
+		self.RUnlock()
+		if s.byteSize > MAX_SEGMENT_SIZE {
+			nextStart := self.chunkId
+			self.Lock()
+			news, err := self.createSegment(nextStart)
+			if nil == err {
+				//left segments are larger than cached ,close current
+				if len(self.segments) >= self.segcacheSize {
+					s.Close()
+				}
+				//append new
+				self.segments = append(self.segments, news)
+				s = news
+			}
+			self.Unlock()
 		}
 	}
 	return s
 }
 
-//chunk id
-func (self *MemorySnapshot) cid() int64 {
-	return atomic.AddInt64(&self.chunkId, 1)
+//create segemnt
+func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
+	name := SEGMENT_PREFIX + fmt.Sprintf("%d", nextStart) + SEGMENT_DATA_SUFFIX
+
+	news := &Segment{
+		path:     self.filePath,
+		name:     name,
+		sid:      nextStart,
+		offset:   0,
+		byteSize: 0}
+
+	err := news.Open()
+	if nil != err {
+		log.Error("MemorySnapshot|currentSegment|Open Segment|FAIL|%s", news.path)
+		return nil, err
+	}
+	return news, nil
+
 }
 
 func (self *MemorySnapshot) Destory() {
 	self.running = false
 	self.waitSync.Wait()
 	log.Info("MemorySnapshot|Destory...")
+}
+
+//chunk id
+func (self *MemorySnapshot) cid() int64 {
+	return atomic.AddInt64(&self.chunkId, 1)
 }
 
 func (self MemorySnapshot) String() string {

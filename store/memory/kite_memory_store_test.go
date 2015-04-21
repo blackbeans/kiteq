@@ -54,9 +54,13 @@ func TestQuery(t *testing.T) {
 
 	cleanSnapshot("./snapshot/")
 	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
-
-	for j := 0; j < 1000; j++ {
-		snapshot.Append([]byte(fmt.Sprintf("%d|hello snapshot", j)))
+	var data [512]byte
+	for j := 0; j < 1000000; j++ {
+		snapshot.Append(append(data[:512], []byte{
+			byte((j >> 24) & 0xFF),
+			byte((j >> 16) & 0xFF),
+			byte((j >> 8) & 0xFF),
+			byte(j & 0xFF)}...))
 	}
 
 	time.Sleep(10 * time.Second)
@@ -67,41 +71,83 @@ func TestQuery(t *testing.T) {
 	last := 0
 
 	go func() {
-		for ; i < 100; i++ {
-			id := int64(rand.Intn(50))
-			// id := int64(100)
-			chunk := snapshot.Query(id)
-			if nil == chunk || chunk.id != id {
-				log.Printf("Query|%s\n", chunk)
-				t.Fail()
-				break
-			} else {
-				// log.Printf("Query|SUCC|%s\n", chunk)
-				j++
-			}
+		for run {
+			log.Printf("qps:%d", (j - last))
+			last = j
+			time.Sleep(1 * time.Second)
 		}
-		run = false
+
 	}()
 
-	for run {
-		log.Printf("qps:%d", (j - last))
-		last = j
-		time.Sleep(1 * time.Second)
+	for ; i < 5000000; i++ {
+		id := int64(rand.Intn(10000)) + 1
+		// id := int64(100)
+		chunk := snapshot.Query(id)
+		if nil == chunk || chunk.id != id {
+			log.Printf("Query|%s|%d\n", chunk, id)
+			t.Fail()
+			break
+
+		} else {
+			// log.Printf("Query|SUCC|%s\n", chunk)
+			j++
+		}
 	}
-	time.Sleep(10 * time.Second)
-	t.Logf("snapshot|%s", snapshot)
+	run = false
+
+	log.Printf("snapshot|%s|%d\n", snapshot, j)
 
 	snapshot.Destory()
 	cleanSnapshot("./snapshot/")
 }
 
-func BenchmarkAppend(t *testing.B) {
+func BenchmarkQuery(t *testing.B) {
+
+	log.Printf("BenchmarkQuery|Query|Start...")
+	t.StopTimer()
+	cleanSnapshot("./snapshot/")
 	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
+
+	for j := 0; j < 10000; j++ {
+		snapshot.Append([]byte(fmt.Sprintf("%d|hello snapshot", j)))
+	}
+
+	time.Sleep(2 * time.Second)
+	t.StartTimer()
+
+	i := 0
+	for ; i < t.N; i++ {
+		id := int64(rand.Intn(100)) + 1
+		// id := int64(100)
+		chunk := snapshot.Query(id)
+		if nil == chunk || chunk.id != id {
+			log.Printf("Query|%s\n", chunk)
+			t.Fail()
+			break
+		}
+	}
+
+	t.StopTimer()
+	snapshot.Destory()
+	cleanSnapshot("./snapshot/")
+	t.StartTimer()
+
+}
+
+func BenchmarkAppend(t *testing.B) {
+	t.StopTimer()
+	cleanSnapshot("./snapshot/")
+	snapshot := NewMemorySnapshot("./snapshot/", "kiteq", 1, 1)
+	t.StartTimer()
+
 	for i := 0; i < t.N; i++ {
 		snapshot.Append([]byte(fmt.Sprintf("hello snapshot-%d", i)))
 	}
+
+	t.StopTimer()
+	time.Sleep(5 * time.Second)
 	snapshot.Destory()
-	t.Log(snapshot)
 	cleanSnapshot("./snapshot/")
+	t.StartTimer()
 
 }
