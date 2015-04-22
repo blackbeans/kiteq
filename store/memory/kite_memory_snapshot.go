@@ -125,6 +125,31 @@ func (self *MemorySnapshot) recoverSnapshot() {
 	}
 }
 
+//page query head data
+func (self *MemorySnapshot) PageQuery(limit int) []*Chunk {
+	self.RLock()
+	defer self.RUnlock()
+	var first *Segment
+	if len(self.segments) > 0 {
+		first = self.segments[0]
+		//check cid in cache
+		for e := self.segmentCache.Front(); nil != e; e = e.Next() {
+			s := e.Value.(*Segment)
+			if s.sid == first.sid {
+				return s.PQ(limit)
+			}
+		}
+
+		//not in cache load into cache
+		self.loadSegment(0)
+		return first.PQ(limit)
+
+	}
+
+	return nil
+
+}
+
 //query one chunk by  chunkid
 func (self *MemorySnapshot) Query(cid int64) *Chunk {
 

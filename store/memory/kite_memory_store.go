@@ -2,6 +2,7 @@ package memory
 
 import (
 	"container/list"
+	"encoding/json"
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
@@ -18,6 +19,7 @@ type KiteMemoryStore struct {
 	stores    []map[string] /*messageId*/ *list.Element //用于LRU
 	locks     []*sync.RWMutex
 	maxcap    int
+	snapshot  *MemorySnapshot
 }
 
 func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
@@ -37,11 +39,33 @@ func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
 		datalinks: datalinks,
 		stores:    stores,
 		locks:     locks,
-		maxcap:    maxcap / CONCURRENT_LEVEL}
+		maxcap:    maxcap / CONCURRENT_LEVEL,
+		snapshot:  NewMemorySnapshot("./snapshot/", 100, 10)}
 }
 
 func (self *KiteMemoryStore) Start() {}
-func (self *KiteMemoryStore) Stop()  {}
+func (self *KiteMemoryStore) Stop() {
+
+	//save queue message into snapshot
+	self.syncToFile()
+	self.snapshot.Destory()
+}
+
+//sync to file
+func (self *KiteMemoryStore) syncToFile() {
+	//save queue message into snapshot
+	for _, l := range self.datalinks {
+		for e := l.Front(); nil != e; e = e.Next() {
+			entity := e.Value.(*MessageEntity)
+			data, err := json.Marshal(entity)
+			if nil != err {
+				log.Error("KiteMemoryStore|Stop|Marshal Entity|FAIL|%s", entity)
+				continue
+			}
+			self.snapshot.Append(data)
+		}
+	}
+}
 
 func (self *KiteMemoryStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
@@ -101,9 +125,22 @@ func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
 	defer lock.Unlock()
 
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
+	// 或者当前snapshost中还有未消费完的segement则直接存储在file中
 	cl := dl.Len()
-	if cl >= self.maxcap {
-		log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+	if cl >= self.maxcap || len(self.snapshot.segments) > 0 {
+
+		//强制把数据sync到file，当前不开启内存存储
+		self.syncToFile()
+		// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		//save into snapshot
+		data, err := json.Marshal(entity)
+		if nil != err {
+			log.Error("KiteMemoryStore|Save|FAIL|%s|%s", err, entity)
+			return false
+		}
+
+		//save snapshot
+		self.snapshot.Append(data)
 		return false
 
 	} else {

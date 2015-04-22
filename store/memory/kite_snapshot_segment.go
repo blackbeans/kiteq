@@ -201,6 +201,19 @@ func (self *Segment) Delete(cid int64) {
 	}
 }
 
+func (self *Segment) PQ(limit int) []*Chunk {
+	var chunks []*Chunk
+	for _, c := range self.chunks {
+		if c.flag != NORMAL {
+			if nil == chunks {
+				chunks = make([]*Chunk, 0, limit)
+			}
+			chunks = append(chunks, c)
+		}
+	}
+	return chunks
+}
+
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
 	// log.Debug("Segment|Get|%d\n", len(self.chunks))
