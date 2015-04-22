@@ -18,7 +18,6 @@ import (
 type MemorySnapshot struct {
 	filePath     string
 	baseDir      *os.File
-	basename     string
 	segments     Segments
 	chunkId      int64
 	writeChannel chan *Chunk
@@ -30,11 +29,10 @@ type MemorySnapshot struct {
 	sync.RWMutex
 }
 
-func NewMemorySnapshot(filePath string, basename string, batchSize int, segcacheSize int) *MemorySnapshot {
+func NewMemorySnapshot(filePath string, batchSize int, segcacheSize int) *MemorySnapshot {
 	ms := &MemorySnapshot{
 		chunkId:      -1,
 		filePath:     filePath,
-		basename:     basename,
 		segments:     make(Segments, 0, 50),
 		writeChannel: make(chan *Chunk, 10000),
 		running:      true,
@@ -43,7 +41,9 @@ func NewMemorySnapshot(filePath string, basename string, batchSize int, segcache
 		segmentCache: list.New(),
 		waitSync:     &sync.WaitGroup{}}
 	ms.load()
+
 	go ms.sync()
+	ms.waitSync.Add(1)
 	return ms
 }
 
@@ -68,7 +68,6 @@ func (self *MemorySnapshot) load() {
 
 	//fetch all Segment
 	filepath.Walk(self.filePath, func(path string, f os.FileInfo, err error) error {
-
 		if !f.IsDir() {
 			name := strings.TrimSuffix(f.Name(), SEGMENT_DATA_SUFFIX)
 			split := strings.SplitN(name, "-", 2)
@@ -89,7 +88,7 @@ func (self *MemorySnapshot) load() {
 				sid:  sid}
 
 			self.segments = append(self.segments, seg)
-			log.Info("MemorySnapshot|load|init Segment|%s/%s", path, f.Name())
+			log.Info("MemorySnapshot|load|init Segment|%s", path)
 		}
 
 		return nil
@@ -97,11 +96,12 @@ func (self *MemorySnapshot) load() {
 
 	//sort segments
 	sort.Sort(self.segments)
-	//recover snapshost
-	self.recoverSnapshot()
 
 	//check roll
 	self.checkRoll()
+
+	//recover snapshost
+	self.recoverSnapshot()
 
 	//load fixed num  segments into memory
 
@@ -112,7 +112,6 @@ func (self *MemorySnapshot) recoverSnapshot() {
 	//current segmentid
 	if len(self.segments) > 0 {
 		s := self.segments[len(self.segments)-1]
-
 		err := s.Open()
 		if nil != err {
 			panic("MemorySnapshot|Load Last Segment|FAIL|" + err.Error())
@@ -224,16 +223,12 @@ func (self *MemorySnapshot) Append(msg []byte) int64 {
 
 func (self *MemorySnapshot) sync() {
 
-	self.waitSync.Add(1)
-
 	batch := make([]*Chunk, 0, self.batchSize)
 
 	var popChunk *Chunk
-	var lastSeg *Segment
+	lastSeg := self.checkRoll()
 	for self.running {
 
-		//check roll
-		lastSeg = self.checkRoll()
 		//no batch / wait for data
 		select {
 		case popChunk = <-self.writeChannel:
@@ -253,11 +248,12 @@ func (self *MemorySnapshot) sync() {
 			if nil != err {
 				log.Error("MemorySnapshot|Append|FAIL|%s\n", err)
 			}
-			// buff = buff[:0]
 			batch = batch[:0]
 		}
 
 		popChunk = nil
+		//check roll
+		lastSeg = self.checkRoll()
 	}
 
 	// need flush left data
@@ -272,17 +268,17 @@ outter:
 		default:
 
 			if len(batch) > 0 {
-				// log.Debug("MemorySnapshot|CLOSE|SYNC|FAIL|%s|%s\n", lastSeg, batch)
 				//complete
 				lastSeg.Append(batch)
 				batch = batch[:0]
-				lastSeg.Close()
 			}
 			break outter
 		}
+
 	}
 
 	self.waitSync.Done()
+	log.Info("MemorySnapshot|SYNC|CLOSE...")
 }
 
 //check if
@@ -301,6 +297,9 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 			self.Unlock()
 			s = news
 
+		} else {
+			//panic  first segment fail
+			panic(err)
 		}
 	} else {
 		self.RLock()
@@ -326,10 +325,10 @@ func (self *MemorySnapshot) checkRoll() *Segment {
 
 //create segemnt
 func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
-	name := SEGMENT_PREFIX + fmt.Sprintf("%d", nextStart) + SEGMENT_DATA_SUFFIX
+	name := fmt.Sprintf("%s-%d", SEGMENT_PREFIX, nextStart) + SEGMENT_DATA_SUFFIX
 
 	news := &Segment{
-		path:     self.filePath,
+		path:     self.filePath + name,
 		name:     name,
 		sid:      nextStart,
 		offset:   0,
@@ -347,8 +346,17 @@ func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
 func (self *MemorySnapshot) Destory() {
 	self.running = false
 	self.waitSync.Wait()
+	//close all segment
+	for _, s := range self.segments {
+		err := s.Close()
+		if nil != err {
+			log.Error("MemorySnapshot|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
+		}
+	}
+
 	self.baseDir.Close()
 	log.Info("MemorySnapshot|Destory...")
+
 }
 
 //chunk id

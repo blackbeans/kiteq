@@ -7,7 +7,6 @@ import (
 	"hash/crc32"
 	"io"
 	"os"
-	"path/filepath"
 	"sort"
 	"sync/atomic"
 )
@@ -30,7 +29,7 @@ func (self ChunkFlag) String() string {
 const (
 	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
-	SEGMENT_PREFIX                = "segment-"
+	SEGMENT_PREFIX                = "segment"
 	SEGMENT_IDX_SUFFIX            = ".idx"
 	SEGMENT_DATA_SUFFIX           = ".data"
 	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
@@ -57,20 +56,38 @@ type Segment struct {
 func (self *Segment) Open() error {
 
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
-		// log.Info("Segment|Open|BEGIN|%s|%s\n", self.path, self.name)
-		rf, err := os.OpenFile(self.path+string(filepath.Separator)+self.name,
-			os.O_CREATE|os.O_RDWR, os.ModePerm)
-		if nil != err {
-			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, self.name)
-			return err
+		// log.Info("Segment|Open|BEGIN|%s|%s", self.path, self.name)
+		var rf *os.File
+		var wf *os.File
+		//file exist
+		if _, err := os.Stat(self.path); err == nil {
+
+			wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
+			if nil != err {
+				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+				return err
+			}
+
+			rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
+			if nil != err {
+				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+				return err
+			}
+		} else {
+			//file not exist create file
+			wf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
+			if nil != err {
+				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+				return err
+			}
+
+			rf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR, os.ModePerm)
+			if nil != err {
+				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+				return err
+			}
 		}
 
-		wf, err := os.OpenFile(self.path+string(filepath.Separator)+self.name,
-			os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
-		if nil != err {
-			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s\n", err, self.name)
-			return err
-		}
 		self.rf = rf
 		self.wf = wf
 
@@ -81,7 +98,7 @@ func (self *Segment) Open() error {
 		//load
 		self.loadCheck()
 
-		log.Info("Segment|Open|SUCC|%s\n", self.name)
+		log.Info("Segment|Open|SUCC|%s", self.name)
 		return nil
 	}
 	return nil
@@ -217,11 +234,12 @@ func (self *Segment) Append(chunks []*Chunk) error {
 
 	l, err := self.bw.Write(buff)
 	if nil != err || l != len(buff) {
-		log.Error("Segment|Append|FAIL|%s|%d/%d\n", err, l, len(buff))
+		log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(buff))
 		return err
 	}
 	self.bw.Flush()
 
+	// log.Debug("Segment|Append|SUCC|%d/%d", l, len(buff))
 	//tmp cache chunk
 	if nil == self.chunks {
 		self.chunks = make([]*Chunk, 0, 1000)
@@ -235,18 +253,17 @@ func (self *Segment) Append(chunks []*Chunk) error {
 }
 
 func (self *Segment) Close() error {
-
 	if atomic.CompareAndSwapInt32(&self.isOpen, 1, 0) {
 
 		err := self.bw.Flush()
 		if nil != err {
 			log.Error("Segment|Close|Writer|FLUSH|FAIL|%s|%s|%s\n", err, self.path, self.name)
 		}
-
 		//free chunk memory
 		self.chunks = nil
 
 		err = self.wf.Close()
+
 		if nil != err {
 			log.Error("Segment|Close|Write FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
 			return err
@@ -258,9 +275,11 @@ func (self *Segment) Close() error {
 			return err
 		}
 
-	} else {
+	} else if self.isOpen == 1 {
 		return self.Close()
 	}
+
+	return nil
 
 }
 
