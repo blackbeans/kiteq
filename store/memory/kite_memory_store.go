@@ -51,22 +51,29 @@ func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
 
 func (self *KiteMemoryStore) Start() {
 
-	for {
-		select {
-		case notify := <-self.snapshotNotify:
-			if notify {
-				sid := self.currentSid
-				//load new segment
-				self.peekSegment()
-				self.snapshot.Remove(sid)
-			} else {
-				//删除当前数据文件，因为已经在内存中，关闭时会flush到磁盘
-				self.snapshot.Remove(self.currentSid)
-				break
-			}
-
-		}
+	//recover snapshot
+	if len(self.snapshot.segments) > 0 {
+		self.snapshotNotify <- true
 	}
+
+	go func() {
+		for {
+			select {
+			case notify := <-self.snapshotNotify:
+				if notify {
+					sid := self.currentSid
+					//load new segment
+					self.peekSegment()
+					self.snapshot.Remove(sid)
+				} else {
+					//删除当前数据文件，因为已经在内存中，关闭时会flush到磁盘
+					self.snapshot.Remove(self.currentSid)
+					break
+				}
+
+			}
+		}
+	}()
 
 }
 func (self *KiteMemoryStore) Stop() {
@@ -119,6 +126,7 @@ func (self *KiteMemoryStore) peekSegment() {
 		}
 		//当前的current sid
 		self.currentSid = sid
+		log.Info("KiteMemoryStore|peekSegment|SUCC|%d", sid)
 	} else {
 		//no segment , so close opensnapshot use memory directly
 		atomic.CompareAndSwapInt32(&self.openSnapshot, int32(1), int32(0))
@@ -183,7 +191,7 @@ func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
 	// 或者当前处于snapshot打开的方式
 	lock, el, dl := self.hash(entity.MessageId)
 	cl := dl.Len()
-	if cl >= self.maxcap {
+	if cl >= self.maxcap || len(self.snapshot.segments) > 0 {
 		//open snapshost and load head segment
 		if atomic.CompareAndSwapInt32(&self.openSnapshot, int32(0), int32(1)) {
 			//强制把数据sync到file，当前不开启内存存储
