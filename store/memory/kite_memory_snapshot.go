@@ -125,8 +125,8 @@ func (self *MemorySnapshot) recoverSnapshot() {
 	}
 }
 
-//page query head data
-func (self *MemorySnapshot) PageQuery(limit int) []*Chunk {
+// query head data
+func (self *MemorySnapshot) Head() (int64, []*Chunk) {
 	self.RLock()
 	defer self.RUnlock()
 	var first *Segment
@@ -136,17 +136,17 @@ func (self *MemorySnapshot) PageQuery(limit int) []*Chunk {
 		for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 			s := e.Value.(*Segment)
 			if s.sid == first.sid {
-				return s.PQ(limit)
+				return first.sid, s.LoadChunks()
 			}
 		}
 
 		//not in cache load into cache
 		self.loadSegment(0)
-		return first.PQ(limit)
+		return first.sid, first.LoadChunks()
 
 	}
 
-	return nil
+	return -1, nil
 
 }
 
@@ -366,6 +366,21 @@ func (self *MemorySnapshot) createSegment(nextStart int64) (*Segment, error) {
 	}
 	return news, nil
 
+}
+
+//remove sid
+func (self *MemorySnapshot) Remove(sid int64) {
+
+	//check cid in cache
+	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
+		s := e.Value.(*Segment)
+		if s.sid == sid {
+			s.Close()
+			os.Remove(s.path)
+			log.Info("MemorySnapshot|Remove|Segment|%s", s.path)
+			break
+		}
+	}
 }
 
 func (self *MemorySnapshot) Destory() {

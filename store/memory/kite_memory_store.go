@@ -8,6 +8,7 @@ import (
 	. "kiteq/store"
 	"strconv"
 	"sync"
+	"sync/atomic"
 )
 
 const (
@@ -15,11 +16,15 @@ const (
 )
 
 type KiteMemoryStore struct {
-	datalinks []*list.List                              //用于LRU
-	stores    []map[string] /*messageId*/ *list.Element //用于LRU
-	locks     []*sync.RWMutex
-	maxcap    int
-	snapshot  *MemorySnapshot
+	datalinks      []*list.List                              //用于LRU
+	stores         []map[string] /*messageId*/ *list.Element //用于LRU
+	locks          []*sync.RWMutex
+	maxcap         int
+	openSnapshot   int32 // 0 为关闭，1为打开snapshot 消息直接append到文件尾部
+	snapshotNotify chan bool
+	currentSid     int64 // 当前segment的id
+	snapshot       *MemorySnapshot
+	sync.RWMutex
 }
 
 func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
@@ -36,24 +41,50 @@ func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
 	}
 
 	return &KiteMemoryStore{
-		datalinks: datalinks,
-		stores:    stores,
-		locks:     locks,
-		maxcap:    maxcap / CONCURRENT_LEVEL,
-		snapshot:  NewMemorySnapshot("./snapshot/", 100, 10)}
+		datalinks:      datalinks,
+		stores:         stores,
+		locks:          locks,
+		maxcap:         maxcap / CONCURRENT_LEVEL,
+		snapshot:       NewMemorySnapshot("./snapshot/", 100, 10),
+		snapshotNotify: make(chan bool, 1)}
 }
 
-func (self *KiteMemoryStore) Start() {}
+func (self *KiteMemoryStore) Start() {
+
+	for {
+		select {
+		case notify := <-self.snapshotNotify:
+			if notify {
+				sid := self.currentSid
+				//load new segment
+				self.peekSegment()
+				self.snapshot.Remove(sid)
+			} else {
+				//删除当前数据文件，因为已经在内存中，关闭时会flush到磁盘
+				self.snapshot.Remove(self.currentSid)
+				break
+			}
+
+		}
+	}
+
+}
 func (self *KiteMemoryStore) Stop() {
 
 	//save queue message into snapshot
 	self.syncToFile()
+	self.snapshotNotify <- false
+	close(self.snapshotNotify)
 	self.snapshot.Destory()
+	log.Info("KiteMemoryStore|Stop...")
+
 }
 
 //sync to file
 func (self *KiteMemoryStore) syncToFile() {
 	//save queue message into snapshot
+	self.RLock()
+	defer self.RUnlock()
 	for _, l := range self.datalinks {
 		for e := l.Front(); nil != e; e = e.Next() {
 			entity := e.Value.(*MessageEntity)
@@ -64,6 +95,33 @@ func (self *KiteMemoryStore) syncToFile() {
 			}
 			self.snapshot.Append(data)
 		}
+	}
+
+}
+
+func (self *KiteMemoryStore) peekSegment() {
+
+	//load head chunk into memory
+	sid, chunks := self.snapshot.Head()
+	if nil != chunks && len(chunks) > 0 {
+		for _, c := range chunks {
+			var entity *MessageEntity
+			err := json.Unmarshal(c.data, entity)
+			if nil != err {
+				log.Error("KiteMemoryStore|Save|Umarshal Entity|FAIL|%s", err)
+			} else {
+				lock, el, dl := self.hash(entity.MessageId)
+				lock.Lock()
+				front := dl.PushFront(entity)
+				el[entity.MessageId] = front
+				lock.Unlock()
+			}
+		}
+		//当前的current sid
+		self.currentSid = sid
+	} else {
+		//no segment , so close opensnapshot use memory directly
+		atomic.CompareAndSwapInt32(&self.openSnapshot, int32(1), int32(0))
 	}
 }
 
@@ -120,35 +178,45 @@ func (self *KiteMemoryStore) Query(messageId string) *MessageEntity {
 }
 
 func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
-	lock, el, dl := self.hash(entity.MessageId)
-	lock.Lock()
-	defer lock.Unlock()
 
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
-	// 或者当前snapshost中还有未消费完的segement则直接存储在file中
+	// 或者当前处于snapshot打开的方式
+	lock, el, dl := self.hash(entity.MessageId)
 	cl := dl.Len()
-	if cl >= self.maxcap || len(self.snapshot.segments) > 0 {
-
-		//强制把数据sync到file，当前不开启内存存储
-		self.syncToFile()
-		// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
-		//save into snapshot
-		data, err := json.Marshal(entity)
-		if nil != err {
-			log.Error("KiteMemoryStore|Save|FAIL|%s|%s", err, entity)
-			return false
+	if cl >= self.maxcap {
+		//open snapshost and load head segment
+		if atomic.CompareAndSwapInt32(&self.openSnapshot, int32(0), int32(1)) {
+			//强制把数据sync到file，当前不开启内存存储
+			self.syncToFile()
+			self.snapshotNotify <- true
 		}
-
-		//save snapshot
-		self.snapshot.Append(data)
-		return false
-
-	} else {
-		front := dl.PushFront(entity)
-		el[entity.MessageId] = front
 	}
 
-	return true
+	//save
+	f := func() bool {
+		lock.Lock()
+		defer lock.Unlock()
+		if !atomic.CompareAndSwapInt32(&self.openSnapshot, int32(0), int32(1)) {
+
+			// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+			//save into snapshot
+			data, err := json.Marshal(entity)
+			if nil != err {
+				log.Error("KiteMemoryStore|Save|FAIL|%s|%s", err, entity)
+				return false
+			}
+
+			//save snapshot
+			self.snapshot.Append(data)
+			return true
+
+		} else {
+			front := dl.PushFront(entity)
+			el[entity.MessageId] = front
+		}
+		return true
+	}
+	return f()
 }
 func (self *KiteMemoryStore) Commit(messageId string) bool {
 	lock, el, _ := self.hash(messageId)
@@ -205,12 +273,11 @@ func (self *KiteMemoryStore) innerDelete(messageId string,
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 
-	pe := make([]*MessageEntity, 0, limit+1)
+	var pe []*MessageEntity
 	var delMessage []string
 
 	lock, el, dl := self.hash(hashKey)
 	lock.RLock()
-
 	i := 0
 	for e := dl.Back(); nil != e; e = e.Prev() {
 		entity := e.Value.(*MessageEntity)
@@ -218,6 +285,9 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 			entity.DeliverCount < entity.Header.GetDeliverLimit() &&
 			entity.ExpiredTime > nextDeliveryTime {
 			if startIdx <= i {
+				if nil == pe {
+					pe = make([]*MessageEntity, 0, limit+1)
+				}
 				pe = append(pe, entity)
 			}
 
@@ -243,6 +313,11 @@ func (self *KiteMemoryStore) PageQueryEntity(hashKey string, kiteServer string, 
 			self.innerDelete(v, el, dl)
 		}
 		lock.Unlock()
+	}
+
+	//no data notify load segment
+	if len(pe) <= 0 {
+		self.snapshotNotify <- true
 	}
 
 	if len(pe) > limit {

@@ -174,6 +174,7 @@ func (self *Segment) loadCheck() {
 			length:   int32(length),
 			checksum: checksum,
 			id:       chunkId,
+			sid:      self.sid,
 			flag:     ChunkFlag(flag),
 			data:     data}
 
@@ -201,12 +202,13 @@ func (self *Segment) Delete(cid int64) {
 	}
 }
 
-func (self *Segment) PQ(limit int) []*Chunk {
+//load normal chunks
+func (self *Segment) LoadChunks() []*Chunk {
 	var chunks []*Chunk
 	for _, c := range self.chunks {
-		if c.flag != NORMAL {
+		if c.flag == NORMAL {
 			if nil == chunks {
-				chunks = make([]*Chunk, 0, limit)
+				chunks = make([]*Chunk, 0, len(self.chunks))
 			}
 			chunks = append(chunks, c)
 		}
@@ -242,6 +244,7 @@ func (self *Segment) Append(chunks []*Chunk) error {
 
 	buff := make([]byte, 0, 2*1024)
 	for _, c := range chunks {
+		c.sid = self.sid
 		buff = append(buff, c.marshal()...)
 	}
 
@@ -306,6 +309,7 @@ type Chunk struct {
 	checksum uint32
 	flag     ChunkFlag //chunk状态
 	id       int64
+	sid      int64
 	data     []byte // data
 }
 
