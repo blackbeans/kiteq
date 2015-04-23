@@ -377,6 +377,15 @@ func (self *MemorySnapshot) Remove(sid int64) {
 		if s.sid == sid {
 			s.Close()
 			os.Remove(s.path)
+
+			//remove from segments
+			for i, s := range self.segments {
+				if s.sid == s.sid {
+					self.segments = append(self.segments[0:i], self.segments[i+1:]...)
+					break
+				}
+			}
+
 			log.Info("MemorySnapshot|Remove|Segment|%s", s.path)
 			break
 		}
