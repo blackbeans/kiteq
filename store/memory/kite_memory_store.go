@@ -40,16 +40,28 @@ func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
 		datalinks = append(datalinks, list.New())
 	}
 
-	return &KiteMemoryStore{
+	kms := &KiteMemoryStore{
 		datalinks:      datalinks,
 		stores:         stores,
 		locks:          locks,
 		maxcap:         maxcap / CONCURRENT_LEVEL,
-		snapshot:       NewMemorySnapshot("./snapshot/", 100, 10),
 		snapshotNotify: make(chan bool, 1)}
+
+	kms.snapshot =
+		NewMemorySnapshot("./snapshot/", 100, 10, func(ol *oplog) {
+			kms.traverse(ol)
+		})
+	return kms
+}
+
+func (self *KiteMemoryStore) traverse(ol *oplog) {
+
 }
 
 func (self *KiteMemoryStore) Start() {
+
+	//start snapshost
+	self.snapshot.Start()
 
 	//recover snapshot
 	if len(self.snapshot.segments) > 0 {

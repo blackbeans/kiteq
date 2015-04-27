@@ -24,12 +24,13 @@ type MemorySnapshot struct {
 	running      bool
 	waitSync     *sync.WaitGroup
 	batchSize    int
-	segcacheSize int        //segment cache size
-	segmentCache *list.List //segment cached
+	segcacheSize int                //segment cache size
+	segmentCache *list.List         //segment cached
+	traverse     func(oplog *oplog) //oplog traverse
 	sync.RWMutex
 }
 
-func NewMemorySnapshot(filePath string, batchSize int, segcacheSize int) *MemorySnapshot {
+func NewMemorySnapshot(filePath string, batchSize int, segcacheSize int, traverse func(oplog *oplog)) *MemorySnapshot {
 	ms := &MemorySnapshot{
 		chunkId:      -1,
 		filePath:     filePath,
@@ -39,12 +40,16 @@ func NewMemorySnapshot(filePath string, batchSize int, segcacheSize int) *Memory
 		batchSize:    batchSize,
 		segcacheSize: segcacheSize,
 		segmentCache: list.New(),
-		waitSync:     &sync.WaitGroup{}}
-	ms.load()
+		waitSync:     &sync.WaitGroup{},
+		traverse:     traverse}
 
-	go ms.sync()
-	ms.waitSync.Add(1)
 	return ms
+}
+
+func (self *MemorySnapshot) Start() {
+	self.load()
+	go self.sync()
+	self.waitSync.Add(1)
 }
 
 func (self *MemorySnapshot) load() {
@@ -69,6 +74,7 @@ func (self *MemorySnapshot) load() {
 	//fetch all Segment
 	filepath.Walk(self.filePath, func(path string, f os.FileInfo, err error) error {
 		if !f.IsDir() {
+
 			name := strings.TrimSuffix(f.Name(), SEGMENT_DATA_SUFFIX)
 			split := strings.SplitN(name, "-", 2)
 			sid := int64(0)

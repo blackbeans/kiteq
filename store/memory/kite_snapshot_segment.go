@@ -30,7 +30,8 @@ const (
 	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
 	SEGMENT_PREFIX                = "segment"
-	SEGMENT_IDX_SUFFIX            = ".idx"
+	SEGMENT_LOG_SUFFIX            = ".log"
+	SEGMENT_LOG_SPLIT             = "\r\n" //log 按行切分
 	SEGMENT_DATA_SUFFIX           = ".data"
 	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
 	NORMAL              ChunkFlag = 'n'
