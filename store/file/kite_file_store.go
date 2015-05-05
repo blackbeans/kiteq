@@ -13,7 +13,7 @@ import (
 //delvier tags
 type opBody struct {
 	MessageId       string   `json:"mid"`
-	Status          bool     `json:status,omitempty`
+	Commit          bool     `json:"commit",omitempty`
 	FailGroups      []string `json:"fg",omitempty`
 	SuccGroups      []string `json:"sg",omitempty`
 	NextDeliverTime int64    `json:"ndt",omitempty`
@@ -24,7 +24,8 @@ const (
 )
 
 type FileStore struct {
-	oplogs     []map[string] /*messageId*/ *opBody //用于oplog的replay
+	oplogs []map[string] /*messageId*/ *opBody //用于oplog的replay
+
 	locks      []*sync.RWMutex
 	maxcap     int
 	currentSid int64 // 当前segment的id
@@ -140,50 +141,46 @@ func (self *FileStore) Query(messageId string) *MessageEntity {
 
 func (self *FileStore) Save(entity *MessageEntity) bool {
 
-	// //没有空闲node，则判断当前的datalinke中是否达到容量上限
-	// //则淘汰最老的数据到磁盘
-	// lock, ol := self.hash(entity.MessageId)
-	// lock.Lock()
-	// defer lock.Unlock()
-	// cl := dl.Len()
-	// if cl >= self.maxcap {
+	data, err := json.Marshal(entity)
+	if nil != err {
+		log.Error("FileStore|Save|FAIL|%s", err)
+		return false
+	}
 
-	// 	back := dl.Back()
-	// 	dl.Remove(back)
-	// 	entity := back.Value(*MessageEntity)
-	// 	//save into snapshot
-	// 	data, err := json.Marshal(entity)
-	// 	if nil != err {
-	// 		log.Error("FileStore|Save|FAIL|%s|%s", err, entity)
-	// 		return false
-	// 	}
+	//create oplog
+	ob := &opBody{
+		MessageId:       entity.MessageId,
+		Commit:          entity.Commit,
+		FailGroups:      entity.FailGroups,
+		SuccGroups:      entity.SuccGroups,
+		NextDeliverTime: entity.NextDeliverTime}
 
-	// 	//save snapshot
-	// 	self.snapshot.Append(data)
-	// }
+	obd, _ := json.Marshal(opBody)
+	cmd := NewCommand(entity.MessageId, data, obd)
+	//get lock
+	lock, ol := self.hash(entity.MessageId)
+	lock.Lock()
 
-	// front := dl.PushFront(entity)
-	// el[entity.MessageId] = front
-	// ol[entity.MessageId] = &opBody{
-	// 	MessageId:       entity.MessageId,
-	// 	Status:          entity.Commit,
-	// 	FailGroups:      entity.FailGroups,
-	// 	SuccGroups:      entity.SuccGroups,
-	// 	NextDeliverTime: entity.NextDeliverTime}
+	//append oplog into file
+	id := self.snapshot.Append(cmd)
+	ol[entity.MessageId] = ob
+
+	lock.Unlock()
 
 	return true
 }
 func (self *FileStore) Commit(messageId string) bool {
-	// lock, ol := self.hash(messageId)
-	// lock.Lock()
-	// defer lock.Unlock()
-	// e, ok := el[messageId]
-	// if !ok {
-	// 	return false
-	// }
+	lock, ol := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	e, ok := ol[messageId]
+	if !ok {
+		return false
+	}
+	e.Commit = true
 
-	// entity := e.Value.(*MessageEntity)
-	// entity.Commit = true
+	cmd := NewCommand(messageId, nil, obd)
+	self.snapshot.Update(cmd)
 	return true
 }
 func (self *FileStore) Rollback(messageId string) bool {

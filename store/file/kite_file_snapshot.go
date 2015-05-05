@@ -291,14 +291,14 @@ type command struct {
 	id      int64
 	logicId string
 	msg     []byte
-	opbody  string
+	opbody  []byte
 }
 
-func NewCommand(logicId string, msg []byte, body string) *command {
+func NewCommand(logicId string, msg []byte, opbody []byte) *command {
 	return &command{
 		logicId: logicId,
 		msg:     msg,
-		opbody:  body}
+		opbody:  opbody}
 }
 
 //write
