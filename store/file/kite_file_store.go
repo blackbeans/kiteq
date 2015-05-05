@@ -12,6 +12,7 @@ import (
 
 //delvier tags
 type opBody struct {
+	Id              int64    `json:"id"`
 	MessageId       string   `json:"mid"`
 	Commit          bool     `json:"commit",omitempty`
 	FailGroups      []string `json:"fg",omitempty`
@@ -155,7 +156,7 @@ func (self *FileStore) Save(entity *MessageEntity) bool {
 		SuccGroups:      entity.SuccGroups,
 		NextDeliverTime: entity.NextDeliverTime}
 
-	obd, _ := json.Marshal(opBody)
+	obd, _ := json.Marshal(ob)
 	cmd := NewCommand(entity.MessageId, data, obd)
 	//get lock
 	lock, ol := self.hash(entity.MessageId)
@@ -163,6 +164,7 @@ func (self *FileStore) Save(entity *MessageEntity) bool {
 
 	//append oplog into file
 	id := self.snapshot.Append(cmd)
+	ob.Id = id
 	ol[entity.MessageId] = ob
 
 	lock.Unlock()
@@ -179,6 +181,7 @@ func (self *FileStore) Commit(messageId string) bool {
 	}
 	e.Commit = true
 
+	obd, _ := json.Marshal(e)
 	cmd := NewCommand(messageId, nil, obd)
 	self.snapshot.Update(cmd)
 	return true

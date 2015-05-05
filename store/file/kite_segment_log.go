@@ -162,10 +162,10 @@ type oplog struct {
 	Op      byte   `json:"op"`
 	ChunkId int64  `json:"chunk_id"`
 	LogicId string `json:"logic_id"`
-	Body    string `json:"body"`
+	Body    []byte `json:"body"`
 }
 
-func newOplog(op byte, logicId string, chunkid int64, body string) *oplog {
+func newOplog(op byte, logicId string, chunkid int64, body []byte) *oplog {
 	return &oplog{
 		Time:    time.Now().Unix(),
 		Op:      op,
