@@ -2,6 +2,8 @@ package file
 
 import (
 	"container/list"
+	"encoding/json"
+	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"hash/crc32"
@@ -12,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 //的快照
@@ -197,14 +200,25 @@ func (self *MessageStore) Head() (int64, []*Chunk) {
 }
 
 //query one chunk by  chunkid
-func (self *MessageStore) Query(cid int64) *Chunk {
+func (self *MessageStore) Query(cid int64, ins interface{}) error {
 
 	curr := self.indexSegment(cid)
 	if nil == curr {
+		return errors.New(fmt.Sprintf("No Segement For %d", cid))
+	}
+
+	//find chunk
+	c := curr.Get(cid)
+	if nil != c {
+		// log.Debug("MessageStore|QUERY|%s|%t", curr.name, c)
+		err := json.Unmarshal(c.data, ins)
+		if nil != err {
+			return err
+		}
 		return nil
 	}
-	//find chunk
-	return curr.Get(cid)
+	// log.Debug("MessageStore|QUERY|%s", curr.name)
+	return errors.New(fmt.Sprintf("No Chunk For %d", cid))
 }
 
 //index segment
@@ -214,8 +228,9 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
-		if s.sid <= cid && cid <= (s.sid+int64(len(s.chunks))) {
+		if s.sid <= cid && cid < (s.sid+int64(len(s.chunks))) {
 			curr = s
+			break
 		}
 	}
 	self.RUnlock()
@@ -235,6 +250,7 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 		//load segment
 		self.loadSegment(idx)
 		curr = self.segments[idx]
+		// log.Debug("MessageStore|indexSegment|%d", curr.path)
 		self.Unlock()
 
 	}
@@ -252,13 +268,13 @@ func (self *MessageStore) loadSegment(idx int) {
 		return
 	} else {
 		//pop header
-		for e := self.segmentCache.Front(); self.segmentCache.Len() > self.segcacheSize; {
+		for e := self.segmentCache.Back(); self.segmentCache.Len() > self.segcacheSize; e = e.Prev() {
 			self.segmentCache.Remove(e)
 		}
 		//push to cache
-		self.segmentCache.PushBack(s)
+		self.segmentCache.PushFront(s)
 	}
-	log.Info("MessageStore|loadSegment|SUCC|%s\n", s.name)
+	log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
 }
 
 //append log
@@ -294,8 +310,9 @@ type command struct {
 	opbody  []byte
 }
 
-func NewCommand(logicId string, msg []byte, opbody []byte) *command {
+func NewCommand(id int64, logicId string, msg []byte, opbody []byte) *command {
 	return &command{
+		id:      id,
 		logicId: logicId,
 		msg:     msg,
 		opbody:  opbody}
@@ -324,12 +341,13 @@ func (self *MessageStore) sync() {
 	var cmd *command
 
 	lastSeg := self.checkRoll()
+	ticker := time.NewTicker(500 * time.Millisecond)
 	for self.running {
 
 		//no batch / wait for data
 		select {
 		case cmd = <-self.writeChannel:
-		default:
+		case <-ticker.C:
 			//no write data flush
 
 		}
@@ -412,7 +430,7 @@ outter:
 		}
 
 	}
-
+	ticker.Stop()
 	self.waitSync.Done()
 	log.Info("MessageStore|SYNC|CLOSE...")
 }
@@ -424,7 +442,7 @@ func (self *MessageStore) checkRoll() *Segment {
 
 	var s *Segment
 	if len(self.segments) <= 0 {
-		news, err := self.createSegment(self.chunkId + 1)
+		news, err := self.createSegment(0)
 		if nil == err {
 			self.Lock()
 			//append new
@@ -438,12 +456,12 @@ func (self *MessageStore) checkRoll() *Segment {
 			panic(err)
 		}
 	} else {
-		self.RLock()
+		self.Lock()
 		s = self.segments[len(self.segments)-1]
-		self.RUnlock()
 		if s.byteSize > MAX_SEGMENT_SIZE {
-			self.Lock()
-			news, err := self.createSegment(self.chunkId + 1)
+			nid := s.chunks[len(s.chunks)-1].id + 1
+
+			news, err := self.createSegment(nid)
 			if nil == err {
 				//left segments are larger than cached ,close current
 				if len(self.segments) >= self.segcacheSize {
@@ -453,8 +471,9 @@ func (self *MessageStore) checkRoll() *Segment {
 				self.segments = append(self.segments, news)
 				s = news
 			}
-			self.Unlock()
+
 		}
+		self.Unlock()
 	}
 	return s
 }

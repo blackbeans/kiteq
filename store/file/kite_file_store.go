@@ -2,6 +2,7 @@ package file
 
 import (
 	"container/list"
+	_ "container/list"
 	"encoding/json"
 	"fmt"
 	log "github.com/blackbeans/log4go"
@@ -14,10 +15,11 @@ import (
 type opBody struct {
 	Id              int64    `json:"id"`
 	MessageId       string   `json:"mid"`
-	Commit          bool     `json:"commit",omitempty`
+	Commit          bool     `json:"commit"`
 	FailGroups      []string `json:"fg",omitempty`
 	SuccGroups      []string `json:"sg",omitempty`
-	NextDeliverTime int64    `json:"ndt",omitempty`
+	NextDeliverTime int64    `json:"ndt"`
+	DeliverCount    int32    `json:"dc"`
 }
 
 const (
@@ -25,8 +27,8 @@ const (
 )
 
 type FileStore struct {
-	oplogs []map[string] /*messageId*/ *opBody //用于oplog的replay
-
+	oplogs     []map[string] /*messageId*/ *list.Element //用于oplog的replay
+	loglink    []*list.List                              //*opBody
 	locks      []*sync.RWMutex
 	maxcap     int
 	currentSid int64 // 当前segment的id
@@ -34,23 +36,26 @@ type FileStore struct {
 	sync.RWMutex
 }
 
-func NewFileStore(initcap, maxcap int) *FileStore {
+func NewFileStore(dir string, maxcap int) *FileStore {
 
-	oplogs := make([]map[string]*opBody, 0, CONCURRENT_LEVEL)
+	loglink := make([]*list.List, 0, CONCURRENT_LEVEL)
+	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)
 	locks := make([]*sync.RWMutex, 0, CONCURRENT_LEVEL)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[string] /*messageId*/ *opBody, maxcap/CONCURRENT_LEVEL)
+		splitMap := make(map[string] /*messageId*/ *list.Element, maxcap/CONCURRENT_LEVEL)
 		locks = append(locks, &sync.RWMutex{})
 		oplogs = append(oplogs, splitMap)
+		loglink = append(loglink, list.New())
 	}
 
 	kms := &FileStore{
-		oplogs: oplogs,
-		locks:  locks,
-		maxcap: maxcap / CONCURRENT_LEVEL}
+		loglink: loglink,
+		oplogs:  oplogs,
+		locks:   locks,
+		maxcap:  maxcap / CONCURRENT_LEVEL}
 
 	kms.snapshot =
-		NewMessageStore("./snapshot/", 100, 10, func(ol *oplog) {
+		NewMessageStore(dir+"/snapshot/", 100, 10, func(ol *oplog) {
 			kms.replay(ol)
 		})
 	return kms
@@ -60,24 +65,39 @@ func NewFileStore(initcap, maxcap int) *FileStore {
 func (self *FileStore) replay(ol *oplog) {
 
 	var body opBody
-	err := json.Unmarshal([]byte(ol.Body), &body)
+	err := json.Unmarshal(ol.Body, &body)
 	if nil != err {
 		log.Error("FileStore|replay|FAIL|%s|%s", err, ol.Body)
 		return
 	}
 
 	ob := &body
-	l, tol := self.hash(ob.MessageId)
-	l.Lock()
-	defer l.Unlock()
+	l, link, tol := self.hash(ob.MessageId)
+
 	//如果是更新或者创建，则直接反序列化
 	if ol.Op == OP_U || ol.Op == OP_C {
+		l.Lock()
 		//直接覆盖
-		tol[ob.MessageId] = ob
+		e, ok := tol[ob.MessageId]
+		if ok {
+			e.Value = ob
+		} else {
+			e = link.PushFront(ob)
+			tol[ob.MessageId] = e
+		}
+		link.MoveToFront(e)
+
+		l.Unlock()
 
 	} else if ol.Op == OP_D {
 		//如果为删除操作直接删除已经保存的op_log
-		delete(tol, ob.MessageId)
+		l.Lock()
+		e, ok := tol[ob.MessageId]
+		if ok {
+			delete(tol, ob.MessageId)
+			link.Remove(e)
+		}
+		l.Unlock()
 	}
 
 }
@@ -104,9 +124,9 @@ func (self *FileStore) RecoverNum() int {
 func (self *FileStore) Monitor() string {
 	l := 0
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		lock, dl := self.hash(fmt.Sprintf("%x", i))
+		lock, link, _ := self.hash(fmt.Sprintf("%x", i))
 		lock.RLock()
-		l += len(dl)
+		l += link.Len()
 		lock.RUnlock()
 	}
 	return fmt.Sprintf("memory-length:%d\n", l)
@@ -117,7 +137,7 @@ func (self *FileStore) AsyncDelete(messageId string) bool      { return self.Del
 func (self *FileStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
 
 //hash get elelment
-func (self *FileStore) hash(messageid string) (l *sync.RWMutex, ol map[string]*opBody) {
+func (self *FileStore) hash(messageid string) (l *sync.RWMutex, link *list.List, ol map[string]*list.Element) {
 	id := string(messageid[len(messageid)-1])
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
@@ -133,14 +153,45 @@ func (self *FileStore) hash(messageid string) (l *sync.RWMutex, ol map[string]*o
 	//hash part
 	l = self.locks[hashId]
 	ol = self.oplogs[hashId]
+	link = self.loglink[hashId]
 	return
 }
 
 func (self *FileStore) Query(messageId string) *MessageEntity {
-	return nil
+
+	lock, _, el := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	e, ok := el[messageId]
+	if !ok {
+		return nil
+	}
+
+	v := e.Value.(*opBody)
+	var entity MessageEntity
+	err := self.snapshot.Query(v.Id, &entity)
+	if nil != err {
+		log.Error("MessageStore|Query|FAIL|%s", err)
+		return nil
+	}
+
+	//merge data
+	entity.Commit = v.Commit
+	entity.FailGroups = v.FailGroups
+	entity.SuccGroups = v.SuccGroups
+	entity.NextDeliverTime = v.NextDeliverTime
+	entity.DeliverCount = v.DeliverCount
+
+	return &entity
 }
 
 func (self *FileStore) Save(entity *MessageEntity) bool {
+
+	lock, link, ol := self.hash(entity.MessageId)
+	if len(ol) >= self.maxcap {
+		//overflow
+		return false
+	}
 
 	data, err := json.Marshal(entity)
 	if nil != err {
@@ -154,35 +205,43 @@ func (self *FileStore) Save(entity *MessageEntity) bool {
 		Commit:          entity.Commit,
 		FailGroups:      entity.FailGroups,
 		SuccGroups:      entity.SuccGroups,
-		NextDeliverTime: entity.NextDeliverTime}
+		NextDeliverTime: entity.NextDeliverTime,
+		DeliverCount:    0}
 
 	obd, _ := json.Marshal(ob)
-	cmd := NewCommand(entity.MessageId, data, obd)
+	cmd := NewCommand(-1, entity.MessageId, data, obd)
 	//get lock
-	lock, ol := self.hash(entity.MessageId)
+
 	lock.Lock()
 
 	//append oplog into file
 	id := self.snapshot.Append(cmd)
 	ob.Id = id
-	ol[entity.MessageId] = ob
+
+	//push
+	e := link.PushFront(ob)
+	ol[entity.MessageId] = e
 
 	lock.Unlock()
 
 	return true
 }
 func (self *FileStore) Commit(messageId string) bool {
-	lock, ol := self.hash(messageId)
+	lock, _, ol := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
 	e, ok := ol[messageId]
 	if !ok {
 		return false
 	}
-	e.Commit = true
 
-	obd, _ := json.Marshal(e)
-	cmd := NewCommand(messageId, nil, obd)
+	//modify commit
+	v := e.Value.(*opBody)
+	v.Commit = true
+
+	//write oplog
+	obd, _ := json.Marshal(v)
+	cmd := NewCommand(v.Id, messageId, nil, obd)
 	self.snapshot.Update(cmd)
 	return true
 }
@@ -190,98 +249,96 @@ func (self *FileStore) Rollback(messageId string) bool {
 	return self.Delete(messageId)
 }
 func (self *FileStore) UpdateEntity(entity *MessageEntity) bool {
-	// lock, el, _ := self.hash(entity.MessageId)
-	// lock.Lock()
-	// defer lock.Unlock()
-	// v, ok := el[entity.MessageId]
-	// if !ok {
-	// 	return true
-	// }
-
-	// e := v.Value.(*MessageEntity)
-	// e.DeliverCount = entity.DeliverCount
-	// e.NextDeliverTime = entity.NextDeliverTime
-	// e.SuccGroups = entity.SuccGroups
-	// e.FailGroups = entity.FailGroups
+	lock, _, el := self.hash(entity.MessageId)
+	lock.Lock()
+	defer lock.Unlock()
+	e, ok := el[entity.MessageId]
+	if !ok {
+		return true
+	}
+	//modify opbody value
+	v := e.Value.(*opBody)
+	v.DeliverCount = entity.DeliverCount
+	v.NextDeliverTime = entity.NextDeliverTime
+	v.SuccGroups = entity.SuccGroups
+	v.FailGroups = entity.FailGroups
+	//append log
+	obd, _ := json.Marshal(v)
+	cmd := NewCommand(v.Id, entity.MessageId, nil, obd)
+	self.snapshot.Update(cmd)
 	return true
 }
 func (self *FileStore) Delete(messageId string) bool {
-	// lock, el, dl := self.hash(messageId)
-	// lock.Lock()
-	// defer lock.Unlock()
-	// self.innerDelete(messageId, el, dl)
+	lock, link, el := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	self.innerDelete(messageId, link, el)
 	return true
 
 }
 
-func (self *FileStore) innerDelete(messageId string,
-	el map[string]*list.Element, dl *list.List) {
-	// e, ok := el[messageId]
-	// if !ok {
-	// 	return
-	// }
-	// delete(el, messageId)
-	// dl.Remove(e)
-	// e = nil
+func (self *FileStore) innerDelete(messageId string, link *list.List,
+	el map[string]*list.Element) {
+	e, ok := el[messageId]
+	if !ok {
+		return
+	}
+
+	//delete log
+	delete(el, messageId)
+	link.Remove(e)
+
+	v := e.Value.(*opBody)
+
+	//delete
+	obd, _ := json.Marshal(v)
+	cmd := NewCommand(v.Id, messageId, nil, obd)
+	self.snapshot.Delete(cmd)
 	// log.Info("FileStore|innerDelete|%s\n", messageId)
 }
 
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *FileStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 
-	// var pe []*MessageEntity
-	// var delMessage []string
+	var pe []*MessageEntity
 
-	// lock, el, dl := self.hash(hashKey)
-	// lock.RLock()
-	// i := 0
-	// for e := dl.Back(); nil != e; e = e.Prev() {
-	// 	entity := e.Value.(*MessageEntity)
-	// 	if entity.NextDeliverTime <= nextDeliveryTime &&
-	// 		entity.DeliverCount < entity.Header.GetDeliverLimit() &&
-	// 		entity.ExpiredTime > nextDeliveryTime {
-	// 		if startIdx <= i {
-	// 			if nil == pe {
-	// 				pe = make([]*MessageEntity, 0, limit+1)
-	// 			}
-	// 			pe = append(pe, entity)
-	// 		}
+	lock, link, _ := self.hash(hashKey)
+	lock.RLock()
+	i := 0
+	for e := link.Back(); nil != e; e = e.Prev() {
+		ob := e.Value.(*opBody)
+		//query message
+		if ob.NextDeliverTime <= nextDeliveryTime {
+			if startIdx <= i {
+				if nil == pe {
+					pe = make([]*MessageEntity, 0, limit+1)
+				}
 
-	// 		i++
-	// 		if len(pe) > limit {
-	// 			break
-	// 		}
-	// 	} else if entity.DeliverCount >= entity.Header.GetDeliverLimit() ||
-	// 		entity.ExpiredTime <= nextDeliveryTime {
-	// 		if nil == delMessage {
-	// 			delMessage = make([]string, 0, 10)
-	// 		}
-	// 		delMessage = append(delMessage, entity.MessageId)
-	// 	}
-	// }
+				//创建消息
+				entity := &MessageEntity{
+					MessageId: ob.MessageId}
+				entity.Commit = ob.Commit
+				entity.FailGroups = ob.FailGroups
+				entity.SuccGroups = ob.SuccGroups
+				entity.NextDeliverTime = ob.NextDeliverTime
+				entity.DeliverCount = ob.DeliverCount
+				pe = append(pe, entity)
+			}
 
-	// lock.RUnlock()
+			i++
+			if len(pe) > limit {
+				break
+			}
+		}
+	}
 
-	// //删除过期的message
-	// if nil != delMessage {
-	// 	lock.Lock()
-	// 	for _, v := range delMessage {
-	// 		self.innerDelete(v, el, dl)
-	// 	}
-	// 	lock.Unlock()
-	// }
+	lock.RUnlock()
 
-	// //no data notify load segment
-	// if len(pe) <= 0 {
-	// 	self.snapshotNotify <- true
-	// }
-
-	// if len(pe) > limit {
-	// 	return true, pe[:limit]
-	// } else {
-	// 	return false, pe
-	// }
-
+	if len(pe) > limit {
+		return true, pe[:limit]
+	} else {
+		return false, pe
+	}
 	return false, nil
 
 }

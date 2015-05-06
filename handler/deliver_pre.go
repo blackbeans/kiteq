@@ -74,6 +74,13 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 	return nil
 }
 
+//check entity need to deliver
+func (self *DeliverPreHandler) checkEntity(entity *store.MessageEntity) bool {
+	//判断个当前的header和投递次数消息有效时间是否过期
+	return entity.DeliverCount < entity.Header.GetDeliverLimit() &&
+		entity.ExpiredTime > nextDeliveryTime
+}
+
 //内部处理
 func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *deliverPreEvent) {
 	//如果没有entity则直接查询一下db
@@ -85,6 +92,11 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 			log.Debug("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
 			return
 		}
+	}
+
+	//check entity need to deliver
+	if !self.checkEntity(entity) {
+		return
 	}
 
 	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())

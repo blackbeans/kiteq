@@ -5,7 +5,6 @@ import (
 	_ "encoding/binary"
 	"encoding/json"
 	log "github.com/blackbeans/log4go"
-
 	"os"
 	"sync/atomic"
 	"time"
