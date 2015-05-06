@@ -78,7 +78,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 func (self *DeliverPreHandler) checkEntity(entity *store.MessageEntity) bool {
 	//判断个当前的header和投递次数消息有效时间是否过期
 	return entity.DeliverCount < entity.Header.GetDeliverLimit() &&
-		entity.ExpiredTime > nextDeliveryTime
+		entity.ExpiredTime > time.Now().Unix()
 }
 
 //内部处理
