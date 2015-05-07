@@ -65,7 +65,7 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 func (self *KiteFileStore) replay(ol *oplog) {
 
 	var body opBody
-	err := json.Unmarshal(ol.Body, &body)
+	err := json.Unmarshal([]byte(ol.Body), &body)
 	if nil != err {
 		log.Error("KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
 		return

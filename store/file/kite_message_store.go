@@ -75,7 +75,7 @@ func (self *MessageStore) evict() {
 					//try open
 					s.Open()
 					total, normal, del, expired := s.stat()
-					stat += fmt.Sprintf("|%s\t\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
+					stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
 					if normal <= 0 {
 						//delete
 						go self.Remove(s.sid)
@@ -206,6 +206,8 @@ func (self *MessageStore) Query(cid int64, ins interface{}) error {
 		return errors.New(fmt.Sprintf("No Segement For %d", cid))
 	}
 
+	curr.RLock()
+	defer curr.RUnlock()
 	//find chunk
 	c := curr.Get(cid)
 	if nil != c {
@@ -217,7 +219,7 @@ func (self *MessageStore) Query(cid int64, ins interface{}) error {
 		return nil
 	}
 	// log.Debug("MessageStore|QUERY|%s", curr.name)
-	return errors.New(fmt.Sprintf("No Chunk For %d", cid))
+	return errors.New(fmt.Sprintf("No Chunk For [%s,%d]", curr.name, cid))
 }
 
 //index segment
@@ -227,7 +229,7 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
-		if s.sid <= cid && cid <= s.sid+s.offset {
+		if s.sid <= cid && cid < s.sid+int64(len(s.chunks)) {
 			curr = s
 			break
 		}
@@ -279,9 +281,9 @@ func (self *MessageStore) loadSegment(idx int) {
 		}
 
 		if !exsit {
-			log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
 			//push to cache
 			self.segmentCache.PushFront(s)
+			log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
 		}
 	}
 	// log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
@@ -291,6 +293,8 @@ func (self *MessageStore) loadSegment(idx int) {
 func (self *MessageStore) Update(c *command) {
 	s := self.indexSegment(c.id)
 	if nil != s {
+		s.Lock()
+		defer s.Unlock()
 		//append oplog
 		ol := newOplog(OP_U, c.logicId, c.id, c.opbody)
 		s.slog.Append(ol)
@@ -301,7 +305,8 @@ func (self *MessageStore) Update(c *command) {
 func (self *MessageStore) Delete(c *command) {
 	s := self.indexSegment(c.id)
 	if nil != s {
-
+		s.Lock()
+		defer s.Unlock()
 		//append oplog
 		ol := newOplog(OP_D, c.logicId, c.id, c.opbody)
 		s.slog.Append(ol)
@@ -317,7 +322,8 @@ func (self *MessageStore) Delete(c *command) {
 func (self *MessageStore) Expired(c *command) {
 	s := self.indexSegment(c.id)
 	if nil != s {
-
+		s.Lock()
+		defer s.Unlock()
 		//append oplog logic delete
 		ol := newOplog(OP_E, c.logicId, c.id, c.opbody)
 		s.slog.Append(ol)
@@ -393,7 +399,7 @@ func (self *MessageStore) sync() {
 
 		//force flush
 		if nil == cmd && len(batch) > 0 || len(batch) >= cap(batch) {
-
+			lastSeg.Lock()
 			//write append log
 			err := lastSeg.slog.BatchAppend(batchOPLogs)
 			if nil != err {
@@ -405,6 +411,8 @@ func (self *MessageStore) sync() {
 					log.Error("MessageStore|AppendData|FAIL|%s\n", err)
 				}
 			}
+			lastSeg.Unlock()
+
 			batch = batch[:0]
 			batchOPLogs = batchOPLogs[:0]
 		}
@@ -442,6 +450,7 @@ outter:
 	}
 
 	if len(batch) > 0 {
+		lastSeg.Lock()
 		//complete
 		err := lastSeg.slog.BatchAppend(batchOPLogs)
 		if nil != err {
@@ -453,6 +462,7 @@ outter:
 				log.Error("MessageStore|Append|FAIL|%s\n", err)
 			}
 		}
+		lastSeg.Unlock()
 		batch = batch[:0]
 		batchOPLogs = batchOPLogs[:0]
 
@@ -532,6 +542,7 @@ func (self *MessageStore) Remove(sid int64) {
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
+		s.RLock()
 		if s.sid == sid {
 			s.Close()
 			os.Remove(s.path)
@@ -547,6 +558,7 @@ func (self *MessageStore) Remove(sid int64) {
 			log.Info("MessageStore|Remove|Segment|%s", s.path)
 			break
 		}
+		s.RUnlock()
 	}
 }
 

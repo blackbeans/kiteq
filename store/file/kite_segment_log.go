@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"bytes"
 	_ "encoding/binary"
 	"encoding/json"
 	log "github.com/blackbeans/log4go"
@@ -85,15 +86,15 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 	self.Open()
 	offset := 0
 	for {
-		line, err := self.br.ReadBytes(SEGMENT_LOG_SPLIT)
+		line, err := self.br.ReadBytes(SEGMENT_LOG_SPLIT[0])
 		if nil != err || len(line) <= 0 {
 			break
 		} else {
 			ol := &oplog{}
-
+			line = bytes.TrimSuffix(line, SEGMENT_LOG_SPLIT)
 			err := ol.unmarshal(line)
 			if nil != err {
-				log.Error("SegmentLog|Traverse|unmarshal|oplog|FAIL|%s|%s", err, line)
+				log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s|%s", err, line)
 				continue
 			}
 			do(ol)
@@ -185,7 +186,7 @@ type oplog struct {
 	Op      byte   `json:"op"`
 	ChunkId int64  `json:"chunk_id"`
 	LogicId string `json:"logic_id"`
-	Body    []byte `json:"body"`
+	Body    string `json:"body"`
 }
 
 func newOplog(op byte, logicId string, chunkid int64, body []byte) *oplog {
@@ -194,7 +195,7 @@ func newOplog(op byte, logicId string, chunkid int64, body []byte) *oplog {
 		Op:      op,
 		ChunkId: chunkid,
 		LogicId: logicId,
-		Body:    body}
+		Body:    string(body)}
 }
 
 //marshal oplog
@@ -204,7 +205,7 @@ func (self *oplog) marshal() []byte {
 		log.Error("oplog|marshal|fail|%s|%s", err, self)
 		return nil
 	}
-	return append(d, SEGMENT_LOG_SPLIT)
+	return append(d, SEGMENT_LOG_SPLIT...)
 }
 
 //unmarshal data

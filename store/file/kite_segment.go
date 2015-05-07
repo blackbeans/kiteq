@@ -3,11 +3,13 @@ package file
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"hash/crc32"
 	"io"
 	"os"
 	"sort"
+	"sync"
 	"sync/atomic"
 )
 
@@ -26,17 +28,19 @@ func (self ChunkFlag) String() string {
 	return ""
 }
 
+var SEGMENT_LOG_SPLIT = []byte{'\n'}
+
 const (
 	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
-	SEGMENT_PREFIX                = "segment"
-	SEGMENT_LOG_SUFFIX            = ".log"
-	SEGMENT_DATA_SUFFIX           = ".data"
-	SEGMENT_LOG_SPLIT             = '\n'
-	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
-	NORMAL              ChunkFlag = 'n'
-	DELETE              ChunkFlag = 'd'
-	EXPIRED             ChunkFlag = 'e'
+	SEGMENT_PREFIX      = "segment"
+	SEGMENT_LOG_SUFFIX  = ".log"
+	SEGMENT_DATA_SUFFIX = ".data"
+
+	CHUNK_HEADER           = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
+	NORMAL       ChunkFlag = 'n'
+	DELETE       ChunkFlag = 'd'
+	EXPIRED      ChunkFlag = 'e'
 )
 
 //消息文件
@@ -54,6 +58,7 @@ type Segment struct {
 	isOpen   int32
 	slog     *SegmentLog //segment op log
 	latch    chan bool
+	sync.RWMutex
 }
 
 func newSegment(path, name string, sid int64, slog *SegmentLog) *Segment {
@@ -63,6 +68,10 @@ func newSegment(path, name string, sid int64, slog *SegmentLog) *Segment {
 		sid:   sid,
 		slog:  slog,
 		latch: make(chan bool, 1)}
+}
+
+func (self *Segment) String() string {
+	return fmt.Sprintf("Segment[%s,%d]", self.name, self.sid)
 }
 
 func (self *Segment) Open() error {
@@ -285,7 +294,8 @@ func (self *Segment) Get(cid int64) *Chunk {
 		return nil
 	} else if self.chunks[idx].id == cid {
 		//delete data return nil
-		if self.chunks[idx].flag == DELETE {
+		if self.chunks[idx].flag == DELETE ||
+			self.chunks[idx].flag == EXPIRED {
 			return nil
 		}
 		return self.chunks[idx]

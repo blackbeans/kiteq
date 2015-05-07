@@ -16,7 +16,7 @@ func traverse(oplog *oplog) {
 
 func TestAppend(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	run := true
 	i := 0
@@ -59,7 +59,7 @@ func cleanSnapshot(path string) {
 //test delete
 func TestDelete(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	for j := 0; j < 10000; j++ {
 		d := []byte(fmt.Sprint(j))
@@ -72,7 +72,7 @@ func TestDelete(t *testing.T) {
 
 	log.Printf("TestDelete|Append|Complete...")
 	// //reload
-	nsnapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	nsnapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	nsnapshot.Start()
 
 	log.Printf("TestDelete|Delete|Start...")
@@ -120,7 +120,7 @@ func TestDelete(t *testing.T) {
 func TestQuery(t *testing.T) {
 
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	var data [512]byte
 	for j := 0; j < 1000000; j++ {
@@ -187,14 +187,14 @@ func TestQuery(t *testing.T) {
 	log.Printf("snapshot|%s|%d\n", snapshot, j)
 
 	snapshot.Destory()
-	// cleanSnapshot("./snapshot/")
+	cleanSnapshot("./snapshot/")
 }
 
 func BenchmarkDelete(t *testing.B) {
 	t.Logf("BenchmarkDelete|Delete|Start...")
 	t.StopTimer()
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 
 	for j := 0; j < 1000000; j++ {
@@ -226,7 +226,7 @@ func BenchmarkQuery(t *testing.B) {
 	log.Printf("BenchmarkQuery|Query|Start...")
 	t.StopTimer()
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	for j := 0; j < 10000; j++ {
 		d := []byte(fmt.Sprintf("%d|hello snapshot", j))
@@ -259,7 +259,7 @@ func BenchmarkQuery(t *testing.B) {
 func BenchmarkAppend(t *testing.B) {
 	t.StopTimer()
 	cleanSnapshot("./snapshot/")
-	snapshot := NewMessageStore("./snapshot/", 1, 1, 1*time.Second, traverse)
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	t.StartTimer()
 
