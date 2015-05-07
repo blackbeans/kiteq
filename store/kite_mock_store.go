@@ -24,6 +24,7 @@ func (self *MockKiteStore) RecoverNum() int {
 func (self *MockKiteStore) AsyncUpdate(entity *MessageEntity) bool { return true }
 func (self *MockKiteStore) AsyncDelete(messgeid string) bool       { return true }
 func (self *MockKiteStore) AsyncCommit(messageId string) bool      { return true }
+func (self *MockKiteStore) Expired(messageId string) bool          { return true }
 
 func (self *MockKiteStore) Query(messageId string) *MessageEntity {
 	entity := NewMessageEntity(protocol.NewQMessage(buildBytesMessage(messageId)))

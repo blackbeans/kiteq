@@ -3,13 +3,19 @@ package server
 import (
 	log "github.com/blackbeans/log4go"
 	"kiteq/store"
+	smf "kiteq/store/file"
 	sm "kiteq/store/memory"
 	smq "kiteq/store/mysql"
-
 	"strconv"
 	"strings"
 	"time"
 )
+
+// storage schema
+//  mock    mock://
+//  memory  memory://initcap=1000&maxcap=2000
+//  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushPeriod=1000
+//  file    file:///path?cap=10000000&checkPeriod=60
 
 func parseDB(kc KiteQConfig) store.IKiteStore {
 	db := kc.db
@@ -139,6 +145,45 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			MaxIdleConn:  maxConn / 2,
 			MaxOpenConn:  maxConn}
 		kitedb = smq.NewKiteMysql(options)
+	} else if strings.HasPrefix(db, "file://") {
+		url := strings.TrimPrefix(db, "file://")
+		mp := strings.Split(url, "?")
+		params := make(map[string]string, 5)
+		if len(mp) > 1 {
+			split := strings.Split(mp[1], "&")
+			for _, v := range split {
+				p := strings.SplitN(v, "=", 2)
+				params[p[0]] = p[1]
+			}
+		}
+		if len(mp[0]) <= 0 {
+			log.Crashf("NewKiteQServer|INVALID|FilePath|%s\n", db)
+		}
+
+		//最大消息容量
+		maxcap := 100
+		d, ok := params["cap"]
+		if ok {
+			v, e := strconv.ParseInt(d, 10, 32)
+			if nil != e {
+				log.Crashf("NewKiteQServer|INVALID|cap|%s\n", db)
+			}
+			maxcap = int(v)
+		}
+
+		//检查文件过期时间
+		checkPeriod := 1 * time.Second
+		fp, ok := params["checkPeriod"]
+		if ok {
+			v, e := strconv.ParseInt(fp, 10, 32)
+			if nil != e {
+				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
+			}
+			checkPeriod = time.Duration(v * int64(1*time.Millisecond))
+		}
+
+		kitedb = smf.NewKiteFileStore(mp[0], maxcap, checkPeriod)
+		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", mp[0], maxcap, checkPeriod.Seconds())
 	} else {
 		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}

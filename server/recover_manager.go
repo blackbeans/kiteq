@@ -44,7 +44,7 @@ func (self *RecoverManager) Start() {
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
-	log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
+	// log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
 	for !self.isClose {
 
 		//开始

@@ -20,6 +20,8 @@ func (self ChunkFlag) String() string {
 		return "NORMAL"
 	case DELETE:
 		return "DELETE"
+	case EXPIRED:
+		return "EXPIRED"
 	}
 	return ""
 }
@@ -34,6 +36,7 @@ const (
 	CHUNK_HEADER                  = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
 	NORMAL              ChunkFlag = 'n'
 	DELETE              ChunkFlag = 'd'
+	EXPIRED             ChunkFlag = 'e'
 )
 
 //消息文件
@@ -50,10 +53,24 @@ type Segment struct {
 	chunks   []*Chunk
 	isOpen   int32
 	slog     *SegmentLog //segment op log
+	latch    chan bool
+}
+
+func newSegment(path, name string, sid int64, slog *SegmentLog) *Segment {
+	return &Segment{
+		path:  path,
+		name:  name,
+		sid:   sid,
+		slog:  slog,
+		latch: make(chan bool, 1)}
 }
 
 func (self *Segment) Open() error {
 
+	defer func() {
+		<-self.latch
+	}()
+	self.latch <- true
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
 
 		//op segment log
@@ -107,6 +124,22 @@ func (self *Segment) Open() error {
 		return nil
 	}
 	return nil
+}
+
+// chunks stat
+func (self *Segment) stat() (total, normal, del, expired int32) {
+	for _, v := range self.chunks {
+		total += 1
+		switch v.flag {
+		case NORMAL:
+			normal++
+		case DELETE:
+			del++
+		case EXPIRED:
+			expired++
+		}
+	}
+	return
 }
 
 //load check
@@ -205,6 +238,23 @@ func (self *Segment) Delete(cid int64) {
 			self.wf.WriteAt([]byte{byte(DELETE)}, CHUNK_HEADER-1)
 		}
 	}
+}
+
+//expired data
+func (self *Segment) Expired(cid int64) bool {
+	idx := int(cid - self.sid)
+	// log.Debug("Segment|Expired|chunkid:%d|%s\n", cid, idx)
+	if idx < len(self.chunks) {
+		//mark delete
+		s := self.chunks[idx]
+		// log.Debug("Segment|Delete|%s", s)
+		if s.flag != EXPIRED && s.flag != DELETE {
+			s.flag = EXPIRED
+			//flush to file
+			self.wf.WriteAt([]byte{byte(EXPIRED)}, CHUNK_HEADER-1)
+		}
+	}
+	return true
 }
 
 //load normal chunks

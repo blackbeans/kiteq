@@ -75,7 +75,7 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 }
 
 //check entity need to deliver
-func (self *DeliverPreHandler) checkEntity(entity *store.MessageEntity) bool {
+func (self *DeliverPreHandler) checkValid(entity *store.MessageEntity) bool {
 	//判断个当前的header和投递次数消息有效时间是否过期
 	return entity.DeliverCount < entity.Header.GetDeliverLimit() &&
 		entity.ExpiredTime > time.Now().Unix()
@@ -95,7 +95,8 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 	}
 
 	//check entity need to deliver
-	if !self.checkEntity(entity) {
+	if !self.checkValid(entity) {
+		self.kitestore.Expired(entity.MessageId)
 		return
 	}
 

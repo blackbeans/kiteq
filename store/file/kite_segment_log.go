@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	OP_C = byte(0) //create
-	OP_U = byte(1) //update
-	OP_D = byte(2) //delete
+	OP_C = 'c' //create
+	OP_U = 'u' //update
+	OP_D = 'd' //delete
+	OP_E = 'e' //expired
 )
 
 type SegmentLog struct {
@@ -24,6 +25,13 @@ type SegmentLog struct {
 	bw     *bufio.Writer //*
 	br     *bufio.Reader //* oplog buffer
 	isOpen int32
+}
+
+func newSegmentLog(offset int64, path string) *SegmentLog {
+	return &SegmentLog{
+		offset: offset,
+		path:   path}
+
 }
 
 func (self *SegmentLog) Open() error {

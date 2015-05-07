@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	. "github.com/blackbeans/turbo/pipe"
@@ -35,6 +36,14 @@ func (self redeliveryWindows) Less(i, j int) bool {
 		self[i].maxDeliveryCount >= 0
 }
 
+func (self redeliveryWindows) String() string {
+	str := ""
+	for _, v := range self {
+		str += fmt.Sprintf("[min:%d,max:%d,sec:%d]->", v.minDeliveryCount, v.maxDeliveryCount, v.delaySeconds)
+	}
+	return str
+}
+
 //-------投递结果记录的handler
 type DeliverResultHandler struct {
 	BaseForwardHandler
@@ -64,7 +73,7 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	}()
 	//排好序
 	sort.Sort(dhandler.rw)
-	log.Info("DeliverResultHandler|RedeliveryWindows|%s\n ", dhandler.rw)
+	log.Info("RedeliveryWindows|%s\n ", dhandler.rw)
 	return dhandler
 }
 

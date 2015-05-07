@@ -142,6 +142,8 @@ func (self *KiteMysqlStore) Delete(messageId string) bool {
 	return self.AsyncDelete(messageId)
 }
 
+func (self *KiteMysqlStore) Expired(messageId string) bool { return true }
+
 var filterbody = func(colname string) bool {
 	//不需要查询body
 	return colname == "body"

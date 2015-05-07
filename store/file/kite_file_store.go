@@ -2,13 +2,13 @@ package file
 
 import (
 	"container/list"
-	_ "container/list"
 	"encoding/json"
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"strconv"
 	"sync"
+	"time"
 )
 
 //delvier tags
@@ -26,7 +26,7 @@ const (
 	CONCURRENT_LEVEL = 16
 )
 
-type FileStore struct {
+type KiteFileStore struct {
 	oplogs     []map[string] /*messageId*/ *list.Element //用于oplog的replay
 	loglink    []*list.List                              //*opBody
 	locks      []*sync.RWMutex
@@ -36,7 +36,7 @@ type FileStore struct {
 	sync.RWMutex
 }
 
-func NewFileStore(dir string, maxcap int) *FileStore {
+func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFileStore {
 
 	loglink := make([]*list.List, 0, CONCURRENT_LEVEL)
 	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)
@@ -48,26 +48,26 @@ func NewFileStore(dir string, maxcap int) *FileStore {
 		loglink = append(loglink, list.New())
 	}
 
-	kms := &FileStore{
+	kms := &KiteFileStore{
 		loglink: loglink,
 		oplogs:  oplogs,
 		locks:   locks,
 		maxcap:  maxcap / CONCURRENT_LEVEL}
 
 	kms.snapshot =
-		NewMessageStore(dir+"/snapshot/", 100, 10, func(ol *oplog) {
+		NewMessageStore(dir+"/snapshot/", 100, 10, checkPeriod, func(ol *oplog) {
 			kms.replay(ol)
 		})
 	return kms
 }
 
 //重放当前data的操作日志还原消息状态
-func (self *FileStore) replay(ol *oplog) {
+func (self *KiteFileStore) replay(ol *oplog) {
 
 	var body opBody
 	err := json.Unmarshal(ol.Body, &body)
 	if nil != err {
-		log.Error("FileStore|replay|FAIL|%s|%s", err, ol.Body)
+		log.Error("KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
 		return
 	}
 
@@ -89,7 +89,7 @@ func (self *FileStore) replay(ol *oplog) {
 
 		l.Unlock()
 
-	} else if ol.Op == OP_D {
+	} else if ol.Op == OP_D || ol.Op == OP_E {
 		//如果为删除操作直接删除已经保存的op_log
 		l.Lock()
 		e, ok := tol[ob.MessageId]
@@ -102,26 +102,26 @@ func (self *FileStore) replay(ol *oplog) {
 
 }
 
-func (self *FileStore) Start() {
-
+func (self *KiteFileStore) Start() {
 	//start snapshost
 	self.snapshot.Start()
+	log.Info("KiteFileStore|Start...")
 
 }
-func (self *FileStore) Stop() {
+func (self *KiteFileStore) Stop() {
 
 	//save queue message into snapshot
 	// self.syncToFile()
 	self.snapshot.Destory()
-	log.Info("FileStore|Stop...")
+	log.Info("KiteFileStore|Stop...")
 
 }
 
-func (self *FileStore) RecoverNum() int {
+func (self *KiteFileStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
-func (self *FileStore) Monitor() string {
+func (self *KiteFileStore) Monitor() string {
 	l := 0
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		lock, link, _ := self.hash(fmt.Sprintf("%x", i))
@@ -132,23 +132,23 @@ func (self *FileStore) Monitor() string {
 	return fmt.Sprintf("memory-length:%d\n", l)
 }
 
-func (self *FileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
-func (self *FileStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
-func (self *FileStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
+func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteFileStore) AsyncDelete(messageId string) bool      { return self.Delete(messageId) }
+func (self *KiteFileStore) AsyncCommit(messageId string) bool      { return self.Commit(messageId) }
 
 //hash get elelment
-func (self *FileStore) hash(messageid string) (l *sync.RWMutex, link *list.List, ol map[string]*list.Element) {
+func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.List, ol map[string]*list.Element) {
 	id := string(messageid[len(messageid)-1])
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
 	if nil != err {
-		log.Error("FileStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		log.Error("KiteFileStore|hash|INVALID MESSAGEID|%s\n", messageid)
 		hashId = 0
 	} else {
 		hashId = hashId % CONCURRENT_LEVEL
 	}
 
-	// log.Debug("FileStore|hash|%s|%d\n", messageid, hashId)
+	// log.Debug("KiteFileStore|hash|%s|%d\n", messageid, hashId)
 
 	//hash part
 	l = self.locks[hashId]
@@ -157,7 +157,7 @@ func (self *FileStore) hash(messageid string) (l *sync.RWMutex, link *list.List,
 	return
 }
 
-func (self *FileStore) Query(messageId string) *MessageEntity {
+func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	lock, _, el := self.hash(messageId)
 	lock.Lock()
@@ -171,7 +171,7 @@ func (self *FileStore) Query(messageId string) *MessageEntity {
 	var entity MessageEntity
 	err := self.snapshot.Query(v.Id, &entity)
 	if nil != err {
-		log.Error("MessageStore|Query|FAIL|%s", err)
+		log.Error("KiteFileStore|Query|FAIL|%s", err)
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func (self *FileStore) Query(messageId string) *MessageEntity {
 	return &entity
 }
 
-func (self *FileStore) Save(entity *MessageEntity) bool {
+func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 	lock, link, ol := self.hash(entity.MessageId)
 	if len(ol) >= self.maxcap {
@@ -195,7 +195,7 @@ func (self *FileStore) Save(entity *MessageEntity) bool {
 
 	data, err := json.Marshal(entity)
 	if nil != err {
-		log.Error("FileStore|Save|FAIL|%s", err)
+		log.Error("KiteFileStore|Save|FAIL|%s", err)
 		return false
 	}
 
@@ -226,7 +226,7 @@ func (self *FileStore) Save(entity *MessageEntity) bool {
 
 	return true
 }
-func (self *FileStore) Commit(messageId string) bool {
+func (self *KiteFileStore) Commit(messageId string) bool {
 	lock, _, ol := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
@@ -245,10 +245,10 @@ func (self *FileStore) Commit(messageId string) bool {
 	self.snapshot.Update(cmd)
 	return true
 }
-func (self *FileStore) Rollback(messageId string) bool {
+func (self *KiteFileStore) Rollback(messageId string) bool {
 	return self.Delete(messageId)
 }
-func (self *FileStore) UpdateEntity(entity *MessageEntity) bool {
+func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
 	lock, _, el := self.hash(entity.MessageId)
 	lock.Lock()
 	defer lock.Unlock()
@@ -268,7 +268,7 @@ func (self *FileStore) UpdateEntity(entity *MessageEntity) bool {
 	self.snapshot.Update(cmd)
 	return true
 }
-func (self *FileStore) Delete(messageId string) bool {
+func (self *KiteFileStore) Delete(messageId string) bool {
 	lock, link, el := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
@@ -277,7 +277,7 @@ func (self *FileStore) Delete(messageId string) bool {
 
 }
 
-func (self *FileStore) innerDelete(messageId string, link *list.List,
+func (self *KiteFileStore) innerDelete(messageId string, link *list.List,
 	el map[string]*list.Element) {
 	e, ok := el[messageId]
 	if !ok {
@@ -286,19 +286,37 @@ func (self *FileStore) innerDelete(messageId string, link *list.List,
 
 	//delete log
 	delete(el, messageId)
-	link.Remove(e)
-
-	v := e.Value.(*opBody)
+	v := link.Remove(e).(*opBody)
 
 	//delete
 	obd, _ := json.Marshal(v)
 	cmd := NewCommand(v.Id, messageId, nil, obd)
 	self.snapshot.Delete(cmd)
-	// log.Info("FileStore|innerDelete|%s\n", messageId)
+	// log.Info("KiteFileStore|innerDelete|%s\n", messageId)
+}
+
+//expired
+func (self *KiteFileStore) Expired(messageId string) bool {
+	lock, link, el := self.hash(messageId)
+	lock.Lock()
+	defer lock.Unlock()
+	e, ok := el[messageId]
+	if !ok {
+		return true
+	}
+
+	//delete log
+	delete(el, messageId)
+	v := link.Remove(e).(*opBody)
+	if nil != v {
+		c := NewCommand(v.Id, messageId, nil, nil)
+		self.snapshot.Expired(c)
+	}
+	return true
 }
 
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
-func (self *FileStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
+func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 
 	var pe []*MessageEntity
 

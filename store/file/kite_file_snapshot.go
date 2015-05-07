@@ -30,31 +30,63 @@ type MessageStore struct {
 	segcacheSize int                //segment cache size
 	segmentCache *list.List         //segment cached
 	replay       func(oplog *oplog) //oplog replay
-
+	checkPeriod  time.Duration
 	sync.RWMutex
 }
 
-func NewMessageStore(filePath string, batchSize int, segcacheSize int, replay func(oplog *oplog)) *MessageStore {
+func NewMessageStore(filePath string, batchSize int, segcacheSize int,
+	checkPeriod time.Duration, replay func(oplog *oplog)) *MessageStore {
 
 	ms := &MessageStore{
 		chunkId:      -1,
 		filePath:     filePath,
 		segments:     make(Segments, 0, 50),
 		writeChannel: make(chan *command, 10000),
-		running:      true,
 		batchSize:    batchSize,
 		segcacheSize: segcacheSize,
 		segmentCache: list.New(),
 		waitSync:     &sync.WaitGroup{},
-		replay:       replay}
+		replay:       replay,
+		checkPeriod:  checkPeriod}
 
 	return ms
 }
 
 func (self *MessageStore) Start() {
+	self.running = true
 	self.load()
 	go self.sync()
+	go self.evict()
 	self.waitSync.Add(1)
+}
+
+//
+func (self *MessageStore) evict() {
+	//delete segment  if all chunks are deleted
+
+	for self.running {
+		time.Sleep(self.checkPeriod)
+		stat := ""
+		//check cache segment
+		for e := self.segmentCache.Back(); nil != e; e = e.Prev() {
+			if nil != e {
+				s := e.Value.(*Segment)
+				if nil != s {
+					//try open
+					s.Open()
+					total, normal, del, expired := s.stat()
+					stat += fmt.Sprintf("|%s\t\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
+					if normal <= 0 {
+						//delete
+						go self.Remove(s.sid)
+					}
+				}
+			}
+		}
+		if len(stat) > 0 {
+			log.Info("---------------MessageStore-Stat--------------\n|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", stat)
+		}
+	}
 }
 
 func (self *MessageStore) load() {
@@ -94,24 +126,16 @@ func (self *MessageStore) load() {
 		}
 
 		//segment log
-		sl := &SegmentLog{
-			offset: 0,
-			path:   logpath,
-		}
+		sl := newSegmentLog(0, logpath)
 
 		// create segment
-		seg := &Segment{
-			path: path,
-			name: f.Name(),
-			sid:  sid,
-			slog: sl}
-		return seg
+		return newSegment(path, f.Name(), sid, sl)
 	}
 
 	//fetch all Segment
 	filepath.Walk(self.filePath, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
 
+		if nil != f && !f.IsDir() {
 			split := strings.SplitN(f.Name(), ".", 2)
 			suffix := split[1]
 			//is data file or logfile
@@ -172,31 +196,6 @@ func (self *MessageStore) recoverSnapshot() {
 		}
 
 	}
-}
-
-// query head data
-func (self *MessageStore) Head() (int64, []*Chunk) {
-	self.RLock()
-	defer self.RUnlock()
-	var first *Segment
-	if len(self.segments) > 0 {
-		first = self.segments[0]
-		//check cid in cache
-		for e := self.segmentCache.Front(); nil != e; e = e.Next() {
-			s := e.Value.(*Segment)
-			if s.sid == first.sid {
-				return first.sid, s.LoadChunks()
-			}
-		}
-
-		//not in cache load into cache
-		self.loadSegment(0)
-		return first.sid, first.LoadChunks()
-
-	}
-
-	return -1, nil
-
 }
 
 //query one chunk by  chunkid
@@ -303,6 +302,22 @@ func (self *MessageStore) Delete(c *command) {
 	}
 }
 
+//mark data expired
+func (self *MessageStore) Expired(c *command) {
+	s := self.indexSegment(c.id)
+	if nil != s {
+
+		//append oplog logic delete
+		ol := newOplog(OP_E, c.logicId, c.id, c.opbody)
+		s.slog.Append(ol)
+		//mark data expired
+		s.Expired(c.id)
+
+	} else {
+		// log.Debug("MessageStore|Expired|chunkid:%d|%s\n", cid, s)
+	}
+}
+
 type command struct {
 	id      int64
 	logicId string
@@ -327,7 +342,6 @@ func (self *MessageStore) Append(cmd *command) int64 {
 		self.writeChannel <- cmd
 		return cmd.id
 	} else {
-		close(self.writeChannel)
 		return -1
 	}
 
@@ -339,7 +353,6 @@ func (self *MessageStore) sync() {
 	batchOPLogs := make([]*oplog, 0, self.batchSize)
 
 	var cmd *command
-
 	lastSeg := self.checkRoll()
 	ticker := time.NewTicker(500 * time.Millisecond)
 	for self.running {
@@ -406,30 +419,34 @@ outter:
 				batch = append(batch, chunk)
 				ol := newOplog(OP_C, c.logicId, c.id, c.opbody)
 				batchOPLogs = append(batchOPLogs, ol)
+			} else {
+				//channel close
+				break outter
 			}
 
 		default:
-
-			if len(batch) > 0 {
-				//complete
-				err := lastSeg.slog.BatchAppend(batchOPLogs)
-				if nil != err {
-					log.Error("MessageStore|AppendLog|FAIL|%s\n", err)
-				} else {
-
-					err := lastSeg.Append(batch)
-					if nil != err {
-						log.Error("MessageStore|Append|FAIL|%s\n", err)
-					}
-				}
-				batch = batch[:0]
-				batchOPLogs = batchOPLogs[:0]
-
-			}
 			break outter
 		}
 
 	}
+
+	if len(batch) > 0 {
+		//complete
+		err := lastSeg.slog.BatchAppend(batchOPLogs)
+		if nil != err {
+			log.Error("MessageStore|AppendLog|FAIL|%s\n", err)
+		} else {
+
+			err := lastSeg.Append(batch)
+			if nil != err {
+				log.Error("MessageStore|Append|FAIL|%s\n", err)
+			}
+		}
+		batch = batch[:0]
+		batchOPLogs = batchOPLogs[:0]
+
+	}
+
 	ticker.Stop()
 	self.waitSync.Done()
 	log.Info("MessageStore|SYNC|CLOSE...")
@@ -487,13 +504,7 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 		offset: 0,
 		path:   self.filePath + logname}
 
-	news := &Segment{
-		slog:     sl,
-		path:     self.filePath + name,
-		name:     name,
-		sid:      nextStart,
-		offset:   0,
-		byteSize: 0}
+	news := newSegment(self.filePath+name, name, nextStart, sl)
 
 	err := news.Open()
 	if nil != err {
@@ -530,6 +541,7 @@ func (self *MessageStore) Remove(sid int64) {
 
 func (self *MessageStore) Destory() {
 	self.running = false
+	close(self.writeChannel)
 	self.waitSync.Wait()
 	//close all segment
 	for _, s := range self.segments {
@@ -538,7 +550,6 @@ func (self *MessageStore) Destory() {
 			log.Error("MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
 		}
 	}
-
 	self.baseDir.Close()
 	log.Info("MessageStore|Destory...")
 

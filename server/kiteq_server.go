@@ -31,6 +31,7 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 	kitedb := parseDB(kc)
+	kitedb.Start()
 
 	kiteqName, _ := os.Hostname()
 
