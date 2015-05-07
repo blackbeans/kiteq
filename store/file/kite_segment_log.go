@@ -5,6 +5,7 @@ import (
 	_ "encoding/binary"
 	"encoding/json"
 	log "github.com/blackbeans/log4go"
+	"io"
 	"os"
 	"sync/atomic"
 	"time"
@@ -109,13 +110,19 @@ func (self *SegmentLog) BatchAppend(logs []*oplog) error {
 	for _, l := range logs {
 		buff = append(buff, l.marshal()...)
 	}
-
-	l, err := self.bw.Write(buff)
-	if nil != err || l != len(buff) {
-		log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(buff))
-		return err
+	tmp := buff
+	for {
+		l, err := self.bw.Write(tmp)
+		if nil != err && err != io.ErrShortWrite {
+			log.Error("SegmentLog|BatchAppend|FAIL|%s|%d/%d", err, l, len(tmp))
+			return err
+		} else if nil == err {
+			break
+		} else {
+			self.bw.Reset(self.wf)
+		}
+		tmp = tmp[l:]
 	}
-	self.bw.Flush()
 
 	//increase offset
 	atomic.AddInt64(&self.offset, int64(len(buff)))
@@ -124,11 +131,19 @@ func (self *SegmentLog) BatchAppend(logs []*oplog) error {
 
 //apend data
 func (self *SegmentLog) Append(ol *oplog) error {
-
-	l, err := self.bw.Write(ol.marshal())
-	if nil != err {
-		log.Error("SegmentLog|Append|FAIL|%s|%d", err, l)
-		return err
+	buff := ol.marshal()
+	tmp := buff
+	for {
+		l, err := self.bw.Write(tmp)
+		if nil != err && err != io.ErrShortWrite {
+			log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+			return err
+		} else if nil == err {
+			break
+		} else {
+			self.bw.Reset(self.wf)
+		}
+		tmp = tmp[l:]
 	}
 	self.bw.Flush()
 

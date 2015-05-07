@@ -303,12 +303,19 @@ func (self *Segment) Append(chunks []*Chunk) error {
 		buff = append(buff, c.marshal()...)
 	}
 
-	l, err := self.bw.Write(buff)
-	if nil != err || l != len(buff) {
-		log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(buff))
-		return err
+	tmp := buff
+	for {
+		l, err := self.bw.Write(tmp)
+		if nil != err && err != io.ErrShortWrite {
+			log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+			return err
+		} else if nil == err {
+			break
+		} else {
+			self.bw.Reset(self.wf)
+		}
+		tmp = tmp[l:]
 	}
-	self.bw.Flush()
 
 	// log.Debug("Segment|Append|SUCC|%d/%d", l, len(buff))
 	//tmp cache chunk
