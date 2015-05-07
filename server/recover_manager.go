@@ -99,7 +99,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 //发起投递事件
 func (self *RecoverManager) delivery(entity *store.MessageEntity) {
 	deliver := handler.NewDeliverPreEvent(
-		entity.Header.GetMessageId(),
+		entity.MessageId,
 		entity.Header,
 		nil)
 	//会先经过pre处理器填充额外信息

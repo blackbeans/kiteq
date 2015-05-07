@@ -129,7 +129,7 @@ func (self *KiteFileStore) Monitor() string {
 		l += link.Len()
 		lock.RUnlock()
 	}
-	return fmt.Sprintf("memory-length:%d\n", l)
+	return fmt.Sprintf("message-length:%d\n", l)
 }
 
 func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
@@ -175,6 +175,7 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 		return nil
 	}
 
+	entity.Body = []byte(entity.GetBody().(string))
 	//merge data
 	entity.Commit = v.Commit
 	entity.FailGroups = v.FailGroups
@@ -221,7 +222,6 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 	//push
 	e := link.PushFront(ob)
 	ol[entity.MessageId] = e
-
 	lock.Unlock()
 
 	return true

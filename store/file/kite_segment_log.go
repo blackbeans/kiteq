@@ -73,6 +73,7 @@ func (self *SegmentLog) Open() error {
 		//buffer
 		self.br = bufio.NewReader(rf)
 		self.bw = bufio.NewWriter(wf)
+		log.Info("SegmentLog|Open|SUCC|%s", self.path)
 	}
 	return nil
 }
@@ -111,7 +112,7 @@ func (self *SegmentLog) BatchAppend(logs []*oplog) error {
 
 	l, err := self.bw.Write(buff)
 	if nil != err || l != len(buff) {
-		log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(buff))
+		log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(buff))
 		return err
 	}
 	self.bw.Flush()

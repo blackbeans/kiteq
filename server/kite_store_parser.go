@@ -92,7 +92,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
-			flushPeriod = time.Duration(v * int64(1*time.Millisecond))
+			flushPeriod = time.Duration(v * int64(flushPeriod))
 		}
 
 		maxConn := 500
@@ -179,7 +179,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
 			}
-			checkPeriod = time.Duration(v * int64(1*time.Millisecond))
+			checkPeriod = time.Duration(v * int64(checkPeriod))
 		}
 
 		kitedb = smf.NewKiteFileStore(mp[0], maxcap, checkPeriod)

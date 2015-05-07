@@ -227,7 +227,7 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
-		if s.sid <= cid && cid < (s.sid+int64(len(s.chunks))) {
+		if s.sid <= cid && cid <= s.sid+s.offset {
 			curr = s
 			break
 		}
@@ -266,14 +266,25 @@ func (self *MessageStore) loadSegment(idx int) {
 		log.Error("MessageStore|loadSegment|FAIL|%s|%s\n", err, s.name)
 		return
 	} else {
+		exsit := false
 		//pop header
-		for e := self.segmentCache.Back(); self.segmentCache.Len() > self.segcacheSize; e = e.Prev() {
-			self.segmentCache.Remove(e)
+		for e := self.segmentCache.Back(); nil != e; e = e.Prev() {
+			id := e.Value.(*Segment).sid
+			if self.segmentCache.Len() >= self.segcacheSize && id != s.sid {
+				self.segmentCache.Remove(e)
+			} else if id == s.sid {
+				exsit = true
+			}
+
 		}
-		//push to cache
-		self.segmentCache.PushFront(s)
+
+		if !exsit {
+			log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
+			//push to cache
+			self.segmentCache.PushFront(s)
+		}
 	}
-	log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
+	// log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
 }
 
 //append log
@@ -391,7 +402,7 @@ func (self *MessageStore) sync() {
 
 				err := lastSeg.Append(batch)
 				if nil != err {
-					log.Error("MessageStore|Append|FAIL|%s\n", err)
+					log.Error("MessageStore|AppendData|FAIL|%s\n", err)
 				}
 			}
 			batch = batch[:0]
