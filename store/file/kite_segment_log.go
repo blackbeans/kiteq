@@ -3,8 +3,8 @@ package file
 import (
 	"bufio"
 	"bytes"
-	_ "encoding/binary"
-	"encoding/json"
+	"encoding/binary"
+	"encoding/gob"
 	log "github.com/blackbeans/log4go"
 	"io"
 	"os"
@@ -29,10 +29,9 @@ type SegmentLog struct {
 	isOpen int32
 }
 
-func newSegmentLog(offset int64, path string) *SegmentLog {
+func newSegmentLog(path string) *SegmentLog {
 	return &SegmentLog{
-		offset: offset,
-		path:   path}
+		path: path}
 
 }
 
@@ -71,7 +70,6 @@ func (self *SegmentLog) Open() error {
 
 		self.rf = rf
 		self.wf = wf
-
 		//buffer
 		self.br = bufio.NewReader(rf)
 		self.bw = bufio.NewWriter(wf)
@@ -85,49 +83,36 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 
 	self.Open()
 	offset := 0
+
 	for {
-		line, err := self.br.ReadBytes(SEGMENT_LOG_SPLIT[0])
-		if nil != err || len(line) <= 0 {
+		var length int32
+		err := binary.Read(self.br, binary.BigEndian, &length)
+		if nil != err {
+			log.Error("SegmentLog|Replay|LEN|%s", err)
 			break
-		} else {
-			ol := &oplog{}
-			line = bytes.TrimSuffix(line, SEGMENT_LOG_SPLIT)
-			err := ol.unmarshal(line)
-			if nil != err {
-				log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s|%s", err, line)
-				continue
-			}
-			do(ol)
-			offset++
 		}
+
+		tmp := make([]byte, length-4)
+
+		err = binary.Read(self.br, binary.BigEndian, tmp)
+		if nil != err {
+			log.Error("SegmentLog|Replay|Data|%s", err)
+			break
+		}
+
+		var ol oplog
+		r := bytes.NewReader(tmp)
+		deco := gob.NewDecoder(r)
+		err = deco.Decode(&ol)
+		if nil != err {
+			log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s", err)
+			continue
+		}
+		do(&ol)
+		offset++
+
 	}
 	self.offset = int64(offset)
-}
-
-//apend data
-func (self *SegmentLog) BatchAppend(logs []*oplog) error {
-
-	buff := make([]byte, 0, 2*1024)
-	for _, l := range logs {
-		buff = append(buff, l.marshal()...)
-	}
-	tmp := buff
-	for {
-		l, err := self.bw.Write(tmp)
-		if nil != err && err != io.ErrShortWrite {
-			log.Error("SegmentLog|BatchAppend|FAIL|%s|%d/%d", err, l, len(tmp))
-			return err
-		} else if nil == err {
-			break
-		} else {
-			self.bw.Reset(self.wf)
-		}
-		tmp = tmp[l:]
-	}
-
-	//increase offset
-	atomic.AddInt64(&self.offset, int64(len(buff)))
-	return nil
 }
 
 //apend data
@@ -186,7 +171,7 @@ type oplog struct {
 	Op      byte   `json:"op"`
 	ChunkId int64  `json:"chunk_id"`
 	LogicId string `json:"logic_id"`
-	Body    string `json:"body"`
+	Body    []byte `json:"body"`
 }
 
 func newOplog(op byte, logicId string, chunkid int64, body []byte) *oplog {
@@ -195,21 +180,30 @@ func newOplog(op byte, logicId string, chunkid int64, body []byte) *oplog {
 		Op:      op,
 		ChunkId: chunkid,
 		LogicId: logicId,
-		Body:    string(body)}
+		Body:    body}
 }
 
 //marshal oplog
 func (self *oplog) marshal() []byte {
-	d, err := json.Marshal(self)
+
+	buff := new(bytes.Buffer)
+
+	binary.Write(buff, binary.BigEndian, int32(0))
+	encoder := gob.NewEncoder(buff)
+	err := encoder.Encode(self)
 	if nil != err {
 		log.Error("oplog|marshal|fail|%s|%s", err, self)
 		return nil
 	}
-	return append(d, SEGMENT_LOG_SPLIT...)
+	b := buff.Bytes()
+	binary.BigEndian.PutUint32(b, uint32(buff.Len()))
+	return b
 }
 
 //unmarshal data
 func (self *oplog) unmarshal(data []byte) error {
-	return json.Unmarshal(data, self)
+	r := bytes.NewReader(data)
+	dec := gob.NewDecoder(r)
+	return dec.Decode(self)
 
 }

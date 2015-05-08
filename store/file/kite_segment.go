@@ -28,7 +28,7 @@ func (self ChunkFlag) String() string {
 	return ""
 }
 
-var SEGMENT_LOG_SPLIT = []byte{'\n'}
+var SEGMENT_LOG_SPLIT = []byte{'\r', '\n'}
 
 const (
 	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
@@ -82,9 +82,6 @@ func (self *Segment) Open() error {
 	self.latch <- true
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
 
-		//op segment log
-		self.slog.Open()
-
 		// log.Info("Segment|Open|BEGIN|%s|%s", self.path, self.name)
 		var rf *os.File
 		var wf *os.File
@@ -124,12 +121,14 @@ func (self *Segment) Open() error {
 
 		//buffer
 		self.br = bufio.NewReader(rf)
-		self.bw = bufio.NewWriter(wf)
-
 		//load
 		self.loadCheck()
-
+		// //seek
+		// self.wf.Seek(self.offset, 0)
+		self.bw = bufio.NewWriter(wf)
 		log.Info("Segment|Open|SUCC|%s", self.name)
+		//op segment log
+		self.slog.Open()
 		return nil
 	}
 	return nil
@@ -164,14 +163,14 @@ func (self *Segment) loadCheck() {
 		hl, err := io.ReadFull(self.br, header)
 		if nil != err {
 			if io.EOF != err {
-				log.Error("Segment|Load Segment|Read Header|FAIL|%s|%s\n", err, self.name)
+				log.Error("Segment|Load Segment|Read Header|FAIL|%s|%s", err, self.name)
 				continue
 			}
 			break
 		}
 
 		if hl <= 0 || hl < CHUNK_HEADER {
-			log.Error("Segment|Load Segment|Read Header|FAIL|%s|%d\n", self.name, hl)
+			log.Error("Segment|Load Segment|Read Header|FAIL|%s|%d", self.name, hl)
 			break
 		}
 
@@ -181,7 +180,7 @@ func (self *Segment) loadCheck() {
 		al := offset + int64(length)
 		//checklength
 		if al > fi.Size() {
-			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d\n", self.name, al, fi.Size(), self.offset, length)
+			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d", self.name, al, fi.Size(), self.offset, length)
 			break
 		}
 
@@ -193,14 +192,14 @@ func (self *Segment) loadCheck() {
 		data := make([]byte, l)
 		dl, err := io.ReadFull(self.br, data)
 		if nil != err || dl < int(l) {
-			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d\n", err, self.name, l, dl)
+			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d", err, self.name, l, dl)
 			break
 		}
 
 		csum := crc32.ChecksumIEEE(data)
 		//checkdata
 		if csum != checksum {
-			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d/%d\n", self.name, csum, checksum)
+			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d/%d", self.name, csum, checksum)
 			break
 		}
 
@@ -226,6 +225,7 @@ func (self *Segment) loadCheck() {
 			data:     data}
 
 		self.chunks = append(self.chunks, chunk)
+		log.Error("Segment|Load Chunk|%s|%d", self.name, chunkId)
 
 	}
 
@@ -266,20 +266,6 @@ func (self *Segment) Expired(cid int64) bool {
 	return true
 }
 
-//load normal chunks
-func (self *Segment) LoadChunks() []*Chunk {
-	var chunks []*Chunk
-	for _, c := range self.chunks {
-		if c.flag == NORMAL {
-			if nil == chunks {
-				chunks = make([]*Chunk, 0, len(self.chunks))
-			}
-			chunks = append(chunks, c)
-		}
-	}
-	return chunks
-}
-
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
 	// log.Debug("Segment|Get|%d\n", len(self.chunks))
@@ -300,6 +286,7 @@ func (self *Segment) Get(cid int64) *Chunk {
 		}
 		return self.chunks[idx]
 	} else {
+		log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
 		return nil
 	}
 }
