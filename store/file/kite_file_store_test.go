@@ -15,7 +15,7 @@ func TestFileStoreQuery(t *testing.T) {
 	fs := NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -37,7 +37,7 @@ func TestFileStoreQuery(t *testing.T) {
 		}
 	}
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
 		entity := fs.Query(id)
 		if nil == entity {
@@ -56,7 +56,7 @@ func TestFileStoreCommit(t *testing.T) {
 	fs := NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -79,7 +79,7 @@ func TestFileStoreCommit(t *testing.T) {
 	}
 
 	//commit and check
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
 		fs.Commit(id)
 
@@ -100,7 +100,7 @@ func TestFileStoreUpdate(t *testing.T) {
 	fs := NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -123,7 +123,7 @@ func TestFileStoreUpdate(t *testing.T) {
 	}
 
 	//commit and check
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
 
 		//创建消息
@@ -157,7 +157,7 @@ func TestFileStoreDelete(t *testing.T) {
 	fs := NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -180,7 +180,7 @@ func TestFileStoreDelete(t *testing.T) {
 	}
 
 	//commit and check
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
 
 		//delete
@@ -202,7 +202,7 @@ func TestFileStoreInit(t *testing.T) {
 	fs := NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
@@ -230,7 +230,7 @@ func TestFileStoreInit(t *testing.T) {
 	fs.Start()
 
 	//commit and check
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
 
 		//check entity

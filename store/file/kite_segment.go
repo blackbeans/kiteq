@@ -37,27 +37,30 @@ const (
 	SEGMENT_LOG_SUFFIX  = ".log"
 	SEGMENT_DATA_SUFFIX = ".data"
 
-	CHUNK_HEADER           = 4 + 4 + 8 + 1 //|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
-	NORMAL       ChunkFlag = 'n'
-	DELETE       ChunkFlag = 'd'
-	EXPIRED      ChunkFlag = 'e'
+	CHUNK_HEADER = 4 + 4 + 8 //|length 4byte|checksum 4byte|id 8byte|data variant|
+
+	//chunk flag
+	NORMAL  ChunkFlag = 'n'
+	DELETE  ChunkFlag = 'd'
+	EXPIRED ChunkFlag = 'e'
 )
 
 //消息文件
 type Segment struct {
-	path     string
-	name     string //basename_0000000000
-	rf       *os.File
-	wf       *os.File
-	bw       *bufio.Writer //
-	br       *bufio.Reader // data buffer
-	sid      int64         //segment id
-	offset   int64         //segment current offset
-	byteSize int32         //segment size
-	chunks   []*Chunk
-	isOpen   int32
-	slog     *SegmentLog //segment op log
-	latch    chan bool
+	path                        string
+	name                        string //basename_0000000000
+	rf                          *os.File
+	wf                          *os.File
+	bw                          *bufio.Writer //
+	br                          *bufio.Reader // data buffer
+	sid                         int64         //segment id
+	offset                      int64         //segment current offset
+	byteSize                    int32         //segment size
+	chunks                      []*Chunk
+	isOpen                      int32
+	slog                        *SegmentLog //segment op log
+	latch                       chan bool
+	total, normal, del, expired int32 //stat
 	sync.RWMutex
 }
 
@@ -74,7 +77,7 @@ func (self *Segment) String() string {
 	return fmt.Sprintf("Segment[%s,%d]", self.name, self.sid)
 }
 
-func (self *Segment) Open() error {
+func (self *Segment) Open(do func(ol *oplog)) error {
 
 	defer func() {
 		<-self.latch
@@ -129,6 +132,8 @@ func (self *Segment) Open() error {
 		log.Info("Segment|Open|SUCC|%s", self.name)
 		//op segment log
 		self.slog.Open()
+		//recover segment
+		self.Recover(do)
 		return nil
 	}
 	return nil
@@ -136,18 +141,7 @@ func (self *Segment) Open() error {
 
 // chunks stat
 func (self *Segment) stat() (total, normal, del, expired int32) {
-	for _, v := range self.chunks {
-		total += 1
-		switch v.flag {
-		case NORMAL:
-			normal++
-		case DELETE:
-			del++
-		case EXPIRED:
-			expired++
-		}
-	}
-	return
+	return self.total, self.normal, self.del, self.expired
 }
 
 //load check
@@ -158,6 +152,7 @@ func (self *Segment) loadCheck() {
 	fi, _ := self.rf.Stat()
 	offset := int64(0)
 	byteSize := int32(0)
+	data := make([]byte, 16*1024)
 	for {
 
 		hl, err := io.ReadFull(self.br, header)
@@ -189,27 +184,28 @@ func (self *Segment) loadCheck() {
 
 		//read data
 		l := length - CHUNK_HEADER
-		data := make([]byte, l)
+
+		if int(l) > cap(data) {
+			data = make([]byte, int(l))
+		}
+
 		dl, err := io.ReadFull(self.br, data)
 		if nil != err || dl < int(l) {
 			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d", err, self.name, l, dl)
 			break
 		}
 
+		//read chunkid
+		chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
+
 		csum := crc32.ChecksumIEEE(data)
 		//checkdata
 		if csum != checksum {
-			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d/%d", self.name, csum, checksum)
+			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d|%d/%d", self.name, chunkId, csum, checksum)
 			break
 		}
 
 		offset += int64(length)
-
-		//read chunkid
-		chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
-
-		//flag
-		flag := header[16]
 
 		//add byteSize
 		byteSize += int32(length)
@@ -221,21 +217,48 @@ func (self *Segment) loadCheck() {
 			checksum: checksum,
 			id:       chunkId,
 			sid:      self.sid,
-			flag:     ChunkFlag(flag),
 			data:     data}
 
 		self.chunks = append(self.chunks, chunk)
-		log.Error("Segment|Load Chunk|%s|%d", self.name, chunkId)
-
+		// log.Debug("Segment|Load Chunk|%s|%d|%s", self.name, chunkId, ChunkFlag(flag))
 	}
 
-	self.offset = offset
 	self.byteSize = byteSize
-
+	self.offset = offset
 }
 
+//recover message status
+func (self *Segment) Recover(do func(ol *oplog)) {
+
+	//reset stat
+	self.total = int32(0)
+	self.normal = int32(0)
+	self.del = int32(0)
+	self.expired = int32(0)
+	//replay
+	self.slog.Replay(func(ol *oplog) {
+		switch ol.Op {
+		//create
+		case OP_C:
+			self.total++
+			self.normal++
+		case OP_E:
+			//expired
+			self.Expired(ol.ChunkId)
+		case OP_U:
+			//ignore
+		case OP_D:
+			self.Delete(ol.ChunkId)
+		}
+	})
+}
+
+//delete chunk
 func (self *Segment) Delete(cid int64) {
-	idx := int(cid - self.sid)
+	idx := sort.Search(len(self.chunks), func(i int) bool {
+		// log.Debug("Segment|Get|%d|%d\n", i, cid)
+		return self.chunks[i].id >= cid
+	})
 	// log.Debug("Segment|Delete|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
@@ -244,14 +267,18 @@ func (self *Segment) Delete(cid int64) {
 		if s.flag != DELETE {
 			s.flag = DELETE
 			//flush to file
-			self.wf.WriteAt([]byte{byte(DELETE)}, CHUNK_HEADER-1)
+			self.del += 1
+			self.normal += -1
 		}
 	}
 }
 
 //expired data
 func (self *Segment) Expired(cid int64) bool {
-	idx := int(cid - self.sid)
+	idx := sort.Search(len(self.chunks), func(i int) bool {
+		// log.Debug("Segment|Get|%d|%d\n", i, cid)
+		return self.chunks[i].id >= cid
+	})
 	// log.Debug("Segment|Expired|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
@@ -260,7 +287,8 @@ func (self *Segment) Expired(cid int64) bool {
 		if s.flag != EXPIRED && s.flag != DELETE {
 			s.flag = EXPIRED
 			//flush to file
-			self.wf.WriteAt([]byte{byte(EXPIRED)}, CHUNK_HEADER-1)
+			self.expired += 1
+			self.normal += -1
 		}
 	}
 	return true
@@ -294,26 +322,30 @@ func (self *Segment) Get(cid int64) *Chunk {
 //apend data
 func (self *Segment) Append(chunks []*Chunk) error {
 
-	buff := make([]byte, 0, 2*1024)
+	length := int64(0)
+	//seek to end
+	// self.wf.Seek(self.offset, 0)
 	for _, c := range chunks {
 		c.sid = self.sid
-		buff = append(buff, c.marshal()...)
-	}
-
-	tmp := buff
-	for {
-		l, err := self.bw.Write(tmp)
-		if nil != err && err != io.ErrShortWrite {
-			log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
-			return err
-		} else if nil == err {
-			break
-		} else {
-			self.bw.Reset(self.wf)
+		c.offset = self.offset + length
+		tmp := c.marshal()
+		for {
+			l, err := self.bw.Write(tmp)
+			if nil != err && err != io.ErrShortWrite {
+				log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+				return err
+			} else if nil == err {
+				break
+			} else {
+				self.bw.Reset(self.wf)
+			}
+			tmp = tmp[l:]
+			length += int64(l)
 		}
-		tmp = tmp[l:]
 	}
 
+	//flush
+	self.bw.Flush()
 	// log.Debug("Segment|Append|SUCC|%d/%d", l, len(buff))
 	//tmp cache chunk
 	if nil == self.chunks {
@@ -322,8 +354,10 @@ func (self *Segment) Append(chunks []*Chunk) error {
 	self.chunks = append(self.chunks, chunks...)
 
 	//move offset
-	self.offset += int64(len(buff))
-	self.byteSize += int32(len(buff))
+	self.offset += int64(length)
+	self.byteSize += int32(length)
+	self.normal += int32(len(chunks))
+	self.total += int32(len(chunks))
 	return nil
 }
 
@@ -370,10 +404,10 @@ type Chunk struct {
 	offset   int64
 	length   int32
 	checksum uint32
-	flag     ChunkFlag //chunk状态
 	id       int64
 	sid      int64
 	data     []byte // data
+	flag     ChunkFlag
 }
 
 func (self *Chunk) marshal() []byte {
@@ -383,8 +417,7 @@ func (self *Chunk) marshal() []byte {
 	binary.BigEndian.PutUint32(buff[0:4], uint32(self.length))
 	binary.BigEndian.PutUint32(buff[4:8], self.checksum)
 	binary.BigEndian.PutUint64(buff[8:16], uint64(self.id))
-	buff[16] = uint8(self.flag)
-	copy(buff[17:], self.data)
+	copy(buff[16:], self.data)
 
 	return buff
 }

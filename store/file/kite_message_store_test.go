@@ -11,7 +11,31 @@ import (
 )
 
 func traverse(oplog *oplog) {
-	log.Printf("------%d", oplog.ChunkId)
+	log.Printf("------%s", oplog)
+}
+
+func TestSingle(t *testing.T) {
+	cleanSnapshot("./snapshot/")
+	snapshot := NewMessageStore("./snapshot/", 1, 10, 60*time.Second, traverse)
+	snapshot.Start()
+
+	for i := 0; i < 2; i++ {
+		cmd := NewCommand(-1, fmt.Sprintln(i), []byte{0}, []byte{1})
+		snapshot.Append(cmd)
+	}
+
+	log.Printf("snapshot|%s", snapshot)
+
+	for i := 0; i < 2; i++ {
+		snapshot.Delete(NewCommand(int64(i), fmt.Sprintln(i), []byte{0}, []byte{1}))
+	}
+	time.Sleep(2 * time.Second)
+	snapshot.Destory()
+
+	snapshot = NewMessageStore("./snapshot/", 1, 10, 60*time.Second, traverse)
+	snapshot.Start()
+
+	cleanSnapshot("./snapshot/")
 }
 
 func TestAppend(t *testing.T) {
@@ -23,7 +47,7 @@ func TestAppend(t *testing.T) {
 	last := 0
 
 	go func() {
-		for ; i < 1000000; i++ {
+		for ; i < 20; i++ {
 			cmd := NewCommand(-1, fmt.Sprint(i), []byte(fmt.Sprintf("hello snapshot|%d", i)), nil)
 			snapshot.Append(cmd)
 		}
@@ -38,7 +62,7 @@ func TestAppend(t *testing.T) {
 	time.Sleep(10 * time.Second)
 	log.Printf("snapshot|%s", snapshot)
 
-	if snapshot.chunkId != 1000000-1 {
+	if snapshot.chunkId != 20-1 {
 		t.Fail()
 	}
 	snapshot.Destory()
@@ -65,10 +89,11 @@ func TestDelete(t *testing.T) {
 		d := []byte(fmt.Sprint(j))
 		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
 		snapshot.Append(cmd)
+		cmd.Wait()
 	}
 	snapshot.Destory()
 
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 
 	log.Printf("TestDelete|Append|Complete...")
 	// //reload
@@ -123,7 +148,7 @@ func TestQuery(t *testing.T) {
 	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	var data [512]byte
-	for j := 0; j < 1000000; j++ {
+	for j := 0; j < 20; j++ {
 		d := append(data[:512], []byte{
 			byte((j >> 24) & 0xFF),
 			byte((j >> 16) & 0xFF),
@@ -154,8 +179,8 @@ func TestQuery(t *testing.T) {
 	}()
 
 	d := ""
-	for ; i < 5000000; i++ {
-		id := int64(rand.Intn(100000))
+	for ; i < 20; i++ {
+		id := int64(rand.Intn(20))
 
 		err := snapshot.Query(id, &d)
 		if nil != err {
@@ -169,9 +194,9 @@ func TestQuery(t *testing.T) {
 		}
 	}
 
-	err := snapshot.Query(94921, &d)
+	err := snapshot.Query(19, &d)
 	if nil != err {
-		log.Printf("Query|%s|%d\n", err, 94921)
+		log.Printf("Query|%s|%d\n", err, 19)
 		t.Fail()
 
 	}
@@ -197,7 +222,7 @@ func BenchmarkDelete(t *testing.B) {
 	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 
-	for j := 0; j < 1000000; j++ {
+	for j := 0; j < 20; j++ {
 		d := []byte(fmt.Sprintf("%d|hello snapshot", j))
 		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
 		snapshot.Append(cmd)
@@ -208,7 +233,7 @@ func BenchmarkDelete(t *testing.B) {
 
 	i := 0
 	for ; i < t.N; i++ {
-		id := int64(rand.Intn(1000000))
+		id := int64(rand.Intn(20))
 		cmd := NewCommand(id, "", nil, nil)
 		snapshot.Delete(cmd)
 
@@ -228,7 +253,7 @@ func BenchmarkQuery(t *testing.B) {
 	cleanSnapshot("./snapshot/")
 	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
-	for j := 0; j < 10000; j++ {
+	for j := 0; j < 20; j++ {
 		d := []byte(fmt.Sprintf("%d|hello snapshot", j))
 		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
 		snapshot.Append(cmd)
@@ -239,7 +264,7 @@ func BenchmarkQuery(t *testing.B) {
 
 	i := 0
 	for ; i < t.N; i++ {
-		id := int64(rand.Intn(100)) + 1
+		id := int64(rand.Intn(20)) + 1
 		var a string
 		err := snapshot.Query(id, &a)
 		if nil != err {

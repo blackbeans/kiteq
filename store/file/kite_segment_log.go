@@ -82,15 +82,21 @@ func (self *SegmentLog) Open() error {
 func (self *SegmentLog) Replay(do func(l *oplog)) {
 
 	self.Open()
-	offset := 0
+	offset := int64(0)
 
 	for {
 		var length int32
+
 		err := binary.Read(self.br, binary.BigEndian, &length)
 		if nil != err {
-			log.Error("SegmentLog|Replay|LEN|%s", err)
-			break
+			if err == io.EOF {
+				break
+			}
+			log.Warn("SegmentLog|Replay|LEN|%s|Skip...", err)
+			continue
 		}
+
+		// log.Debug("SegmentLog|Replay|LEN|%d", length)
 
 		tmp := make([]byte, length-4)
 
@@ -108,8 +114,10 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 			log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s", err)
 			continue
 		}
+		// log.Error("SegmentLog|Replay|oplog|%s", ol)
 		do(&ol)
-		offset++
+		//line
+		offset += int64(length)
 
 	}
 	self.offset = int64(offset)
@@ -134,7 +142,7 @@ func (self *SegmentLog) Append(ol *oplog) error {
 	self.bw.Flush()
 
 	//line
-	atomic.AddInt64(&self.offset, 1)
+	atomic.AddInt64(&self.offset, int64(len(buff)))
 	return nil
 }
 

@@ -1,7 +1,9 @@
 package file
 
 import (
+	"bytes"
 	"container/list"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	log "github.com/blackbeans/log4go"
@@ -65,7 +67,8 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 func (self *KiteFileStore) replay(ol *oplog) {
 
 	var body opBody
-	err := json.Unmarshal([]byte(ol.Body), &body)
+
+	err := json.Unmarshal(ol.Body, &body)
 	if nil != err {
 		log.Error("KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
 		return
@@ -171,11 +174,11 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 	var entity MessageEntity
 	err := self.snapshot.Query(v.Id, &entity)
 	if nil != err {
-		log.Error("KiteFileStore|Query|FAIL|%s", err)
+		// log.Error("KiteFileStore|Query|FAIL|%s", err)
 		return nil
 	}
 
-	entity.Body = []byte(entity.GetBody().(string))
+	entity.Body = entity.GetBody()
 	//merge data
 	entity.Commit = v.Commit
 	entity.FailGroups = v.FailGroups
@@ -194,9 +197,11 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		return false
 	}
 
-	data, err := json.Marshal(entity)
+	buff := new(bytes.Buffer)
+	enc := gob.NewEncoder(buff)
+	err := enc.Encode(entity)
 	if nil != err {
-		log.Error("KiteFileStore|Save|FAIL|%s", err)
+		log.Error("KiteFileStore|Save|Encode|Entity|FAIL|%s", err)
 		return false
 	}
 
@@ -209,8 +214,13 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		NextDeliverTime: entity.NextDeliverTime,
 		DeliverCount:    0}
 
-	obd, _ := json.Marshal(ob)
-	cmd := NewCommand(-1, entity.MessageId, data, obd)
+	obd, err := json.Marshal(ob)
+	if nil != err {
+		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		return false
+	}
+
+	cmd := NewCommand(-1, entity.MessageId, buff.Bytes(), obd)
 	//get lock
 
 	lock.Lock()
@@ -223,7 +233,8 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 	e := link.PushFront(ob)
 	ol[entity.MessageId] = e
 	lock.Unlock()
-
+	//wait finish
+	cmd.Wait()
 	return true
 }
 func (self *KiteFileStore) Commit(messageId string) bool {
@@ -239,8 +250,12 @@ func (self *KiteFileStore) Commit(messageId string) bool {
 	v := e.Value.(*opBody)
 	v.Commit = true
 
+	obd, err := json.Marshal(v)
+	if nil != err {
+		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		return false
+	}
 	//write oplog
-	obd, _ := json.Marshal(v)
 	cmd := NewCommand(v.Id, messageId, nil, obd)
 	self.snapshot.Update(cmd)
 	return true
@@ -262,8 +277,13 @@ func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
 	v.NextDeliverTime = entity.NextDeliverTime
 	v.SuccGroups = entity.SuccGroups
 	v.FailGroups = entity.FailGroups
+
+	obd, err := json.Marshal(v)
+	if nil != err {
+		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		return false
+	}
 	//append log
-	obd, _ := json.Marshal(v)
 	cmd := NewCommand(v.Id, entity.MessageId, nil, obd)
 	self.snapshot.Update(cmd)
 	return true
@@ -289,7 +309,12 @@ func (self *KiteFileStore) innerDelete(messageId string, link *list.List,
 	v := link.Remove(e).(*opBody)
 
 	//delete
-	obd, _ := json.Marshal(v)
+	obd, err := json.Marshal(v)
+	if nil != err {
+		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		return
+	}
+
 	cmd := NewCommand(v.Id, messageId, nil, obd)
 	self.snapshot.Delete(cmd)
 	// log.Info("KiteFileStore|innerDelete|%s\n", messageId)
