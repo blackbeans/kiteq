@@ -1,12 +1,11 @@
 package file
 
 import (
-	"bytes"
 	"container/list"
-	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	log "github.com/blackbeans/log4go"
+	"kiteq/protocol"
 	. "kiteq/store"
 	"strconv"
 	"sync"
@@ -57,7 +56,7 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 		maxcap:  maxcap / CONCURRENT_LEVEL}
 
 	kms.snapshot =
-		NewMessageStore(dir+"/snapshot/", 100, 10, checkPeriod, func(ol *oplog) {
+		NewMessageStore(dir+"/snapshot/", 100, 2, checkPeriod, func(ol *oplog) {
 			kms.replay(ol)
 		})
 	return kms
@@ -76,7 +75,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 
 	ob := &body
 	l, link, tol := self.hash(ob.MessageId)
-
+	// log.Debug("KiteFileStore|replay|%s|%s", ob, ol.Op)
 	//如果是更新或者创建，则直接反序列化
 	if ol.Op == OP_U || ol.Op == OP_C {
 		l.Lock()
@@ -101,6 +100,8 @@ func (self *KiteFileStore) replay(ol *oplog) {
 			link.Remove(e)
 		}
 		l.Unlock()
+	} else {
+		log.Error("KiteFileStore|replay|INVALID|%s|%s", ob, ol.Op)
 	}
 
 }
@@ -174,28 +175,40 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		log.Error("KiteFileStore|Query|Entity|FAIL|%s", err)
+		// log.Error("KiteFileStore|Query|Entity|FAIL|%s", err)
 		return nil
 	}
-	//unmarshal
-	var entity MessageEntity
-	r := bytes.NewReader(data)
-	dec := gob.NewDecoder(r)
-	err = dec.Decode(&entity)
+
+	var msg interface{}
+	msgType := data[0]
+	switch msgType {
+	case protocol.CMD_BYTES_MESSAGE:
+		var bms protocol.BytesMessage
+		err = protocol.UnmarshalPbMessage(data[1:], &bms)
+		msg = &bms
+	case protocol.CMD_STRING_MESSAGE:
+		var sms protocol.StringMessage
+		err = protocol.UnmarshalPbMessage(data[1:], &sms)
+		msg = &sms
+	default:
+		log.Error("KiteFileStore|Query|INVALID|MSGTYPE|%d", msgType)
+		return nil
+	}
+
 	if nil != err {
-		log.Error("KiteFileStore|Query|DECODE|Entity|FAIL|%s", err)
+		log.Error("KiteFileStore|Query|UnmarshalPbMessage|Entity|FAIL|%s", err)
 		return nil
+	} else {
+		entity := NewMessageEntity(protocol.NewQMessage(msg))
+		//merge data
+		entity.Commit = v.Commit
+		entity.FailGroups = v.FailGroups
+		entity.SuccGroups = v.SuccGroups
+		entity.NextDeliverTime = v.NextDeliverTime
+		entity.DeliverCount = v.DeliverCount
+		return entity
 	}
 
-	entity.Body = entity.GetBody()
-	//merge data
-	entity.Commit = v.Commit
-	entity.FailGroups = v.FailGroups
-	entity.SuccGroups = v.SuccGroups
-	entity.NextDeliverTime = v.NextDeliverTime
-	entity.DeliverCount = v.DeliverCount
-
-	return &entity
 }
 
 func (self *KiteFileStore) Save(entity *MessageEntity) bool {
@@ -206,13 +219,11 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		return false
 	}
 
-	buff := new(bytes.Buffer)
-	enc := gob.NewEncoder(buff)
-	err := enc.Encode(entity)
-	if nil != err {
-		log.Error("KiteFileStore|Save|Encode|Entity|FAIL|%s", err)
-		return false
-	}
+	//value
+	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
+	buff := make([]byte, len(data)+1)
+	buff[0] = entity.MsgType
+	copy(buff[1:], data)
 
 	//create oplog
 	ob := &opBody{
@@ -229,7 +240,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		return false
 	}
 
-	cmd := NewCommand(-1, entity.MessageId, buff.Bytes(), obd)
+	cmd := NewCommand(-1, entity.MessageId, buff, obd)
 	//get lock
 
 	lock.Lock()

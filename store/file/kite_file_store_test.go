@@ -115,7 +115,7 @@ func TestFileStoreUpdate(t *testing.T) {
 		msg.Body = []byte("hello world")
 
 		entity := store.NewMessageEntity(protocol.NewQMessage(msg))
-
+		// log.Printf("------------%s", entity.Header)
 		succ := fs.Save(entity)
 		if !succ {
 			t.Fail()
@@ -139,6 +139,7 @@ func TestFileStoreUpdate(t *testing.T) {
 		}
 		//check entity
 		entity := fs.Query(id)
+		// log.Printf("++++++++++++++|%s|%s", entity.Header, string(entity.GetBody().([]byte)))
 		if nil == entity {
 			t.Fail()
 		} else if !entity.Commit && entity.DeliverCount != 1 &&
@@ -148,7 +149,7 @@ func TestFileStoreUpdate(t *testing.T) {
 		}
 	}
 	fs.Stop()
-	cleanSnapshot("./snapshot/")
+	// cleanSnapshot("./snapshot/")
 }
 
 func TestFileStoreDelete(t *testing.T) {

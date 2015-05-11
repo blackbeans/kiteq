@@ -239,6 +239,9 @@ func (self *Segment) recover(do func(ol *oplog)) {
 	self.expired = int32(0)
 	//replay
 	self.slog.Replay(func(ol *oplog) {
+
+		//do callback
+		do(ol)
 		switch ol.Op {
 		//create
 		case OP_C:
@@ -252,8 +255,7 @@ func (self *Segment) recover(do func(ol *oplog)) {
 		case OP_D:
 			self.Delete(ol.ChunkId)
 		}
-		//do callback
-		do(ol)
+
 	})
 }
 
@@ -268,7 +270,7 @@ func (self *Segment) Delete(cid int64) {
 		//mark delete
 		s := self.chunks[idx]
 		// log.Debug("Segment|Delete|%s", s)
-		if s.flag != DELETE {
+		if s.flag != DELETE && s.flag != EXPIRED {
 			s.flag = DELETE
 			//flush to file
 			self.del += 1
@@ -323,7 +325,7 @@ func (self *Segment) Get(cid int64) *Chunk {
 		}
 		return c
 	} else {
-		log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
+		// log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
 		return nil
 	}
 }
@@ -344,8 +346,6 @@ func (self *Segment) loadChunk(c *Chunk) {
 func (self *Segment) Append(chunks []*Chunk) error {
 
 	length := int64(0)
-	//seek to end
-	// self.wf.Seek(self.offset, 0)
 	for _, c := range chunks {
 		c.sid = self.sid
 		c.offset = self.offset + length
@@ -360,6 +360,7 @@ func (self *Segment) Append(chunks []*Chunk) error {
 				break
 			} else {
 				self.bw.Reset(self.wf)
+				log.Error("Segment|Append|FAIL|%s", err)
 			}
 			tmp = tmp[l:]
 

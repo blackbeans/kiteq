@@ -412,6 +412,7 @@ func (self *MessageStore) Append(cmd *command) int64 {
 
 		if nil != err {
 			log.Error("MessageStore|Append-LOG|FAIL|%d", cmd.logicId)
+
 			return -1
 		}
 		cmd.Add(1)
