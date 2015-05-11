@@ -1,7 +1,6 @@
 package file
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -22,6 +21,7 @@ func TestSingle(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		cmd := NewCommand(-1, fmt.Sprintln(i), []byte{0}, []byte{1})
 		snapshot.Append(cmd)
+		cmd.Wait()
 	}
 
 	log.Printf("snapshot|%s", snapshot)
@@ -50,6 +50,7 @@ func TestAppend(t *testing.T) {
 		for ; i < 20; i++ {
 			cmd := NewCommand(-1, fmt.Sprint(i), []byte(fmt.Sprintf("hello snapshot|%d", i)), nil)
 			snapshot.Append(cmd)
+			cmd.Wait()
 		}
 		run = false
 	}()
@@ -86,10 +87,10 @@ func TestDelete(t *testing.T) {
 	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
 	for j := 0; j < 10000; j++ {
-		d := []byte(fmt.Sprint(j))
-		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
+		d := []byte(fmt.Sprintln(j))
+		cmd := NewCommand(-1, fmt.Sprintln(j), d, nil)
 		snapshot.Append(cmd)
-		cmd.Wait()
+		// log.Printf("TestDelete|Append|%d|...", j)
 	}
 	snapshot.Destory()
 
@@ -115,14 +116,15 @@ func TestDelete(t *testing.T) {
 
 	for j := 0; j < 100; j++ {
 		id := int64(j)
-		var data int32
-		err := nsnapshot.Query(id, &data)
+		var str string
+		data, err := nsnapshot.Query(id)
 		if nil != err {
 			log.Printf("TestDelete|Query|%s\n", err)
 		}
 
-		if data != int32(j) {
-			log.Printf("TestDelete|Query|FAIL|%d", data)
+		str = string(data)
+		if str != fmt.Sprintln(j) {
+			log.Printf("TestDelete|Query|FAIL|%s", str)
 			t.Fail()
 			continue
 		}
@@ -130,10 +132,10 @@ func TestDelete(t *testing.T) {
 		c := NewCommand(id, "", nil, nil)
 		nsnapshot.Delete(c)
 		i++
-		err = nsnapshot.Query(id, &data)
+		_, err = nsnapshot.Query(id)
 		if nil == err {
 			t.Fail()
-			log.Printf("TestDelete|DELETE-QUERY|FAIL|%s", data)
+			log.Printf("TestDelete|DELETE-QUERY|FAIL|%s", str)
 			continue
 		}
 	}
@@ -154,11 +156,8 @@ func TestQuery(t *testing.T) {
 			byte((j >> 16) & 0xFF),
 			byte((j >> 8) & 0xFF),
 			byte(j & 0xFF)}...)
-		v, err := json.Marshal(d)
-		if nil != err {
-			log.Printf("Query|Marshal|FAIL|%s\n", err)
-		}
-		cmd := NewCommand(-1, fmt.Sprint(j), v, nil)
+
+		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
 		snapshot.Append(cmd)
 	}
 
@@ -178,11 +177,9 @@ func TestQuery(t *testing.T) {
 
 	}()
 
-	d := ""
 	for ; i < 20; i++ {
 		id := int64(rand.Intn(20))
-
-		err := snapshot.Query(id, &d)
+		_, err := snapshot.Query(id)
 		if nil != err {
 			log.Printf("Query|%s|%d\n", err, id)
 			t.Fail()
@@ -194,14 +191,14 @@ func TestQuery(t *testing.T) {
 		}
 	}
 
-	err := snapshot.Query(19, &d)
+	_, err := snapshot.Query(19)
 	if nil != err {
 		log.Printf("Query|%s|%d\n", err, 19)
 		t.Fail()
 
 	}
 
-	err = snapshot.Query(0, &d)
+	_, err = snapshot.Query(0)
 	if nil != err {
 		log.Printf("Query|%s|%d\n", err, 0)
 		t.Fail()
@@ -265,8 +262,7 @@ func BenchmarkQuery(t *testing.B) {
 	i := 0
 	for ; i < t.N; i++ {
 		id := int64(rand.Intn(20)) + 1
-		var a string
-		err := snapshot.Query(id, &a)
+		_, err := snapshot.Query(id)
 		if nil != err {
 			log.Printf("Query|%s|%d\n", err, id)
 			t.Fail()

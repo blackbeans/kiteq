@@ -83,13 +83,17 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 
 	self.Open()
 	offset := int64(0)
+	tmp := make([]byte, 1024)
+	//seek to head
+	self.rf.Seek(0, 0)
+	self.br.Reset(self.rf)
 
 	for {
 		var length int32
-
 		err := binary.Read(self.br, binary.BigEndian, &length)
 		if nil != err {
 			if err == io.EOF {
+				self.br.Reset(self.rf)
 				break
 			}
 			log.Warn("SegmentLog|Replay|LEN|%s|Skip...", err)
@@ -98,23 +102,27 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 
 		// log.Debug("SegmentLog|Replay|LEN|%d", length)
 
-		tmp := make([]byte, length-4)
+		if int(length) > cap(tmp) {
+			grow := make([]byte, int(length)-cap(tmp))
+			tmp = append(tmp, grow...)
+		}
 
-		err = binary.Read(self.br, binary.BigEndian, tmp)
+		err = binary.Read(self.br, binary.BigEndian, tmp[:int(length)-4])
 		if nil != err {
+			self.br.Reset(self.rf)
 			log.Error("SegmentLog|Replay|Data|%s", err)
 			break
 		}
 
 		var ol oplog
-		r := bytes.NewReader(tmp)
+		r := bytes.NewReader(tmp[:int(length)-4])
 		deco := gob.NewDecoder(r)
 		err = deco.Decode(&ol)
 		if nil != err {
 			log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s", err)
 			continue
 		}
-		// log.Error("SegmentLog|Replay|oplog|%s", ol)
+		// log.Debug("SegmentLog|Replay|oplog|%s", ol)
 		do(&ol)
 		//line
 		offset += int64(length)

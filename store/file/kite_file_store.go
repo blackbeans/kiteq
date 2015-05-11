@@ -171,10 +171,19 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 	}
 
 	v := e.Value.(*opBody)
-	var entity MessageEntity
-	err := self.snapshot.Query(v.Id, &entity)
+
+	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		// log.Error("KiteFileStore|Query|FAIL|%s", err)
+		log.Error("KiteFileStore|Query|Entity|FAIL|%s", err)
+		return nil
+	}
+	//unmarshal
+	var entity MessageEntity
+	r := bytes.NewReader(data)
+	dec := gob.NewDecoder(r)
+	err = dec.Decode(&entity)
+	if nil != err {
+		log.Error("KiteFileStore|Query|DECODE|Entity|FAIL|%s", err)
 		return nil
 	}
 

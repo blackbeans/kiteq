@@ -229,6 +229,7 @@ func TestFileStoreInit(t *testing.T) {
 	fs = NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
+	time.Sleep(10 * time.Second)
 	//commit and check
 	for i := 0; i < 100; i++ {
 		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
@@ -236,9 +237,10 @@ func TestFileStoreInit(t *testing.T) {
 		//check entity
 		entity := fs.Query(id)
 		if nil == entity || !entity.Commit {
+			log.Printf("TestFileStoreInit|FAIL|%s", id)
 			t.Fail()
 		}
 	}
 	fs.Stop()
-	cleanSnapshot("./snapshot/")
+	// cleanSnapshot("./snapshot/")
 }

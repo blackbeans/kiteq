@@ -2,7 +2,6 @@ package file
 
 import (
 	"container/list"
-	"encoding/json"
 	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
@@ -104,7 +103,6 @@ func (self *MessageStore) evict() {
 		//remove segments
 		for _, s := range removeSegs {
 			//delete
-
 			self.remove(s)
 
 		}
@@ -220,7 +218,6 @@ func (self *MessageStore) load() {
 
 	//sort segments
 	sort.Sort(self.segments)
-
 	//recover snapshost
 	self.recoverSnapshot()
 
@@ -255,16 +252,17 @@ func (self *MessageStore) recoverSnapshot() {
 					self.chunkId = s.chunks[len(s.chunks)-1].id
 				}
 			}
+			log.Debug("MessageStore|recoverSnapshot|%s", s.name)
 		}
 	}
 }
 
 //query one chunk by  chunkid
-func (self *MessageStore) Query(cid int64, ins interface{}) error {
+func (self *MessageStore) Query(cid int64) ([]byte, error) {
 
 	curr := self.indexSegment(cid)
 	if nil == curr {
-		return errors.New(fmt.Sprintf("No Segement For %d", cid))
+		return nil, errors.New(fmt.Sprintf("No Segement For %d", cid))
 	}
 
 	curr.RLock()
@@ -273,14 +271,10 @@ func (self *MessageStore) Query(cid int64, ins interface{}) error {
 	c := curr.Get(cid)
 	if nil != c {
 		// log.Debug("MessageStore|QUERY|%s|%t", curr.name, c)
-		err := json.Unmarshal(c.data, ins)
-		if nil != err {
-			return err
-		}
-		return nil
+		return c.data, nil
 	}
 	// log.Debug("MessageStore|QUERY|%s", curr.name)
-	return errors.New(fmt.Sprintf("No Chunk For [%s,%d]", curr.name, cid))
+	return nil, errors.New(fmt.Sprintf("No Chunk For [%s,%d]", curr.name, cid))
 }
 
 //index segment

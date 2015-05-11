@@ -133,7 +133,7 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		//op segment log
 		self.slog.Open()
 		//recover segment
-		self.Recover(do)
+		self.recover(do)
 		return nil
 	}
 	return nil
@@ -147,15 +147,18 @@ func (self *Segment) stat() (total, normal, del, expired int32) {
 //load check
 func (self *Segment) loadCheck() {
 
-	header := make([]byte, CHUNK_HEADER)
 	chunkId := int64(0)
 	fi, _ := self.rf.Stat()
 	offset := int64(0)
 	byteSize := int32(0)
-	data := make([]byte, 16*1024)
+	buff := make([]byte, 16*1024)
+
+	//reset to header
+	self.rf.Seek(0, 0)
+	self.br.Reset(self.rf)
 	for {
 
-		hl, err := io.ReadFull(self.br, header)
+		hl, err := io.ReadFull(self.br, buff[:CHUNK_HEADER])
 		if nil != err {
 			if io.EOF != err {
 				log.Error("Segment|Load Segment|Read Header|FAIL|%s|%s", err, self.name)
@@ -164,48 +167,47 @@ func (self *Segment) loadCheck() {
 			break
 		}
 
-		if hl <= 0 || hl < CHUNK_HEADER {
+		if hl != CHUNK_HEADER {
 			log.Error("Segment|Load Segment|Read Header|FAIL|%s|%d", self.name, hl)
 			break
 		}
 
 		//length
-		length := binary.BigEndian.Uint32(header[0:4])
+		length := binary.BigEndian.Uint32(buff[0:4])
 
 		al := offset + int64(length)
 		//checklength
 		if al > fi.Size() {
-			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d", self.name, al, fi.Size(), self.offset, length)
+			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d", self.name, al, fi.Size(), offset, length)
 			break
 		}
 
 		//checksum
-		checksum := binary.BigEndian.Uint32(header[4:8])
+		checksum := binary.BigEndian.Uint32(buff[4:8])
+
+		//read chunkid
+		chunkId = int64(binary.BigEndian.Uint64(buff[8:16]))
 
 		//read data
 		l := length - CHUNK_HEADER
-
-		if int(l) > cap(data) {
-			data = make([]byte, int(l))
+		if int(l) > cap(buff[16:]) {
+			gl := int(l) - cap(buff[16:])
+			grow := make([]byte, gl)
+			buff = append(buff, grow...)
 		}
 
-		dl, err := io.ReadFull(self.br, data)
+		dl, err := io.ReadFull(self.br, buff[16:length])
 		if nil != err || dl < int(l) {
 			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d", err, self.name, l, dl)
 			break
 		}
 
-		//read chunkid
-		chunkId = int64(binary.BigEndian.Uint64(header[8:16]))
-
-		csum := crc32.ChecksumIEEE(data)
+		csum := crc32.ChecksumIEEE(buff[16:length])
 		//checkdata
 		if csum != checksum {
 			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d|%d/%d", self.name, chunkId, csum, checksum)
 			break
 		}
-
-		offset += int64(length)
 
 		//add byteSize
 		byteSize += int32(length)
@@ -216,10 +218,10 @@ func (self *Segment) loadCheck() {
 			length:   int32(length),
 			checksum: checksum,
 			id:       chunkId,
-			sid:      self.sid,
-			data:     data}
+			sid:      self.sid}
 
 		self.chunks = append(self.chunks, chunk)
+		offset += int64(length)
 		// log.Debug("Segment|Load Chunk|%s|%d|%s", self.name, chunkId, ChunkFlag(flag))
 	}
 
@@ -228,7 +230,7 @@ func (self *Segment) loadCheck() {
 }
 
 //recover message status
-func (self *Segment) Recover(do func(ol *oplog)) {
+func (self *Segment) recover(do func(ol *oplog)) {
 
 	//reset stat
 	self.total = int32(0)
@@ -250,6 +252,8 @@ func (self *Segment) Recover(do func(ol *oplog)) {
 		case OP_D:
 			self.Delete(ol.ChunkId)
 		}
+		//do callback
+		do(ol)
 	})
 }
 
@@ -312,11 +316,28 @@ func (self *Segment) Get(cid int64) *Chunk {
 			self.chunks[idx].flag == EXPIRED {
 			return nil
 		}
-		return self.chunks[idx]
+		c := self.chunks[idx]
+		//load data
+		if len(c.data) <= 0 {
+			self.loadChunk(c)
+		}
+		return c
 	} else {
 		log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
 		return nil
 	}
+}
+
+func (self *Segment) loadChunk(c *Chunk) {
+	data := make([]byte, c.length-CHUNK_HEADER)
+	//seek chunk
+	self.rf.Seek(c.offset+CHUNK_HEADER, 0)
+	dl, err := io.ReadFull(self.rf, data)
+	if nil != err || dl != cap(data) {
+		log.Error("Segment|LoadChunk|Read Data|FAIL|%s|%s|%d|%d/%d", err, self.name, c.id, c.length, dl)
+		return
+	}
+	c.data = data
 }
 
 //apend data
@@ -331,6 +352,7 @@ func (self *Segment) Append(chunks []*Chunk) error {
 		tmp := c.marshal()
 		for {
 			l, err := self.bw.Write(tmp)
+			length += int64(l)
 			if nil != err && err != io.ErrShortWrite {
 				log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
 				return err
@@ -340,7 +362,7 @@ func (self *Segment) Append(chunks []*Chunk) error {
 				self.bw.Reset(self.wf)
 			}
 			tmp = tmp[l:]
-			length += int64(l)
+
 		}
 	}
 
@@ -397,7 +419,7 @@ func (self *Segment) Close() error {
 }
 
 //----------------------------------------------------
-//|length 4byte|checksum 4byte|id 8byte|flag 1byte| data variant|
+//|length 4byte|checksum 4byte|id 8byte| data variant|
 //----------------------------------------------------
 //存储块
 type Chunk struct {
