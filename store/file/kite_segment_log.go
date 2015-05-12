@@ -41,31 +41,28 @@ func (self *SegmentLog) Open() error {
 
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
 		//file exist
-		if _, err := os.Stat(self.path); err == nil {
-			wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
+		_, err := os.Stat(self.path)
+		if err == nil {
+			_, err := os.Create(self.path)
 			if nil != err {
-				log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
+				log.Error("SegmentLog|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
+		} else if nil != err {
+			return err
+		}
 
-			rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
-			if nil != err {
-				log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
-				return err
-			}
-		} else {
-			//file not exist create file
-			wf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
-			if nil != err {
-				log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
-				return err
-			}
+		//file not exist create file
+		wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
+		if nil != err {
+			log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
+			return err
+		}
 
-			rf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR, os.ModePerm)
-			if nil != err {
-				log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
-				return err
-			}
+		rf, err = os.OpenFile(self.path, os.O_RDONLY, os.ModePerm)
+		if nil != err {
+			log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
+			return err
 		}
 
 		self.rf = rf

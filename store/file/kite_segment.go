@@ -88,40 +88,33 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		// log.Info("Segment|Open|BEGIN|%s|%s", self.path, self.name)
 		var rf *os.File
 		var wf *os.File
-
+		_, err := os.Stat(self.path)
 		//file exist
-		if _, err := os.Stat(self.path); err == nil {
-
-			wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
+		if err == nil {
+			_, err := os.Create(self.path)
 			if nil != err {
-				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.path)
+				log.Error("MemorySnapshot|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
+		} else if nil != err {
+			return err
+		}
 
-			rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
-			if nil != err {
-				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.path)
-				return err
-			}
+		//file not exist create file
+		wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
+		if nil != err {
+			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+			return err
+		}
 
-		} else {
-			//file not exist create file
-			wf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
-			if nil != err {
-				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
-				return err
-			}
-
-			rf, err = os.OpenFile(self.path, os.O_CREATE|os.O_RDWR, os.ModePerm)
-			if nil != err {
-				log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
-				return err
-			}
+		rf, err = os.OpenFile(self.path, os.O_RDONLY, os.ModePerm)
+		if nil != err {
+			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+			return err
 		}
 
 		self.rf = rf
 		self.wf = wf
-
 		//buffer
 		self.br = bufio.NewReader(rf)
 		//load
