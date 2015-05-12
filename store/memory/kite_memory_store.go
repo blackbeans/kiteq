@@ -103,14 +103,15 @@ func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := dl.Len()
 	if cl >= self.maxcap {
-		log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
-		return false
+		// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		//淘汰最旧的数据
+		back := dl.Back()
+		b := dl.Remove(back).(*MessageEntity)
+		delete(el, b.MessageId)
 
-	} else {
-		front := dl.PushFront(entity)
-		el[entity.MessageId] = front
 	}
-
+	front := dl.PushFront(entity)
+	el[entity.MessageId] = front
 	return true
 }
 func (self *KiteMemoryStore) Commit(messageId string) bool {
