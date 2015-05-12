@@ -47,30 +47,27 @@ const (
 
 //消息文件
 type Segment struct {
-	path                        string
-	name                        string //basename_0000000000
-	rf                          *os.File
-	wf                          *os.File
-	bw                          *bufio.Writer //
-	br                          *bufio.Reader // data buffer
-	sid                         int64         //segment id
-	offset                      int64         //segment current offset
-	byteSize                    int32         //segment size
-	chunks                      []*Chunk
-	isOpen                      int32
-	slog                        *SegmentLog //segment op log
-	latch                       chan bool
-	total, normal, del, expired int32 //stat
+	path     string
+	name     string //basename_0000000000
+	rf       *os.File
+	wf       *os.File
+	bw       *bufio.Writer //
+	br       *bufio.Reader // data buffer
+	sid      int64         //segment id
+	offset   int64         //segment current offset
+	byteSize int32         //segment size
+	chunks   []*Chunk
+	isOpen   int32
+	slog     *SegmentLog //segment op log
 	sync.RWMutex
 }
 
 func newSegment(path, name string, sid int64, slog *SegmentLog) *Segment {
 	return &Segment{
-		path:  path,
-		name:  name,
-		sid:   sid,
-		slog:  slog,
-		latch: make(chan bool, 1)}
+		path: path,
+		name: name,
+		sid:  sid,
+		slog: slog}
 }
 
 func (self *Segment) String() string {
@@ -79,10 +76,8 @@ func (self *Segment) String() string {
 
 func (self *Segment) Open(do func(ol *oplog)) error {
 
-	defer func() {
-		<-self.latch
-	}()
-	self.latch <- true
+	self.Lock()
+	defer self.Unlock()
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
 
 		// log.Info("Segment|Open|BEGIN|%s|%s", self.path, self.name)
@@ -90,26 +85,24 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		var wf *os.File
 		_, err := os.Stat(self.path)
 		//file exist
-		if err == nil {
+		if os.IsNotExist(err) {
 			_, err := os.Create(self.path)
 			if nil != err {
-				log.Error("MemorySnapshot|Create|FAIL|%s|%s", err, self.path)
+				log.Error("Segment|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
-		} else if nil != err {
-			return err
 		}
 
 		//file not exist create file
 		wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
 		if nil != err {
-			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+			log.Error("Segment|Open|FAIL|%s|%s", err, self.name)
 			return err
 		}
 
-		rf, err = os.OpenFile(self.path, os.O_RDONLY, os.ModePerm)
+		rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
 		if nil != err {
-			log.Error("MemorySnapshot|Load Segments|Open|FAIL|%s|%s", err, self.name)
+			log.Error("Segment|Open|FAIL|%s|%s", err, self.name)
 			return err
 		}
 
@@ -134,7 +127,25 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 
 // chunks stat
 func (self *Segment) stat() (total, normal, del, expired int32) {
-	return self.total, self.normal, self.del, self.expired
+
+	self.RLock()
+	defer self.RUnlock()
+	if len(self.chunks) > 0 {
+		for _, c := range self.chunks {
+			total++
+			switch c.flag {
+			case NORMAL:
+				normal++
+			//create
+			case DELETE:
+				del++
+			case EXPIRED:
+				expired++
+				//ignore
+			}
+		}
+	}
+	return
 }
 
 //load check
@@ -225,11 +236,6 @@ func (self *Segment) loadCheck() {
 //recover message status
 func (self *Segment) recover(do func(ol *oplog)) {
 
-	//reset stat
-	self.total = int32(0)
-	self.normal = int32(0)
-	self.del = int32(0)
-	self.expired = int32(0)
 	//replay
 	self.slog.Replay(func(ol *oplog) {
 
@@ -238,8 +244,6 @@ func (self *Segment) recover(do func(ol *oplog)) {
 		switch ol.Op {
 		//create
 		case OP_C:
-			self.total++
-			self.normal++
 		case OP_E:
 			//expired
 			self.Expired(ol.ChunkId)
@@ -253,7 +257,7 @@ func (self *Segment) recover(do func(ol *oplog)) {
 }
 
 //delete chunk
-func (self *Segment) Delete(cid int64) {
+func (self *Segment) Delete(cid int64) bool {
 	idx := sort.Search(len(self.chunks), func(i int) bool {
 		// log.Debug("Segment|Get|%d|%d\n", i, cid)
 		return self.chunks[i].id >= cid
@@ -265,15 +269,16 @@ func (self *Segment) Delete(cid int64) {
 		// log.Debug("Segment|Delete|%s", s)
 		if s.flag != DELETE && s.flag != EXPIRED {
 			s.flag = DELETE
-			//flush to file
-			self.del += 1
-			self.normal += -1
+			return true
 		}
 	}
+
+	return false
 }
 
 //expired data
 func (self *Segment) Expired(cid int64) bool {
+
 	idx := sort.Search(len(self.chunks), func(i int) bool {
 		// log.Debug("Segment|Get|%d|%d\n", i, cid)
 		return self.chunks[i].id >= cid
@@ -285,12 +290,20 @@ func (self *Segment) Expired(cid int64) bool {
 		// log.Debug("Segment|Delete|%s", s)
 		if s.flag != EXPIRED && s.flag != DELETE {
 			s.flag = EXPIRED
-			//flush to file
-			self.expired += 1
-			self.normal += -1
+			return true
 		}
 	}
-	return true
+	return false
+}
+
+//release chunk
+func (self *Segment) Truncate() {
+	self.Lock()
+	defer self.Unlock()
+	for _, c := range self.chunks {
+		//release
+		c.data = nil
+	}
 }
 
 //get chunk by chunkid
@@ -324,10 +337,15 @@ func (self *Segment) Get(cid int64) *Chunk {
 }
 
 func (self *Segment) loadChunk(c *Chunk) {
+	if c.length-CHUNK_HEADER <= 0 {
+		log.Error("Segment|LoadChunk|INVALID HEADER|%s|%d|%d", self.name, c.id, c.length)
+		return
+	}
 	data := make([]byte, c.length-CHUNK_HEADER)
 	//seek chunk
 	self.rf.Seek(c.offset+CHUNK_HEADER, 0)
-	dl, err := io.ReadFull(self.rf, data)
+	self.br.Reset(self.rf)
+	dl, err := io.ReadFull(self.br, data)
 	if nil != err || dl != cap(data) {
 		log.Error("Segment|LoadChunk|Read Data|FAIL|%s|%s|%d|%d/%d", err, self.name, c.id, c.length, dl)
 		return
@@ -372,14 +390,13 @@ func (self *Segment) Append(chunks []*Chunk) error {
 	//move offset
 	self.offset += int64(length)
 	self.byteSize += int32(length)
-	self.normal += int32(len(chunks))
-	self.total += int32(len(chunks))
 	return nil
 }
 
 func (self *Segment) Close() error {
+	self.Lock()
+	defer self.Unlock()
 	if atomic.CompareAndSwapInt32(&self.isOpen, 1, 0) {
-
 		//close segment log
 		self.slog.Close()
 
@@ -404,8 +421,6 @@ func (self *Segment) Close() error {
 			return err
 		}
 
-	} else if self.isOpen == 1 {
-		return self.Close()
 	}
 
 	return nil

@@ -128,10 +128,8 @@ func (self *KiteFileStore) RecoverNum() int {
 func (self *KiteFileStore) Monitor() string {
 	l := 0
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		lock, link, _ := self.hash(fmt.Sprintf("%x", i))
-		lock.RLock()
+		_, link, _ := self.hash(fmt.Sprintf("%x", i))
 		l += link.Len()
-		lock.RUnlock()
 	}
 	return fmt.Sprintf("message-length:%d\n", l)
 }
@@ -164,8 +162,8 @@ func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.L
 func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	lock, _, el := self.hash(messageId)
-	lock.Lock()
-	defer lock.Unlock()
+	lock.RLock()
+	defer lock.RUnlock()
 	e, ok := el[messageId]
 	if !ok {
 		return nil
@@ -252,9 +250,9 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 	//push
 	e := link.PushFront(ob)
 	ol[entity.MessageId] = e
-	lock.Unlock()
 	//wait finish
 	cmd.Wait()
+	lock.Unlock()
 	return true
 }
 func (self *KiteFileStore) Commit(messageId string) bool {
@@ -312,32 +310,33 @@ func (self *KiteFileStore) Delete(messageId string) bool {
 	lock, link, el := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
-	self.innerDelete(messageId, link, el)
-	return true
-
+	return self.innerDelete(messageId, link, el)
 }
 
 func (self *KiteFileStore) innerDelete(messageId string, link *list.List,
-	el map[string]*list.Element) {
+	el map[string]*list.Element) bool {
 	e, ok := el[messageId]
 	if !ok {
-		return
+		return true
 	}
 
-	//delete log
-	delete(el, messageId)
-	v := link.Remove(e).(*opBody)
-
 	//delete
+	v := e.Value.(*opBody)
 	obd, err := json.Marshal(v)
 	if nil != err {
 		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
-		return
+		return false
 	}
-
 	cmd := NewCommand(v.Id, messageId, nil, obd)
 	self.snapshot.Delete(cmd)
 	// log.Info("KiteFileStore|innerDelete|%s\n", messageId)
+
+	//delete log
+	delete(el, messageId)
+	link.Remove(e)
+
+	return true
+
 }
 
 //expired
@@ -350,13 +349,13 @@ func (self *KiteFileStore) Expired(messageId string) bool {
 		return true
 	}
 
+	v := e.Value.(*opBody)
+	c := NewCommand(v.Id, messageId, nil, nil)
+	self.snapshot.Expired(c)
+
 	//delete log
 	delete(el, messageId)
-	v := link.Remove(e).(*opBody)
-	if nil != v {
-		c := NewCommand(v.Id, messageId, nil, nil)
-		self.snapshot.Expired(c)
-	}
+	link.Remove(e)
 	return true
 }
 

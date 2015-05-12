@@ -8,6 +8,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"io"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -26,6 +27,7 @@ type SegmentLog struct {
 	wf     *os.File      //* log file
 	bw     *bufio.Writer //*
 	br     *bufio.Reader //* oplog buffer
+	sync.RWMutex
 	isOpen int32
 }
 
@@ -38,18 +40,15 @@ func newSegmentLog(path string) *SegmentLog {
 func (self *SegmentLog) Open() error {
 	var rf *os.File
 	var wf *os.File
-
 	if atomic.CompareAndSwapInt32(&self.isOpen, 0, 1) {
 		//file exist
 		_, err := os.Stat(self.path)
-		if err == nil {
+		if os.IsNotExist(err) {
 			_, err := os.Create(self.path)
 			if nil != err {
 				log.Error("SegmentLog|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
-		} else if nil != err {
-			return err
 		}
 
 		//file not exist create file
@@ -59,7 +58,7 @@ func (self *SegmentLog) Open() error {
 			return err
 		}
 
-		rf, err = os.OpenFile(self.path, os.O_RDONLY, os.ModePerm)
+		rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
 		if nil != err {
 			log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
 			return err
@@ -171,8 +170,6 @@ func (self *SegmentLog) Close() error {
 		}
 		return nil
 
-	} else if self.isOpen == 1 {
-		return self.Close()
 	}
 
 	return nil

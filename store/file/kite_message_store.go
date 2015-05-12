@@ -22,8 +22,8 @@ type command struct {
 	logicId string
 	msg     []byte
 	opbody  []byte
+	seg     *Segment
 	sync.WaitGroup
-	seg *Segment
 }
 
 func NewCommand(id int64, logicId string, msg []byte, opbody []byte) *command {
@@ -85,17 +85,23 @@ func (self *MessageStore) evict() {
 	for self.running {
 		time.Sleep(self.checkPeriod)
 		stat := ""
+
 		self.RLock()
-		//check cache segment
-		for _, s := range self.segments {
-			s.Open(self.replay)
-			//try open
-			s.RLock()
-			total, normal, del, expired := s.stat()
-			stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
-			s.RUnlock()
-			if normal <= 0 {
-				removeSegs = append(removeSegs, s)
+		//保证当前数据都是已经写入了至少一个分块
+		if len(self.segments) < 2 {
+			//do nothing
+		} else {
+
+			//check 0...n-1 segment stat
+			for _, s := range self.segments[:len(self.segments)-1] {
+				//try open
+				s.RLock()
+				total, normal, del, expired := s.stat()
+				stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
+				s.RUnlock()
+				if normal <= 0 {
+					removeSegs = append(removeSegs, s)
+				}
 			}
 		}
 		self.RUnlock()
@@ -133,9 +139,7 @@ func (self *MessageStore) remove(s *Segment) {
 			break
 		}
 	}
-	self.Unlock()
 
-	s.Lock()
 	//close segment
 	s.Close()
 
@@ -148,8 +152,7 @@ func (self *MessageStore) remove(s *Segment) {
 		log.Warn("MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
 	}
 
-	s.Unlock()
-
+	self.Unlock()
 	log.Info("MessageStore|Remove|Segment|%s", s.path)
 }
 
@@ -279,12 +282,13 @@ func (self *MessageStore) Query(cid int64) ([]byte, error) {
 
 //index segment
 func (self *MessageStore) indexSegment(cid int64) *Segment {
+
 	var curr *Segment
 	self.RLock()
 	//check cid in cache
 	for e := self.segmentCache.Front(); nil != e; e = e.Next() {
 		s := e.Value.(*Segment)
-		if s.sid <= cid && cid < s.sid+int64(s.total) {
+		if s.sid <= cid && cid < s.sid+int64(len(s.chunks)) {
 			curr = s
 			break
 		}
@@ -294,6 +298,16 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 	// not exist In cache
 	if nil == curr {
 		self.Lock()
+		defer self.Unlock()
+		//double check
+		for e := self.segmentCache.Front(); nil != e; e = e.Next() {
+			s := e.Value.(*Segment)
+			if s.sid <= cid && cid < s.sid+int64(len(s.chunks)) {
+				curr = s
+				break
+			}
+		}
+
 		idx := sort.Search(len(self.segments), func(i int) bool {
 			s := self.segments[i]
 			return s.sid >= cid
@@ -309,44 +323,41 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 
 		if len(self.segments) > 0 {
 			//load segment
-			self.loadSegment(idx)
-			curr = self.segments[idx]
+			curr = self.loadSegment(idx)
 		}
 		// log.Debug("MessageStore|indexSegment|%d", curr.path)
-		self.Unlock()
 
 	}
 	return curr
 }
 
-//return the front chunk
-func (self *MessageStore) loadSegment(idx int) {
+//load segment
+func (self *MessageStore) loadSegment(idx int) *Segment {
 
 	// load n segments
 	s := self.segments[idx]
-	err := s.Open(self.replay)
-	if nil != err {
-		log.Error("MessageStore|loadSegment|FAIL|%s|%s\n", err, s.name)
-		return
-	} else {
-		exsit := false
-		//pop header
-		for e := self.segmentCache.Back(); nil != e; e = e.Prev() {
-			id := e.Value.(*Segment).sid
-			if self.segmentCache.Len() >= self.segcacheSize && id != s.sid {
-				self.segmentCache.Remove(e)
-			} else if id == s.sid {
-				exsit = true
-			}
-
-		}
-
-		if !exsit {
-			//push to cache
-			self.segmentCache.PushFront(s)
-			log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
+	s.Lock()
+	defer s.Unlock()
+	//check
+	for e := self.segmentCache.Back(); nil != e; e = e.Prev() {
+		v := e.Value.(*Segment)
+		if v.sid == s.sid {
+			return v
 		}
 	}
+
+	//remove
+	if self.segmentCache.Len() >= self.segcacheSize {
+		e := self.segmentCache.Back()
+		v := self.segmentCache.Remove(e)
+		//truncate data
+		v.(*Segment).Truncate()
+	}
+
+	//push to cache
+	self.segmentCache.PushFront(s)
+	log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
+	return s
 	// log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
 }
 
@@ -363,36 +374,46 @@ func (self *MessageStore) Update(c *command) {
 }
 
 //mark delete
-func (self *MessageStore) Delete(c *command) {
+func (self *MessageStore) Delete(c *command) bool {
 	s := self.indexSegment(c.id)
 	if nil != s {
-		s.Lock()
-		defer s.Unlock()
+
 		//append oplog
 		ol := newOplog(OP_D, c.logicId, c.id, c.opbody)
-		s.slog.Append(ol)
+		s.Lock()
 		//mark data delete
-		s.Delete(c.id)
+		succ := s.Delete(c.id)
+		if succ {
+			s.slog.Append(ol)
+		}
+		s.Unlock()
+		return succ
 
 	} else {
 		// log.Debug("MessageStore|Delete|chunkid:%d|%s\n", cid, s)
+		return false
 	}
 }
 
 //mark data expired
-func (self *MessageStore) Expired(c *command) {
+func (self *MessageStore) Expired(c *command) bool {
+
 	s := self.indexSegment(c.id)
 	if nil != s {
-		s.Lock()
-		defer s.Unlock()
 		//append oplog logic delete
 		ol := newOplog(OP_E, c.logicId, c.id, c.opbody)
-		s.slog.Append(ol)
+		s.Lock()
 		//mark data expired
-		s.Expired(c.id)
+		succ := s.Expired(c.id)
+		if succ {
+			s.slog.Append(ol)
+		}
+		s.Unlock()
+		return succ
 
 	} else {
 		// log.Debug("MessageStore|Expired|chunkid:%d|%s\n", cid, s)
+		return false
 	}
 }
 
@@ -400,7 +421,6 @@ func (self *MessageStore) Expired(c *command) {
 func (self *MessageStore) Append(cmd *command) int64 {
 
 	if self.running {
-
 		cmd.id = self.cid()
 		seg := self.checkRoll()
 		cmd.seg = seg
@@ -409,13 +429,13 @@ func (self *MessageStore) Append(cmd *command) int64 {
 		seg.Lock()
 		err := seg.slog.Append(ol)
 		seg.Unlock()
-
+		cmd.Add(1)
 		if nil != err {
+			cmd.Done()
 			log.Error("MessageStore|Append-LOG|FAIL|%d", cmd.logicId)
-
 			return -1
 		}
-		cmd.Add(1)
+
 		//write to channel for async flush
 		self.writeChannel <- cmd
 		return cmd.id
@@ -534,7 +554,11 @@ func (self *MessageStore) checkRoll() *Segment {
 	self.Lock()
 	defer self.Unlock()
 	if len(self.segments) <= 0 {
-		news, err := self.createSegment(0)
+
+		if self.chunkId <= 0 {
+			self.chunkId = 0
+		}
+		news, err := self.createSegment(self.chunkId)
 		if nil == err {
 			//append new
 			self.segments = append(self.segments, news)
@@ -555,7 +579,8 @@ func (self *MessageStore) checkRoll() *Segment {
 				if nil == err {
 					//left segments are larger than cached ,close current
 					if len(self.segments) >= self.segcacheSize {
-						s.Close()
+						//truncate data
+						s.Truncate()
 					}
 					//append new
 					self.segments = append(self.segments, news)
@@ -581,9 +606,10 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 	news := newSegment(self.filePath+name, name, nextStart, sl)
 	err := news.Open(self.replay)
 	if nil != err {
-		log.Error("MessageStore|currentSegment|Open Segment|FAIL|%s", news.path)
+		log.Error("MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
 		return nil, err
 	}
+	log.Debug("MessageStore|createSegment|SUCC|%s", news.path)
 	return news, nil
 
 }
