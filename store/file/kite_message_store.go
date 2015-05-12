@@ -269,10 +269,18 @@ func (self *MessageStore) Query(cid int64) ([]byte, error) {
 	}
 
 	curr.RLock()
-	defer curr.RUnlock()
 	//find chunk
 	c := curr.Get(cid)
+	curr.RUnlock()
 	if nil != c {
+		if len(c.data) <= 0 {
+			curr.Lock()
+			if len(c.data) <= 0 {
+				curr.loadChunk(c)
+			}
+			curr.Unlock()
+		}
+
 		// log.Debug("MessageStore|QUERY|%s|%t", curr.name, c)
 		return c.data, nil
 	}

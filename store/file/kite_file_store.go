@@ -34,7 +34,10 @@ type KiteFileStore struct {
 	maxcap     int
 	currentSid int64 // 当前segment的id
 	snapshot   *MessageStore
+	delChan    chan *command
 	sync.RWMutex
+	sync.WaitGroup
+	running bool
 }
 
 func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFileStore {
@@ -53,7 +56,8 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 		loglink: loglink,
 		oplogs:  oplogs,
 		locks:   locks,
-		maxcap:  maxcap / CONCURRENT_LEVEL}
+		maxcap:  maxcap / CONCURRENT_LEVEL,
+		delChan: make(chan *command, 1000)}
 
 	kms.snapshot =
 		NewMessageStore(dir+"/snapshot/", 100, 2, checkPeriod, func(ol *oplog) {
@@ -107,17 +111,30 @@ func (self *KiteFileStore) replay(ol *oplog) {
 }
 
 func (self *KiteFileStore) Start() {
-	//start snapshost
-	self.snapshot.Start()
-	log.Info("KiteFileStore|Start...")
+	self.Lock()
+	defer self.Unlock()
+	if !self.running {
+		self.Add(1)
+		self.running = true
+		//start snapshost
+		self.snapshot.Start()
+		go self.delSync()
+		log.Info("KiteFileStore|Start...\t%s", self.Monitor())
+	}
 
 }
 func (self *KiteFileStore) Stop() {
 
-	//save queue message into snapshot
-	// self.syncToFile()
-	self.snapshot.Destory()
-	log.Info("KiteFileStore|Stop...")
+	self.Lock()
+	defer self.Unlock()
+	if self.running {
+		self.running = false
+		close(self.delChan)
+		//wait delete finish
+		self.Wait()
+		self.snapshot.Destory()
+		log.Info("KiteFileStore|Stop...")
+	}
 
 }
 
@@ -215,45 +232,48 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 	if len(ol) >= self.maxcap {
 		//overflow
 		return false
+	} else {
+
+		//value
+		data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
+		buff := make([]byte, len(data)+1)
+		buff[0] = entity.MsgType
+		copy(buff[1:], data)
+
+		//create oplog
+		ob := &opBody{
+			MessageId:       entity.MessageId,
+			Commit:          entity.Commit,
+			FailGroups:      entity.FailGroups,
+			SuccGroups:      entity.SuccGroups,
+			NextDeliverTime: entity.NextDeliverTime,
+			DeliverCount:    0}
+
+		obd, err := json.Marshal(ob)
+		if nil != err {
+			log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+			return false
+		}
+
+		cmd := NewCommand(-1, entity.MessageId, buff, obd)
+
+		//get lock
+
+		//append oplog into file
+		id := self.snapshot.Append(cmd)
+
+		lock.Lock()
+		ob.Id = id
+		//push
+		e := link.PushFront(ob)
+		ol[entity.MessageId] = e
+		lock.Unlock()
+
+		//wait
+		cmd.Wait()
+		return true
 	}
 
-	//value
-	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
-	buff := make([]byte, len(data)+1)
-	buff[0] = entity.MsgType
-	copy(buff[1:], data)
-
-	//create oplog
-	ob := &opBody{
-		MessageId:       entity.MessageId,
-		Commit:          entity.Commit,
-		FailGroups:      entity.FailGroups,
-		SuccGroups:      entity.SuccGroups,
-		NextDeliverTime: entity.NextDeliverTime,
-		DeliverCount:    0}
-
-	obd, err := json.Marshal(ob)
-	if nil != err {
-		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
-		return false
-	}
-
-	cmd := NewCommand(-1, entity.MessageId, buff, obd)
-	//get lock
-
-	lock.Lock()
-
-	//append oplog into file
-	id := self.snapshot.Append(cmd)
-	ob.Id = id
-
-	//push
-	e := link.PushFront(ob)
-	ol[entity.MessageId] = e
-	//wait finish
-	cmd.Wait()
-	lock.Unlock()
-	return true
 }
 func (self *KiteFileStore) Commit(messageId string) bool {
 	lock, _, ol := self.hash(messageId)
@@ -261,7 +281,7 @@ func (self *KiteFileStore) Commit(messageId string) bool {
 	defer lock.Unlock()
 	e, ok := ol[messageId]
 	if !ok {
-		return false
+		return true
 	}
 
 	//modify commit
@@ -310,15 +330,14 @@ func (self *KiteFileStore) Delete(messageId string) bool {
 	lock, link, el := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
-	return self.innerDelete(messageId, link, el)
-}
-
-func (self *KiteFileStore) innerDelete(messageId string, link *list.List,
-	el map[string]*list.Element) bool {
 	e, ok := el[messageId]
 	if !ok {
 		return true
 	}
+
+	//delete log
+	delete(el, messageId)
+	link.Remove(e)
 
 	//delete
 	v := e.Value.(*opBody)
@@ -328,15 +347,45 @@ func (self *KiteFileStore) innerDelete(messageId string, link *list.List,
 		return false
 	}
 	cmd := NewCommand(v.Id, messageId, nil, obd)
-	self.snapshot.Delete(cmd)
+	if self.running {
+		self.delChan <- cmd
+		return true
+	} else {
+		return false
+	}
 	// log.Info("KiteFileStore|innerDelete|%s\n", messageId)
 
-	//delete log
-	delete(el, messageId)
-	link.Remove(e)
+}
 
-	return true
+func (self *KiteFileStore) delSync() {
 
+	for self.running {
+
+		//no batch / wait for data
+		c := <-self.delChan
+		if nil != c {
+			self.snapshot.Append(c)
+		}
+
+	}
+
+	// need flush left data
+outter:
+	for {
+		select {
+		case c := <-self.delChan:
+			if nil != c {
+				self.snapshot.Delete(c)
+			} else {
+				//channel close
+				break outter
+			}
+
+		default:
+			break outter
+		}
+	}
+	self.Done()
 }
 
 //expired

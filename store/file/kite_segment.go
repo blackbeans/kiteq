@@ -259,14 +259,12 @@ func (self *Segment) recover(do func(ol *oplog)) {
 //delete chunk
 func (self *Segment) Delete(cid int64) bool {
 	idx := sort.Search(len(self.chunks), func(i int) bool {
-		// log.Debug("Segment|Get|%d|%d\n", i, cid)
 		return self.chunks[i].id >= cid
 	})
 	// log.Debug("Segment|Delete|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
 		s := self.chunks[idx]
-		// log.Debug("Segment|Delete|%s", s)
 		if s.flag != DELETE && s.flag != EXPIRED {
 			s.flag = DELETE
 			return true
@@ -280,14 +278,12 @@ func (self *Segment) Delete(cid int64) bool {
 func (self *Segment) Expired(cid int64) bool {
 
 	idx := sort.Search(len(self.chunks), func(i int) bool {
-		// log.Debug("Segment|Get|%d|%d\n", i, cid)
 		return self.chunks[i].id >= cid
 	})
 	// log.Debug("Segment|Expired|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
 		s := self.chunks[idx]
-		// log.Debug("Segment|Delete|%s", s)
 		if s.flag != EXPIRED && s.flag != DELETE {
 			s.flag = EXPIRED
 			return true
@@ -325,10 +321,7 @@ func (self *Segment) Get(cid int64) *Chunk {
 			return nil
 		}
 		c := self.chunks[idx]
-		//load data
-		if len(c.data) <= 0 {
-			self.loadChunk(c)
-		}
+
 		return c
 	} else {
 		// log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
@@ -341,6 +334,7 @@ func (self *Segment) loadChunk(c *Chunk) {
 		log.Error("Segment|LoadChunk|INVALID HEADER|%s|%d|%d", self.name, c.id, c.length)
 		return
 	}
+
 	data := make([]byte, c.length-CHUNK_HEADER)
 	//seek chunk
 	self.rf.Seek(c.offset+CHUNK_HEADER, 0)
