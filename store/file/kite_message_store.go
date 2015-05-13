@@ -276,26 +276,20 @@ func (self *MessageStore) Query(cid int64) ([]byte, error) {
 		return nil, errors.New(fmt.Sprintf("No Segement For %d", cid))
 	}
 
-	curr.RLock()
+	curr.Lock()
+	defer curr.Unlock()
 	//find chunk
 	c := curr.Get(cid)
-	curr.RUnlock()
-	if nil != c {
 
+	if nil != c {
 		if len(c.data) <= 0 {
-			curr.Lock()
-			if len(c.data) <= 0 {
-				curr.loadChunk(c)
-			}
-			clone := make([]byte, len(c.data))
-			copy(clone, c.data)
-			curr.Unlock()
-			return clone, nil
-		} else {
-			clone := make([]byte, len(c.data))
-			copy(clone, c.data)
-			return clone, nil
+			curr.loadChunk(c)
 		}
+		clone := make([]byte, len(c.data))
+		copy(clone, c.data)
+		curr.Unlock()
+		return clone, nil
+
 	}
 	return nil, errors.New(fmt.Sprintf("No Chunk For [%s,%d]", curr.name, cid))
 }

@@ -120,7 +120,8 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		self.slog.Open()
 		//recover segment
 		self.recover(do)
-		log.Info("Segment|Open|SUCC|%s|total:%d,n:%d,d:%d,e:%d", self.name, self.stat())
+		total, n, d, e := self.stat()
+		log.Info("Segment|Open|SUCC|%s|total:%d,n:%d,d:%d,e:%d", self.name, total, n, d, e)
 		return nil
 	}
 	return nil

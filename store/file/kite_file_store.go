@@ -192,7 +192,7 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
+		// log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
 		return nil
 	}
 
@@ -261,18 +261,19 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		//append oplog into file
 		id := self.snapshot.Append(cmd)
 		ob.Id = id
-
-		//get lock
-		lock.Lock()
-
-		//push
-		e := link.PushBack(ob)
-		ol[entity.MessageId] = e
-		lock.Unlock()
-
 		//wait
 		cmd.Wait()
-		return true
+
+		if id > 0 {
+			//get lock
+			lock.Lock()
+			//push
+			e := link.PushBack(ob)
+			ol[entity.MessageId] = e
+			lock.Unlock()
+			return true
+		}
+		return false
 	}
 
 }
@@ -291,7 +292,7 @@ func (self *KiteFileStore) Commit(messageId string) bool {
 
 	obd, err := json.Marshal(v)
 	if nil != err {
-		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		log.Error("KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
 		return false
 	}
 	//write oplog
@@ -322,7 +323,7 @@ func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
 
 	obd, err := json.Marshal(v)
 	if nil != err {
-		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		log.Error("KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
 		return false
 	}
 	//append log
@@ -347,7 +348,7 @@ func (self *KiteFileStore) Delete(messageId string) bool {
 	v := e.Value.(*opBody)
 	obd, err := json.Marshal(v)
 	if nil != err {
-		log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+		log.Error("KiteFileStore|Delete|Encode|Op|FAIL|%s", err)
 		return false
 	}
 	cmd := NewCommand(v.Id, messageId, nil, obd)
