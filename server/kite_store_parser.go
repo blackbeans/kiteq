@@ -183,7 +183,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 		}
 
 		kitedb = smf.NewKiteFileStore(mp[0], maxcap, checkPeriod)
-		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", mp[0], maxcap, checkPeriod.Seconds())
+		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", mp[0], maxcap, int(checkPeriod.Seconds()))
 	} else {
 		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}

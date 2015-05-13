@@ -266,7 +266,7 @@ func (self *Segment) Delete(cid int64) bool {
 	idx := sort.Search(len(self.chunks), func(i int) bool {
 		return self.chunks[i].id >= cid
 	})
-	// log.Debug("Segment|Delete|chunkid:%d|%s\n", cid, idx)
+
 	if idx < len(self.chunks) {
 		//mark delete
 		s := self.chunks[idx]
@@ -274,6 +274,8 @@ func (self *Segment) Delete(cid int64) bool {
 			s.flag = DELETE
 			return true
 		}
+	} else {
+		log.Debug("Segment|Delete|NO Chunk|chunkid:%d|%d", cid, idx, len(self.chunks))
 	}
 
 	return true
@@ -309,13 +311,11 @@ func (self *Segment) Truncate() {
 
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
-	// log.Debug("Segment|Get|%d\n", len(self.chunks))
+
 	idx := sort.Search(len(self.chunks), func(i int) bool {
-		// log.Debug("Segment|Get|%d|%d\n", i, cid)
 		return self.chunks[i].id >= cid
 	})
 
-	// log.Debug("Segment|Get|Result|%d|%d|%d\n", idx, cid, len(self.chunks))
 	//not exsit
 	if idx >= len(self.chunks) {
 		return nil
@@ -385,6 +385,9 @@ func (self *Segment) Append(chunks []*Chunk) error {
 		self.chunks = make([]*Chunk, 0, 1000)
 	}
 	self.chunks = append(self.chunks, chunks...)
+
+	//sort
+	// sort.Sort(self.chunks)
 
 	//move offset
 	self.offset += int64(length)

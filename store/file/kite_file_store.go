@@ -264,7 +264,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		//wait
 		cmd.Wait()
 
-		if id > 0 {
+		if id >= 0 {
 			//get lock
 			lock.Lock()
 			//push
