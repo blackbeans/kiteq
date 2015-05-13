@@ -31,7 +31,7 @@ func (self ChunkFlag) String() string {
 var SEGMENT_LOG_SPLIT = []byte{'\r', '\n'}
 
 const (
-	MAX_SEGMENT_SIZE = 64 * 1024 * 1024 //最大的分段大仙
+	MAX_SEGMENT_SIZE = 128 * 1024 * 1024 //最大的分段大仙
 	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
 	SEGMENT_PREFIX      = "segment"
 	SEGMENT_LOG_SUFFIX  = ".log"
@@ -116,11 +116,11 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		// //seek
 		// self.wf.Seek(self.offset, 0)
 		self.bw = bufio.NewWriter(wf)
-		log.Info("Segment|Open|SUCC|%s", self.name)
 		//op segment log
 		self.slog.Open()
 		//recover segment
 		self.recover(do)
+		log.Info("Segment|Open|SUCC|%s|total:%d,n:%d,d:%d,e:%d", self.name, self.stat())
 		return nil
 	}
 	return nil
@@ -242,7 +242,8 @@ func (self *Segment) recover(do func(ol *oplog)) {
 		//create
 		case OP_C:
 			c := self.Get(ol.ChunkId)
-			if c.flag != EXPIRED && c.flag != DELETE {
+			if nil != c &&
+				c.flag != EXPIRED && c.flag != DELETE {
 				c.flag = NORMAL
 			}
 		case OP_E:
@@ -274,7 +275,7 @@ func (self *Segment) Delete(cid int64) bool {
 		}
 	}
 
-	return false
+	return true
 }
 
 //expired data
@@ -292,7 +293,7 @@ func (self *Segment) Expired(cid int64) bool {
 			return true
 		}
 	}
-	return false
+	return true
 }
 
 //release chunk

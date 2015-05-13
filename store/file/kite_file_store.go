@@ -192,7 +192,7 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		// log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
+		log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
 		return nil
 	}
 
@@ -266,7 +266,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		lock.Lock()
 
 		//push
-		e := link.PushFront(ob)
+		e := link.PushBack(ob)
 		ol[entity.MessageId] = e
 		lock.Unlock()
 
@@ -303,13 +303,16 @@ func (self *KiteFileStore) Rollback(messageId string) bool {
 	return self.Delete(messageId)
 }
 func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
-	lock, _, el := self.hash(entity.MessageId)
+	lock, link, el := self.hash(entity.MessageId)
 	lock.Lock()
 	defer lock.Unlock()
 	e, ok := el[entity.MessageId]
 	if !ok {
 		return true
 	}
+
+	//move to back
+	link.MoveToBack(e)
 	//modify opbody value
 	v := e.Value.(*opBody)
 	v.DeliverCount = entity.DeliverCount
@@ -399,13 +402,14 @@ func (self *KiteFileStore) Expired(messageId string) bool {
 		return true
 	}
 
+	//delete log
+	delete(el, messageId)
+	link.Remove(e)
+
 	v := e.Value.(*opBody)
 	c := NewCommand(v.Id, messageId, nil, nil)
 	self.snapshot.Expired(c)
 
-	//delete log
-	delete(el, messageId)
-	link.Remove(e)
 	return true
 }
 
@@ -417,7 +421,7 @@ func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, ne
 	lock, link, _ := self.hash(hashKey)
 	lock.RLock()
 	i := 0
-	for e := link.Back(); nil != e; e = e.Prev() {
+	for e := link.Front(); nil != e; e = e.Next() {
 		ob := e.Value.(*opBody)
 		//query message
 		if ob.NextDeliverTime <= nextDeliveryTime {

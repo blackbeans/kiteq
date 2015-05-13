@@ -410,7 +410,7 @@ func (self *MessageStore) Delete(c *command) bool {
 		return succ
 
 	} else {
-		// log.Debug("MessageStore|Delete|chunkid:%d|%s\n", cid, s)
+		log.Debug("MessageStore|Delete|chunkid:%d|%s\n", c.id, c.logicId)
 		return false
 	}
 }
