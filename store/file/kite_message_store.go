@@ -474,6 +474,7 @@ func flush(s *Segment, chunks []*Chunk, cmds []*command) {
 		for _, c := range cmds {
 			//create chunk
 			chunk := &Chunk{
+				flag:     NORMAL,
 				length:   int32(CHUNK_HEADER + len(c.msg)),
 				id:       c.id,
 				checksum: crc32.ChecksumIEEE(c.msg),

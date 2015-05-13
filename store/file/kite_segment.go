@@ -128,9 +128,6 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 
 // chunks stat
 func (self *Segment) stat() (total, normal, del, expired int32) {
-
-	self.RLock()
-	defer self.RUnlock()
 	if len(self.chunks) > 0 {
 		for _, c := range self.chunks {
 			total++
