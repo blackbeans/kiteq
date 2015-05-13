@@ -78,6 +78,8 @@ func (self *KiteFileStore) replay(ol *oplog) {
 	}
 
 	ob := &body
+	ob.Id = ol.ChunkId
+
 	l, link, tol := self.hash(ob.MessageId)
 	// log.Debug("KiteFileStore|replay|%s|%s", ob, ol.Op)
 	//如果是更新或者创建，则直接反序列化
@@ -190,7 +192,7 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		// log.Error("KiteFileStore|Query|Entity|FAIL|%s", err)
+		// log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
 		return nil
 	}
 
@@ -256,14 +258,13 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		}
 
 		cmd := NewCommand(-1, entity.MessageId, buff, obd)
-
-		//get lock
-
 		//append oplog into file
 		id := self.snapshot.Append(cmd)
-
-		lock.Lock()
 		ob.Id = id
+
+		//get lock
+		lock.Lock()
+
 		//push
 		e := link.PushFront(ob)
 		ol[entity.MessageId] = e
@@ -364,7 +365,7 @@ func (self *KiteFileStore) delSync() {
 		//no batch / wait for data
 		c := <-self.delChan
 		if nil != c {
-			self.snapshot.Append(c)
+			self.snapshot.Delete(c)
 		}
 
 	}

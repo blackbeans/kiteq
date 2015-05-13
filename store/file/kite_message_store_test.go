@@ -86,7 +86,7 @@ func TestDelete(t *testing.T) {
 	cleanSnapshot("./snapshot/")
 	snapshot := NewMessageStore("./snapshot/", 1, 10, 1*time.Second, traverse)
 	snapshot.Start()
-	for j := 0; j < 10000; j++ {
+	for j := 0; j < 1000; j++ {
 		d := []byte(fmt.Sprintln(j))
 		cmd := NewCommand(-1, fmt.Sprintln(j), d, nil)
 		snapshot.Append(cmd)
@@ -114,7 +114,12 @@ func TestDelete(t *testing.T) {
 		}
 	}()
 
-	for j := 0; j < 100; j++ {
+	for _, s := range nsnapshot.segments {
+		for _, c := range s.chunks {
+			log.Printf("nsnapshot|------%d", c.id)
+		}
+	}
+	for j := 0; j < 1000; j++ {
 		id := int64(j)
 		var str string
 		data, err := nsnapshot.Query(id)

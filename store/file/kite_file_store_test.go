@@ -207,7 +207,7 @@ func TestFileStoreInit(t *testing.T) {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String(fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"),
+			MessageId:    proto.String(fmt.Sprint(i) + "26c03f00665862591f696a980b5ac"),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -223,6 +223,10 @@ func TestFileStoreInit(t *testing.T) {
 		if !succ {
 			t.Fail()
 		}
+
+		if i < 50 {
+			fs.AsyncDelete(entity.MessageId)
+		}
 	}
 
 	fs.Stop()
@@ -230,18 +234,37 @@ func TestFileStoreInit(t *testing.T) {
 	fs = NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 
-	time.Sleep(10 * time.Second)
+	for _, v := range fs.oplogs {
+		for _, ol := range v {
+			ob := ol.Value.(*opBody)
+			log.Printf("TestFileStoreInit|Check|%d|%s", ob.Id, ob.MessageId)
+		}
+	}
+
 	//commit and check
-	for i := 0; i < 100; i++ {
-		id := fmt.Sprintf("%x", i) + "26c03f00665862591f696a980b5ac"
+	for i := 50; i < 100; i++ {
+		id := fmt.Sprint(i) + "26c03f00665862591f696a980b5ac"
 
 		//check entity
 		entity := fs.Query(id)
 		if nil == entity || !entity.Commit {
-			log.Printf("TestFileStoreInit|FAIL|%s", id)
+			log.Printf("TestFileStoreInit|Exist|FAIL|%s|%s", id, entity)
 			t.Fail()
 		}
 	}
+
+	//commit and check
+	for i := 0; i < 50; i++ {
+		id := fmt.Sprint(i) + "26c03f00665862591f696a980b5ac"
+
+		//check entity
+		entity := fs.Query(id)
+		if nil != entity {
+			log.Printf("TestFileStoreInit|Delete|FAIL|%s", id)
+			t.Fail()
+		}
+	}
+
 	fs.Stop()
-	// cleanSnapshot("./snapshot/")
+	cleanSnapshot("./snapshot/")
 }

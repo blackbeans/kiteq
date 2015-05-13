@@ -85,7 +85,7 @@ func (self *MessageStore) evict() {
 	for self.running {
 		time.Sleep(self.checkPeriod)
 		stat := ""
-
+		cache := ""
 		self.RLock()
 		//保证当前数据都是已经写入了至少一个分块
 		if len(self.segments) < 2 {
@@ -103,6 +103,12 @@ func (self *MessageStore) evict() {
 					removeSegs = append(removeSegs, s)
 				}
 			}
+
+			//cache
+			for e := self.segmentCache.Front(); nil != e; e = e.Next() {
+				cache += e.Value.(*Segment).name
+				cache += ","
+			}
 		}
 		self.RUnlock()
 
@@ -114,7 +120,9 @@ func (self *MessageStore) evict() {
 		}
 
 		if len(stat) > 0 {
-			log.Info("---------------MessageStore-Stat--------------\n|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", stat)
+			log.Info("---------------MessageStore-Stat--------------\n"+
+				"cached-segments:[%s]\n"+
+				"|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", cache, stat)
 		}
 		removeSegs = removeSegs[:0]
 	}
@@ -273,18 +281,22 @@ func (self *MessageStore) Query(cid int64) ([]byte, error) {
 	c := curr.Get(cid)
 	curr.RUnlock()
 	if nil != c {
+
 		if len(c.data) <= 0 {
 			curr.Lock()
 			if len(c.data) <= 0 {
 				curr.loadChunk(c)
 			}
+			clone := make([]byte, len(c.data))
+			copy(clone, c.data)
 			curr.Unlock()
+			return clone, nil
+		} else {
+			clone := make([]byte, len(c.data))
+			copy(clone, c.data)
+			return clone, nil
 		}
-
-		// log.Debug("MessageStore|QUERY|%s|%t", curr.name, c)
-		return c.data, nil
 	}
-	// log.Debug("MessageStore|QUERY|%s", curr.name)
 	return nil, errors.New(fmt.Sprintf("No Chunk For [%s,%d]", curr.name, cid))
 }
 
@@ -364,7 +376,7 @@ func (self *MessageStore) loadSegment(idx int) *Segment {
 
 	//push to cache
 	self.segmentCache.PushFront(s)
-	log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
+	// log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
 	return s
 	// log.Info("MessageStore|loadSegment|SUCC|%s", s.name)
 }
@@ -429,14 +441,18 @@ func (self *MessageStore) Expired(c *command) bool {
 func (self *MessageStore) Append(cmd *command) int64 {
 
 	if self.running {
-		cmd.id = self.cid()
-		seg := self.checkRoll()
-		cmd.seg = seg
+
+		s, id := self.checkRoll()
+		if nil == s {
+			return -1
+		}
+		cmd.id = id
+		cmd.seg = s
 		//append log
 		ol := newOplog(OP_C, cmd.logicId, cmd.id, cmd.opbody)
-		seg.Lock()
-		err := seg.slog.Append(ol)
-		seg.Unlock()
+		s.Lock()
+		err := s.slog.Append(ol)
+		s.Unlock()
 		cmd.Add(1)
 		if nil != err {
 			cmd.Done()
@@ -530,6 +546,9 @@ outter:
 		select {
 		case c := <-self.writeChannel:
 			if nil != c {
+				if nil == curr {
+					curr = c.seg
+				}
 				if c.seg.sid != curr.sid {
 					flush(curr, chunks[:0], batch)
 					batch = batch[:0]
@@ -554,19 +573,19 @@ outter:
 }
 
 //check if
-func (self *MessageStore) checkRoll() *Segment {
+func (self *MessageStore) checkRoll() (*Segment, int64) {
 	//if current segment bytesize is larger than max segment size
 	//create a new segment for storage
-
 	var s *Segment
+	var cid int64 = 0
 	self.Lock()
 	defer self.Unlock()
 	if len(self.segments) <= 0 {
-
-		if self.chunkId <= 0 {
-			self.chunkId = 0
+		nextId := self.chunkId
+		if nextId < 0 {
+			nextId = 0
 		}
-		news, err := self.createSegment(self.chunkId)
+		news, err := self.createSegment(nextId)
 		if nil == err {
 			//append new
 			self.segments = append(self.segments, news)
@@ -576,30 +595,27 @@ func (self *MessageStore) checkRoll() *Segment {
 			//panic  first segment fail
 			panic(err)
 		}
+		cid = nextId
 	} else {
-
-		if len(self.segments) > 0 {
-			s = self.segments[len(self.segments)-1]
-			if s.byteSize > MAX_SEGMENT_SIZE {
-				nid := s.chunks[len(s.chunks)-1].id + 1
-
-				news, err := self.createSegment(nid)
-				if nil == err {
-					//left segments are larger than cached ,close current
-					if len(self.segments) >= self.segcacheSize {
-						//truncate data
-						s.Truncate()
-					}
-					//append new
-					self.segments = append(self.segments, news)
-					s = news
+		s = self.segments[len(self.segments)-1]
+		nid := self.cid()
+		cid = nid
+		if s.byteSize > MAX_SEGMENT_SIZE {
+			news, err := self.createSegment(nid)
+			if nil == err {
+				//left segments are larger than cached ,close current
+				if len(self.segments) >= self.segcacheSize {
+					//truncate data
+					s.Truncate()
 				}
-
+				//append new
+				self.segments = append(self.segments, news)
+				s = news
 			}
 		}
 	}
 
-	return s
+	return s, cid
 }
 
 //create segemnt

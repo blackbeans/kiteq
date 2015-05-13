@@ -56,7 +56,7 @@ type Segment struct {
 	sid      int64         //segment id
 	offset   int64         //segment current offset
 	byteSize int32         //segment size
-	chunks   []*Chunk
+	chunks   Chunks
 	isOpen   int32
 	slog     *SegmentLog //segment op log
 	sync.RWMutex
@@ -64,10 +64,11 @@ type Segment struct {
 
 func newSegment(path, name string, sid int64, slog *SegmentLog) *Segment {
 	return &Segment{
-		path: path,
-		name: name,
-		sid:  sid,
-		slog: slog}
+		path:   path,
+		name:   name,
+		sid:    sid,
+		slog:   slog,
+		chunks: make(Chunks, 0, 5000)}
 }
 
 func (self *Segment) String() string {
@@ -229,6 +230,8 @@ func (self *Segment) loadCheck() {
 		// log.Debug("Segment|Load Chunk|%s|%d|%s", self.name, chunkId, ChunkFlag(flag))
 	}
 
+	//sort chunks
+	sort.Sort(self.chunks)
 	self.byteSize = byteSize
 	self.offset = offset
 }
@@ -238,12 +241,13 @@ func (self *Segment) recover(do func(ol *oplog)) {
 
 	//replay
 	self.slog.Replay(func(ol *oplog) {
-
-		//do callback
-		do(ol)
 		switch ol.Op {
 		//create
 		case OP_C:
+			c := self.Get(ol.ChunkId)
+			if c.flag != EXPIRED && c.flag != DELETE {
+				c.flag = NORMAL
+			}
 		case OP_E:
 			//expired
 			self.Expired(ol.ChunkId)
@@ -252,6 +256,8 @@ func (self *Segment) recover(do func(ol *oplog)) {
 		case OP_D:
 			self.Delete(ol.ChunkId)
 		}
+		//do callback
+		do(ol)
 
 	})
 }
@@ -318,11 +324,11 @@ func (self *Segment) Get(cid int64) *Chunk {
 		//delete data return nil
 		if self.chunks[idx].flag == DELETE ||
 			self.chunks[idx].flag == EXPIRED {
+			// log.Debug("Segment|Get|Result|%d|%d|%s\n", idx, cid, self.chunks[idx].flag)
 			return nil
 		}
-		c := self.chunks[idx]
+		return self.chunks[idx]
 
-		return c
 	} else {
 		// log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
 		return nil
@@ -445,6 +451,16 @@ func (self *Chunk) marshal() []byte {
 	copy(buff[16:], self.data)
 
 	return buff
+}
+
+type Chunks []*Chunk
+
+func (self Chunks) Len() int { return len(self) }
+func (self Chunks) Swap(i, j int) {
+	self[i], self[j] = self[j], self[i]
+}
+func (self Chunks) Less(i, j int) bool {
+	return self[i].id < self[j].id
 }
 
 type Segments []*Segment
