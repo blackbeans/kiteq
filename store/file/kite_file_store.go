@@ -144,13 +144,18 @@ func (self *KiteFileStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
-func (self *KiteFileStore) Monitor() string {
+//length
+func (self *KiteFileStore) Length() int {
 	l := 0
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		_, link, _ := self.hash(fmt.Sprintf("%x", i))
 		l += link.Len()
 	}
-	return fmt.Sprintf("message-length:%d\n", l)
+	return l
+}
+
+func (self *KiteFileStore) Monitor() string {
+	return fmt.Sprintf("message-length:%d\n", self.Length())
 }
 
 func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }

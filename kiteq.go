@@ -40,11 +40,6 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	host, port, _ := net.SplitHostPort(*bindHost)
-	go func() {
-		if *pprofPort > 0 {
-			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
-		}
-	}()
 
 	rc := turbo.NewRemotingConfig(
 		"remoting-"+*bindHost,
@@ -56,6 +51,13 @@ func main() {
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()
+
+	go func() {
+		if *pprofPort > 0 {
+			http.HandleFunc("/stat", qserver.HandleMonitor)
+			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
+		}
+	}()
 
 	var s = make(chan os.Signal, 1)
 	signal.Notify(s, syscall.SIGKILL, syscall.SIGUSR1)

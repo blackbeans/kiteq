@@ -63,6 +63,12 @@ var filternothing = func(colname string) bool {
 	return false
 }
 
+func (self *KiteMysqlStore) Length() int {
+	//TODO mysql中的未过期的消息数量
+
+	return 0
+}
+
 func (self *KiteMysqlStore) Monitor() string {
 	line := "Stmt-Pool\t"
 	for k, v := range self.stmtPools {

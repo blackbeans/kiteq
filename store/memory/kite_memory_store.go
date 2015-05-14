@@ -47,15 +47,17 @@ func (self *KiteMemoryStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
-func (self *KiteMemoryStore) Monitor() string {
+func (self *KiteMemoryStore) Length() int {
 	l := 0
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		lock, _, dl := self.hash(fmt.Sprintf("%x", i))
-		lock.RLock()
+		_, _, dl := self.hash(fmt.Sprintf("%x", i))
 		l += dl.Len()
-		lock.RUnlock()
 	}
-	return fmt.Sprintf("memory-length:%d\n", l)
+	return l
+}
+
+func (self *KiteMemoryStore) Monitor() string {
+	return fmt.Sprintf("memory-length:%d\n", self.Length())
 }
 
 func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
