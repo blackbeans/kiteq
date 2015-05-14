@@ -437,38 +437,13 @@ func (self *MessageStore) Expired(c *command) bool {
 }
 
 //write
-func (self *MessageStore) Append(cmd *command) int64 {
+func (self *MessageStore) Append(cmd *command) {
 
 	if self.running {
-
-		//lock for append order
-		self.Lock()
-		defer self.Unlock()
-		s, id := self.checkRoll()
-		if nil == s {
-			return -1
-		}
-		cmd.id = id
-		cmd.seg = s
-		//append log
-		ol := newOplog(OP_C, cmd.logicId, cmd.id, cmd.opbody)
-		s.Lock()
-		err := s.slog.Append(ol)
-		s.Unlock()
 		cmd.Add(1)
-		if nil != err {
-			cmd.Done()
-			log.Error("MessageStore|Append-LOG|FAIL|%d", cmd.logicId)
-			return -1
-		}
-
 		//write to channel for async flush
 		self.writeChannel <- cmd
-		return cmd.id
-	} else {
-		return -1
 	}
-
 }
 
 //check if
@@ -530,7 +505,7 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 		log.Error("MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
 		return nil, err
 	}
-	log.Debug("MessageStore|createSegment|SUCC|%s", news.path)
+	// log.Debug("MessageStore|createSegment|SUCC|%s", news.path)
 	return news, nil
 
 }
@@ -538,6 +513,7 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 func (self *MessageStore) sync() {
 
 	batch := make([]*command, 0, self.batchSize)
+	batchLog := make([]*oplog, 0, self.batchSize)
 	chunks := make(Chunks, 0, self.batchSize)
 	var cmd *command
 	ticker := time.NewTicker(100 * time.Millisecond)
@@ -552,6 +528,14 @@ func (self *MessageStore) sync() {
 		}
 
 		if nil != cmd {
+			s, id := self.checkRoll()
+			if nil == s {
+				log.Error("MessageStore|sync|checkRoll|FAIL...")
+				cmd.Done()
+				continue
+			}
+			cmd.id = id
+			cmd.seg = s
 			c := cmd
 			//init curr segment
 			if nil == curr {
@@ -562,7 +546,7 @@ func (self *MessageStore) sync() {
 			//else flush old data
 			if curr.sid != c.seg.sid {
 				//force flush
-				flush(curr, chunks[:0], batch)
+				flush(curr, chunks[:0], batchLog[:0], batch)
 				batch = batch[:0]
 				//change curr to  newsegment
 				curr = c.seg
@@ -573,7 +557,7 @@ func (self *MessageStore) sync() {
 
 		//force flush
 		if nil == cmd && len(batch) > 0 || len(batch) >= cap(batch) {
-			flush(curr, chunks[:0], batch)
+			flush(curr, chunks[:0], batchLog[:0], batch)
 			batch = batch[:0]
 		}
 		cmd = nil
@@ -589,7 +573,7 @@ outter:
 					curr = c.seg
 				}
 				if c.seg.sid != curr.sid {
-					flush(curr, chunks[:0], batch)
+					flush(curr, chunks[:0], batchLog[:0], batch)
 					batch = batch[:0]
 				}
 				batch = append(batch, c)
@@ -604,16 +588,21 @@ outter:
 	}
 
 	//last flush
-	flush(curr, chunks[:0], batch)
+	flush(curr, chunks[:0], batchLog[:0], batch)
 
 	ticker.Stop()
 	self.waitSync.Done()
 	log.Info("MessageStore|SYNC|CLOSE...")
 }
 
-func flush(s *Segment, chunks Chunks, cmds []*command) {
+func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
 	if len(cmds) > 0 {
+
 		for _, c := range cmds {
+			//append log
+			ol := newOplog(OP_C, c.logicId, c.id, c.opbody)
+			logs = append(logs, ol)
+
 			//create chunk
 			chunk := &Chunk{
 				flag:     NORMAL,
@@ -622,12 +611,12 @@ func flush(s *Segment, chunks Chunks, cmds []*command) {
 				checksum: crc32.ChecksumIEEE(c.msg),
 				data:     c.msg}
 			chunks = append(chunks, chunk)
+
 		}
 
-		//sort chunks
-		// sort.Sort(chunks)
-
 		s.Lock()
+		//append logs
+		s.slog.Appends(logs)
 		//complete
 		err := s.Append(chunks)
 		if nil != err {
@@ -643,9 +632,12 @@ func flush(s *Segment, chunks Chunks, cmds []*command) {
 }
 
 func (self *MessageStore) Destory() {
+	self.Lock()
+	defer self.Unlock()
 	self.running = false
 	close(self.writeChannel)
 	self.waitSync.Wait()
+
 	//close all segment
 	for _, s := range self.segments {
 		err := s.Close()
@@ -655,7 +647,6 @@ func (self *MessageStore) Destory() {
 	}
 	self.baseDir.Close()
 	log.Info("MessageStore|Destory...")
-
 }
 
 //chunk id

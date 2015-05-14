@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"errors"
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"io"
 	"os"
@@ -128,7 +130,49 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 }
 
 //apend data
+func (self *SegmentLog) Appends(logs []*oplog) error {
+
+	//if closed
+	if self.isOpen == 0 {
+		return errors.New(fmt.Sprintf("SegmentLog Is Closed!|%s", self.path))
+	}
+
+	length := int64(0)
+	for _, lo := range logs {
+		tmp := lo.marshal()
+		for {
+			l, err := self.bw.Write(tmp)
+			length += int64(l)
+			if nil != err && err != io.ErrShortWrite {
+				log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+				return err
+			} else if nil == err {
+				break
+			} else {
+				self.bw.Reset(self.wf)
+				log.Error("SegmentLog|Append|FAIL|%s", err)
+			}
+			tmp = tmp[l:]
+
+		}
+	}
+
+	//flush
+	self.bw.Flush()
+
+	//move offset
+	atomic.AddInt64(&self.offset, int64(length))
+	return nil
+}
+
+//apend data
 func (self *SegmentLog) Append(ol *oplog) error {
+
+	//if closed
+	if self.isOpen == 0 {
+		return errors.New(fmt.Sprintf("SegmentLog Is Closed!|%s", self.path))
+	}
+
 	buff := ol.marshal()
 	tmp := buff
 	for {

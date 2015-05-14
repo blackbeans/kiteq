@@ -259,12 +259,11 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 		cmd := NewCommand(-1, entity.MessageId, buff, obd)
 		//append oplog into file
-		id := self.snapshot.Append(cmd)
-		ob.Id = id
+		self.snapshot.Append(cmd)
 		//wait
 		cmd.Wait()
-
-		if id >= 0 {
+		ob.Id = cmd.id
+		if cmd.id >= 0 {
 			//get lock
 			lock.Lock()
 			//push

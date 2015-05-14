@@ -3,6 +3,7 @@ package file
 import (
 	"bufio"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	log "github.com/blackbeans/log4go"
 	"hash/crc32"
@@ -31,8 +32,7 @@ func (self ChunkFlag) String() string {
 var SEGMENT_LOG_SPLIT = []byte{'\r', '\n'}
 
 const (
-	MAX_SEGMENT_SIZE = 128 * 1024 * 1024 //最大的分段大仙
-	// MAX_CHUNK_SIZE      = 64 * 1024        //最大的chunk
+	MAX_SEGMENT_SIZE    = 64 * 1024 * 1024 //最大的分段大仙
 	SEGMENT_PREFIX      = "segment"
 	SEGMENT_LOG_SUFFIX  = ".log"
 	SEGMENT_DATA_SUFFIX = ".data"
@@ -354,6 +354,11 @@ func (self *Segment) loadChunk(c *Chunk) {
 
 //apend data
 func (self *Segment) Append(chunks []*Chunk) error {
+
+	//if closed
+	if self.isOpen == 0 {
+		return errors.New(fmt.Sprintf("Segment Is Closed!|%s", self.name))
+	}
 
 	length := int64(0)
 	for _, c := range chunks {
