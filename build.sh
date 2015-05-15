@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 go get  github.com/golang/protobuf/{proto,protoc-gen-go}
 go get  github.com/blackbeans/go-uuid
 go get  github.com/go-sql-driver/mysql
