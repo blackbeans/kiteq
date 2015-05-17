@@ -452,6 +452,8 @@ func (self *MessageStore) checkRoll() (*Segment, int64) {
 	//create a new segment for storage
 	var s *Segment
 	var cid int64 = 0
+	self.Lock()
+	defer self.Unlock()
 	if len(self.segments) <= 0 {
 		nextId := self.chunkId
 		if nextId < 0 {
