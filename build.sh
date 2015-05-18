@@ -47,6 +47,8 @@ PROJ=`pwd | awk -F'/' '{print $(NF)}'`
 #go build  -o ./$PROJ-$VERSION $PROJ.go
 go build  -a -o ./$PROJ $PROJ.go
 
+tar -zcvf kiteq.tar.gz $PROJ.go log/log.xml
+
 go build -a kite_benchmark_producer.go
 go build -a kite_benchmark_consumer.go
 
