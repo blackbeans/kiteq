@@ -39,7 +39,7 @@ func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
 var body []byte
 var rander = rand.Reader // random function
 func init() {
-	body = make([]byte, 512, 512)
+	body = make([]byte, 2*1024, 2*1024)
 	// randomBits completely fills slice b with random data.
 	if _, err := io.ReadFull(rander, body); err != nil {
 		panic(err.Error()) // rand should never fail

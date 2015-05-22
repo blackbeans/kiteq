@@ -2,7 +2,7 @@
   <filter enabled="true">
     <tag>stdout</tag>
     <type>file</type>
-    <property name="filename">/home/logs/kiteq_stdout.log</property>
+    <property name="filename">/home/logs/kiteq/kiteq_stdout.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
@@ -50,6 +50,18 @@
     <level>ERROR</level>
     <property name="filename">/home/logs/kiteq/kite_error.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
+   <filter enabled="true">
+    <tag>kite_deliver</tag>
+    <type>file</type>
+    <level>ERROR</level>
+    <property name="filename">/home/logs/kiteq/kite_deliver.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
     <property name="maxlines">10M</property>

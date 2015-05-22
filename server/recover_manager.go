@@ -89,10 +89,10 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
 				//发起投递事件
 				self.delivery(entity)
 			}
-
 		}
 		startIdx += len(entities)
 		hasMore = more
+		time.Sleep(1 * time.Second)
 	}
 }
 

@@ -50,4 +50,16 @@
     <property name="daily">true</property> 
   </filter>
 
+     <filter enabled="true">
+    <tag>kite_deliver</tag>
+    <type>file</type>
+    <level>ERROR</level>
+    <property name="filename">./logs/kiteq/kite_deliver.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
 </logging>

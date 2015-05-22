@@ -7,10 +7,11 @@ import (
 )
 
 type kiteqstat struct {
-	Goroutine    int32 `json:"goroutine"`
-	DeliverGo    int32 `json:"deliver_go"`
-	DeliverCount int32 `json:"deliver_count"`
-	MessageCount int32 `json:"message_count"`
+	Goroutine    int32                         `json:"goroutine"`
+	DeliverGo    int32                         `json:"deliver_go"`
+	DeliverCount int32                         `json:"deliver_count"`
+	MessageCount int32                         `json:"message_count"`
+	Topics       map[string] /*topicId*/ int32 //topics
 }
 
 //handler monitor

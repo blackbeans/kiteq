@@ -156,6 +156,10 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		return true
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
+		//log deliver fail
+		log.ErrorLog("kite_deliver", "messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
+			fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
+			fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliveryFailGroups)
 	}
 	return false
 }
