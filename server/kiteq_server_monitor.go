@@ -25,7 +25,7 @@ func (self *KiteQServer) HandleMonitor(resp http.ResponseWriter, req *http.Reque
 	ks := kiteqstat{
 		Goroutine:    int32(runtime.NumGoroutine()),
 		DeliverGo:    self.kc.flowstat.DeliverPool.Count(),
-		DeliverCount: self.kc.flowstat.DeliverFlow.Changes(),
+		DeliverCount: self.kc.flowstat.DeliverCount,
 		MessageCount: int32(self.kitedb.Length())}
 
 	result := make(map[string]interface{}, 2)

@@ -15,6 +15,8 @@ type FlowStat struct {
 	DeliverFlow   *turbo.Flow
 	DeliverPool   *turbo.Flow
 	stop          bool
+	//current deliver count
+	DeliverCount int32
 }
 
 func NewFlowStat(name string) *FlowStat {
@@ -32,7 +34,8 @@ func (self *FlowStat) Start() {
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
-			line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverFlow.Changes(), self.DeliverPool.Count())
+			self.DeliverCount = self.DeliverFlow.Changes()
+			line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverCount, self.DeliverPool.Count())
 			log.Info(line)
 			if nil != self.Kitestore {
 				log.Info(self.Kitestore.Monitor())

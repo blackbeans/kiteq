@@ -109,6 +109,8 @@ func main() {
 		kiteClient.SetTopics([]string{"trade"})
 		kiteClient.Start()
 		clients = append(clients, kiteClient)
+		time.Sleep(3 * time.Second)
+		log.Debug("Open Client %d", j)
 		for i := 0; i < *c; i++ {
 			go func(kite *client.KiteQClient) {
 				wg.Add(1)
