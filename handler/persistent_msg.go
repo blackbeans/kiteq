@@ -111,7 +111,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 	} else {
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)
-		if pevent.entity.Commit {
+		if saveSucc && pevent.entity.Commit {
 			self.send(ctx, pevent, nil)
 		}
 	}

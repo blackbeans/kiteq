@@ -43,7 +43,7 @@ func main() {
 
 	rc := turbo.NewRemotingConfig(
 		"remoting-"+*bindHost,
-		2000, 16*1024,
+		20000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
