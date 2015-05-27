@@ -14,13 +14,14 @@ import (
 
 //delvier tags
 type opBody struct {
-	Id              int64    `json:"id"`
-	MessageId       string   `json:"mid"`
-	Commit          bool     `json:"commit"`
-	FailGroups      []string `json:"fg",omitempty`
-	SuccGroups      []string `json:"sg",omitempty`
-	NextDeliverTime int64    `json:"ndt"`
-	DeliverCount    int32    `json:"dc"`
+	Id              int64      `json:"id"`
+	MessageId       string     `json:"mid"`
+	Commit          bool       `json:"commit"`
+	FailGroups      []string   `json:"fg",omitempty`
+	SuccGroups      []string   `json:"sg",omitempty`
+	NextDeliverTime int64      `json:"ndt"`
+	DeliverCount    int32      `json:"dc"`
+	saveDone        chan int64 //save done
 }
 
 const (
@@ -183,6 +184,29 @@ func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.L
 	return
 }
 
+// //waitSaveDone
+// func (self *KiteFileStore) waitSaveDone(ob *opBody) {
+// 	if ob.Id < 0 {
+// 		start := time.Now().UnixNano()
+// 		log.Info("KiteFileStore|waitSaveDone-S....")
+// 		id, ok := <-ob.saveDone
+// 		if ok {
+// 			//is not closed
+// 			if id < 0 {
+// 				//save fail ,so  return nil and delete opBody
+// 				//delete log
+// 			} else {
+// 				//save succ
+// 				ob.Id = id
+// 			}
+// 		} else {
+// 			//channel closed
+// 		}
+// 		cost := time.Now().UnixNano() - start
+// 		log.Info("KiteFileStore|waitSaveDone|%d", cost)
+// 	}
+// }
+
 func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 
 	lock, _, el := self.hash(messageId)
@@ -194,6 +218,9 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 	}
 
 	v := e.Value.(*opBody)
+
+	//wait save done
+	// self.waitSaveDone(v)
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
@@ -249,6 +276,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 		//create oplog
 		ob := &opBody{
+			Id:              -1,
 			MessageId:       entity.MessageId,
 			Commit:          entity.Commit,
 			FailGroups:      entity.FailGroups,
@@ -264,20 +292,16 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 		cmd := NewCommand(-1, entity.MessageId, buff, obd)
 		//append oplog into file
-		self.snapshot.Append(cmd)
-		//wait
-		cmd.Wait()
-		ob.Id = cmd.id
-		if cmd.id >= 0 {
-			//get lock
-			lock.Lock()
-			//push
-			e := link.PushBack(ob)
-			ol[entity.MessageId] = e
-			lock.Unlock()
-			return true
-		}
-		return false
+		idchan := self.snapshot.Append(cmd)
+		// ob.saveDone = idchan
+		ob.Id = <-idchan
+		//get lock
+		lock.Lock()
+		//push
+		e := link.PushBack(ob)
+		ol[entity.MessageId] = e
+		lock.Unlock()
+		return true
 	}
 
 }
@@ -290,8 +314,8 @@ func (self *KiteFileStore) Commit(messageId string) bool {
 		return true
 	}
 
-	//modify commit
 	v := e.Value.(*opBody)
+	//modify commit
 	v.Commit = true
 
 	obd, err := json.Marshal(v)
@@ -428,6 +452,9 @@ func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, ne
 	i := 0
 	for e := link.Front(); nil != e; e = e.Next() {
 		ob := e.Value.(*opBody)
+		//wait save done
+		// self.waitSaveDone(ob)
+
 		//query message
 		if ob.NextDeliverTime <= nextDeliveryTime {
 			if startIdx <= i {

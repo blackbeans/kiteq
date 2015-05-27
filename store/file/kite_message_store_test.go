@@ -20,8 +20,8 @@ func TestSingle(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		cmd := NewCommand(-1, fmt.Sprintln(i), []byte{0}, []byte{1})
-		snapshot.Append(cmd)
-		cmd.Wait()
+		<-snapshot.Append(cmd)
+
 	}
 
 	log.Printf("snapshot|%s", snapshot)
@@ -49,8 +49,7 @@ func TestAppend(t *testing.T) {
 	go func() {
 		for ; i < 20; i++ {
 			cmd := NewCommand(-1, fmt.Sprint(i), []byte(fmt.Sprintf("hello snapshot|%d", i)), nil)
-			snapshot.Append(cmd)
-			cmd.Wait()
+			<-snapshot.Append(cmd)
 		}
 		run = false
 	}()
@@ -89,7 +88,7 @@ func TestDelete(t *testing.T) {
 	for j := 0; j < 1000; j++ {
 		d := []byte(fmt.Sprintln(j))
 		cmd := NewCommand(-1, fmt.Sprintln(j), d, nil)
-		snapshot.Append(cmd)
+		<-snapshot.Append(cmd)
 		// log.Printf("TestDelete|Append|%d|...", j)
 	}
 	snapshot.Destory()
@@ -163,7 +162,7 @@ func TestQuery(t *testing.T) {
 			byte(j & 0xFF)}...)
 
 		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
-		snapshot.Append(cmd)
+		<-snapshot.Append(cmd)
 	}
 
 	time.Sleep(10 * time.Second)
@@ -227,7 +226,7 @@ func BenchmarkDelete(t *testing.B) {
 	for j := 0; j < 20; j++ {
 		d := []byte(fmt.Sprintf("%d|hello snapshot", j))
 		cmd := NewCommand(-1, fmt.Sprint(j), d, nil)
-		snapshot.Append(cmd)
+		<-snapshot.Append(cmd)
 	}
 
 	time.Sleep(2 * time.Second)
@@ -292,7 +291,7 @@ func BenchmarkAppend(t *testing.B) {
 	for i := 0; i < t.N; i++ {
 		d := []byte(fmt.Sprintf("hello snapshot-%d", i))
 		cmd := NewCommand(-1, fmt.Sprint(i), d, nil)
-		snapshot.Append(cmd)
+		<-snapshot.Append(cmd)
 	}
 
 	t.StopTimer()

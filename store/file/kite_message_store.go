@@ -23,7 +23,7 @@ type command struct {
 	msg     []byte
 	opbody  []byte
 	seg     *Segment
-	sync.WaitGroup
+	idchan  chan int64
 }
 
 func NewCommand(id int64, logicId string, msg []byte, opbody []byte) *command {
@@ -437,13 +437,18 @@ func (self *MessageStore) Expired(c *command) bool {
 }
 
 //write
-func (self *MessageStore) Append(cmd *command) {
+func (self *MessageStore) Append(cmd *command) chan int64 {
 
 	if self.running {
-		cmd.Add(1)
+		//make channel for id
+		ch := make(chan int64, 1)
+		cmd.idchan = ch
 		//write to channel for async flush
 		self.writeChannel <- cmd
+		return ch
 	}
+
+	return nil
 }
 
 //check if
@@ -518,7 +523,7 @@ func (self *MessageStore) sync() {
 	batchLog := make([]*oplog, 0, self.batchSize)
 	chunks := make(Chunks, 0, self.batchSize)
 	var cmd *command
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(10 * time.Millisecond)
 	var curr *Segment
 	for self.running {
 
@@ -533,7 +538,8 @@ func (self *MessageStore) sync() {
 			s, id := self.checkRoll()
 			if nil == s {
 				log.Error("MessageStore|sync|checkRoll|FAIL...")
-				cmd.Done()
+				cmd.idchan <- -1
+				close(cmd.idchan)
 				continue
 			}
 			cmd.id = id
@@ -628,7 +634,8 @@ func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
 
 		//release
 		for _, c := range cmds {
-			c.Done()
+			c.idchan <- c.id
+			close(c.idchan)
 		}
 	}
 }
