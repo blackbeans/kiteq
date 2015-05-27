@@ -1,7 +1,7 @@
 package handler
 
 import (
-	// log "github.com/blackbeans/log4go"
+	log "github.com/blackbeans/log4go"
 	packet "github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
