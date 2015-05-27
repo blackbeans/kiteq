@@ -90,7 +90,7 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 		entity = self.kitestore.Query(pevent.messageId)
 		if nil == entity {
 			// self.kitestore.AsyncDelete(pevent.messageId)
-			// log.Debug("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
+			log.Error("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
 			return
 		}
 	}
