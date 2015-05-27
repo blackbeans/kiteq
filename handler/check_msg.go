@@ -75,7 +75,7 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 				h.DeliverLimit = protocol.MarshalInt32(MAX_DELIVER_LIMIT)
 			}
 			if h.GetExpiredTime() <= 0 || h.GetExpiredTime() > time.Now().Add(MAX_EXPIRED_TIME).Unix() {
-				h.ExpiredTime = protocol.MarshalInt64(int64(MAX_EXPIRED_TIME))
+				h.ExpiredTime = protocol.MarshalInt64(time.Now().Add(MAX_EXPIRED_TIME).Unix())
 			} else if h.GetExpiredTime() > 0 && h.GetExpiredTime() <= time.Now().Unix() {
 				//不存在该消息的处理则直接返回存储失败
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
