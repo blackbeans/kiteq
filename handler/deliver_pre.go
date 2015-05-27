@@ -1,7 +1,7 @@
 package handler
 
 import (
-	log "github.com/blackbeans/log4go"
+	// log "github.com/blackbeans/log4go"
 	packet "github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
@@ -89,8 +89,8 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 		//查询消息
 		entity = self.kitestore.Query(pevent.messageId)
 		if nil == entity {
-			// self.kitestore.AsyncDelete(pevent.messageId)
-			log.Error("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
+			self.kitestore.Expired(pevent.messageId)
+			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
 			return
 		}
 	}
