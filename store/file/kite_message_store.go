@@ -518,12 +518,13 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 }
 
 func (self *MessageStore) sync() {
-
+	MAX_BYTES := 8 * 1024 // 8K
 	batch := make([]*command, 0, self.batchSize)
 	batchLog := make([]*oplog, 0, self.batchSize)
 	chunks := make(Chunks, 0, self.batchSize)
 	var cmd *command
-	ticker := time.NewTicker(10 * time.Millisecond)
+	currBytes := 0
+	ticker := time.NewTicker(5 * time.Millisecond)
 	var curr *Segment
 	for self.running {
 
@@ -561,10 +562,11 @@ func (self *MessageStore) sync() {
 			}
 
 			batch = append(batch, c)
+			currBytes += CHUNK_HEADER + len(c.msg)
 		}
 
 		//force flush
-		if nil == cmd && len(batch) > 0 || len(batch) >= cap(batch) {
+		if nil == cmd && len(batch) > 0 || currBytes >= MAX_BYTES || len(batch) >= cap(batch) {
 			flush(curr, chunks[:0], batchLog[:0], batch)
 			batch = batch[:0]
 		}

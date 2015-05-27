@@ -62,7 +62,7 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 		delChan: make(chan *command, 1000)}
 
 	kms.snapshot =
-		NewMessageStore(dir+"/snapshot/", 100, 2, checkPeriod, func(ol *oplog) {
+		NewMessageStore(dir+"/snapshot/", 300, 2, checkPeriod, func(ol *oplog) {
 			kms.replay(ol)
 		})
 	return kms
@@ -293,10 +293,12 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		}
 
 		cmd := NewCommand(-1, entity.MessageId, buff, obd)
+
 		//append oplog into file
 		idchan := self.snapshot.Append(cmd)
 		ob.saveDone = idchan
 		ob.Add(1)
+
 		//get lock
 		lock.Lock()
 		//push
@@ -308,71 +310,85 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 }
 func (self *KiteFileStore) Commit(messageId string) bool {
-	lock, _, ol := self.hash(messageId)
-	lock.Lock()
-	defer lock.Unlock()
-	e, ok := ol[messageId]
-	if !ok {
-		return true
-	}
 
-	v := e.Value.(*opBody)
-	//wait save succ
-	self.waitSaveDone(v)
-	if v.Id < 0 {
-		return false
-	}
-	//modify commit
-	v.Commit = true
+	cmd := func() *command {
+		lock, _, ol := self.hash(messageId)
+		lock.Lock()
+		defer lock.Unlock()
+		e, ok := ol[messageId]
+		if !ok {
+			return nil
+		}
 
-	obd, err := json.Marshal(v)
-	if nil != err {
-		log.Error("KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
-		return false
+		v := e.Value.(*opBody)
+		//wait save succ
+		self.waitSaveDone(v)
+		if v.Id < 0 {
+			return nil
+		}
+		//modify commit
+		v.Commit = true
+		obd, err := json.Marshal(v)
+		if nil != err {
+			log.Error("KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
+			return nil
+		}
+		//write oplog
+		cmd := NewCommand(v.Id, messageId, nil, obd)
+		return cmd
+	}()
+
+	if nil != cmd {
+		//update log
+		self.snapshot.Update(cmd)
 	}
-	//write oplog
-	cmd := NewCommand(v.Id, messageId, nil, obd)
-	self.snapshot.Update(cmd)
 	return true
+
 }
 func (self *KiteFileStore) Rollback(messageId string) bool {
 	return self.Delete(messageId)
 }
 func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
-	lock, link, el := self.hash(entity.MessageId)
-	lock.Lock()
-	defer lock.Unlock()
-	e, ok := el[entity.MessageId]
-	if !ok {
-		return true
-	}
+	cmd := func() *command {
+		lock, link, el := self.hash(entity.MessageId)
+		lock.Lock()
+		defer lock.Unlock()
+		e, ok := el[entity.MessageId]
+		if !ok {
+			return nil
+		}
 
-	//move to back
-	link.MoveToBack(e)
-	//modify opbody value
-	v := e.Value.(*opBody)
-	//wait save succ
-	self.waitSaveDone(v)
-	if v.Id < 0 {
-		return true
-	}
+		//move to back
+		link.MoveToBack(e)
+		//modify opbody value
+		v := e.Value.(*opBody)
+		//wait save succ
+		self.waitSaveDone(v)
+		if v.Id < 0 {
+			return nil
+		}
 
-	v.DeliverCount = entity.DeliverCount
-	v.NextDeliverTime = entity.NextDeliverTime
-	v.SuccGroups = entity.SuccGroups
-	v.FailGroups = entity.FailGroups
+		v.DeliverCount = entity.DeliverCount
+		v.NextDeliverTime = entity.NextDeliverTime
+		v.SuccGroups = entity.SuccGroups
+		v.FailGroups = entity.FailGroups
 
-	obd, err := json.Marshal(v)
-	if nil != err {
-		log.Error("KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
-		return false
+		obd, err := json.Marshal(v)
+		if nil != err {
+			log.Error("KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
+			return nil
+		}
+		//append log
+		cmd := NewCommand(v.Id, entity.MessageId, nil, obd)
+		return cmd
+	}()
+	if nil != cmd {
+		self.snapshot.Update(cmd)
 	}
-	//append log
-	cmd := NewCommand(v.Id, entity.MessageId, nil, obd)
-	self.snapshot.Update(cmd)
 	return true
 }
 func (self *KiteFileStore) Delete(messageId string) bool {
+
 	lock, link, el := self.hash(messageId)
 	lock.Lock()
 	defer lock.Unlock()
@@ -443,27 +459,33 @@ outter:
 
 //expired
 func (self *KiteFileStore) Expired(messageId string) bool {
-	lock, link, el := self.hash(messageId)
-	lock.Lock()
-	defer lock.Unlock()
-	e, ok := el[messageId]
-	if !ok {
-		return true
+
+	cmd := func() *command {
+		lock, link, el := self.hash(messageId)
+		lock.Lock()
+		defer lock.Unlock()
+		e, ok := el[messageId]
+		if !ok {
+			return nil
+		}
+
+		//delete log
+		delete(el, messageId)
+		link.Remove(e)
+
+		v := e.Value.(*opBody)
+		//wait save succ
+		self.waitSaveDone(v)
+		if v.Id < 0 {
+			return nil
+		}
+		c := NewCommand(v.Id, messageId, nil, nil)
+		return c
+	}()
+
+	if nil != cmd {
+		self.snapshot.Expired(cmd)
 	}
-
-	//delete log
-	delete(el, messageId)
-	link.Remove(e)
-
-	v := e.Value.(*opBody)
-	//wait save succ
-	self.waitSaveDone(v)
-	if v.Id < 0 {
-		return true
-	}
-	c := NewCommand(v.Id, messageId, nil, nil)
-	self.snapshot.Expired(c)
-
 	return true
 }
 

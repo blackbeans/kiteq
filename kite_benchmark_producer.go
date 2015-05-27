@@ -144,8 +144,8 @@ func main() {
 							atomic.AddInt32(&count, 1)
 						}
 					} else {
-						txmsg := buildStringMessage(true)
-						err := kite.SendStringMessage(txmsg)
+						txmsg := buildBytesMessage(true)
+						err := kite.SendBytesMessage(txmsg)
 						if nil != err {
 							// fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
 							atomic.AddInt32(&fc, 1)

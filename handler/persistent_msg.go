@@ -109,11 +109,14 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 		}
 
 	} else {
+		// now := time.Now().UnixNano()
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)
+		// log.Info("PersistentHandler|sendUnFlyMessage|cost:%d", time.Now().UnixNano()-now)
 		if saveSucc && pevent.entity.Commit {
 			self.send(ctx, pevent, nil)
 		}
+
 	}
 
 	//发送存储结果ack
