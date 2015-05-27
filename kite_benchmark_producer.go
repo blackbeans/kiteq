@@ -71,7 +71,7 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 		MessageId:    proto.String(store.MessageId()),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Add(24 * time.Hour).Unix()),
+		ExpiredTime:  proto.Int64(-1),
 		DeliverLimit: proto.Int32(100),
 		GroupId:      proto.String("go-kite-test"),
 		Commit:       proto.Bool(commit),
@@ -144,8 +144,8 @@ func main() {
 							atomic.AddInt32(&count, 1)
 						}
 					} else {
-						txmsg := buildBytesMessage(true)
-						err := kite.SendBytesMessage(txmsg)
+						txmsg := buildStringMessage(true)
+						err := kite.SendStringMessage(txmsg)
 						if nil != err {
 							// fmt.Printf("SEND MESSAGE |FAIL|%s\n", err)
 							atomic.AddInt32(&fc, 1)

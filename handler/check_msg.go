@@ -73,9 +73,14 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 			h := pevent.entity.Header
 			if h.GetDeliverLimit() <= 0 || h.GetDeliverLimit() > MAX_DELIVER_LIMIT {
 				h.DeliverLimit = protocol.MarshalInt32(MAX_DELIVER_LIMIT)
+				//config entity value
+				pevent.entity.DeliverLimit = MAX_DELIVER_LIMIT
 			}
 			if h.GetExpiredTime() <= 0 || h.GetExpiredTime() > time.Now().Add(MAX_EXPIRED_TIME).Unix() {
-				h.ExpiredTime = protocol.MarshalInt64(time.Now().Add(MAX_EXPIRED_TIME).Unix())
+				et := time.Now().Add(MAX_EXPIRED_TIME).Unix()
+				h.ExpiredTime = protocol.MarshalInt64(et)
+				//config entity value
+				pevent.entity.ExpiredTime = et
 			} else if h.GetExpiredTime() > 0 && h.GetExpiredTime() <= time.Now().Unix() {
 				//不存在该消息的处理则直接返回存储失败
 				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
@@ -84,6 +89,7 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 				ctx.SendForward(remoteEvent)
 				return nil
 			}
+
 			//向后发送
 			ctx.SendForward(pevent)
 		}
