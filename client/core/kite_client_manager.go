@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"net"
 	"os"
-
 	"sync"
 	"time"
 )

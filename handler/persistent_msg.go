@@ -2,7 +2,7 @@ package handler
 
 import (
 	"errors"
-	// log "github.com/blackbeans/log4go"
+	log "github.com/blackbeans/log4go"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/stat"
 	"kiteq/store"
@@ -79,6 +79,8 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
 	saveSucc := true
 
+	log.Info("PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
+
 	//提交并且开启优化
 	if self.fly &&
 		pevent.entity.Commit && self.flowstat.OptimzeStatus {
@@ -116,7 +118,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 
 	//发送存储结果ack
 	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), saveSucc, ""), []string{pevent.remoteClient.RemoteAddr()})
+		pevent.entity.Header.GetMessageId(), saveSucc, "Store SUCC"), []string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 
 }

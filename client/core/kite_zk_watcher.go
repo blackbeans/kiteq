@@ -6,12 +6,11 @@ import (
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
-	"sort"
 	"strings"
 )
 
 func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent, children []string) {
-	// @todo关闭或者新增相应的pub/sub connections
+
 	//如果是订阅关系变更则处理
 	if strings.HasPrefix(path, binding.KITEQ_SERVER) {
 		//获取topic
@@ -23,12 +22,13 @@ func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent
 		}
 		//获取topic
 		topic := split[3]
-		//不是当前服务可以处理的topic则直接丢地啊哦
-		if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-			log.Warn("BindExchanger|ChildWatcher|REFUSE SERVER PATH |%s|%t\n", path, children)
-			return
+		//search topic
+		for _, t := range self.topics {
+			if t == topic {
+				self.onQServerChanged(topic, children)
+				break
+			}
 		}
-		self.onQServerChanged(topic, children)
 	}
 }
 
@@ -68,8 +68,9 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 		//创建kiteClient
 		kiteClient := newKitClient(remoteClient)
 		clients = append(clients, kiteClient)
-		log.Info("KiteClientManager|onQServerChanged|newKitClient|SUCC|%s\n", host)
 	}
+
+	log.Info("KiteClientManager|onQServerChanged|SUCC|%s|%s\n", topic, hosts)
 
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -96,6 +97,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 
 func (self *KiteClientManager) DataChange(path string, binds []*binding.Binding) {
 	//IGNORE
+	log.Info("KiteClientManager|DataChange|%s|%s\n", path, binds)
 }
 
 func (self *KiteClientManager) OnSessionExpired() {

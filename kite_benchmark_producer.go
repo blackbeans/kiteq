@@ -64,6 +64,24 @@ func buildBytesMessage(commit bool) *protocol.BytesMessage {
 	return entity
 }
 
+func buildStringMessage(commit bool) *protocol.StringMessage {
+	//创建消息
+	entity := &protocol.StringMessage{}
+	entity.Header = &protocol.Header{
+		MessageId:    proto.String(store.MessageId()),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Add(24 * time.Hour).Unix()),
+		DeliverLimit: proto.Int32(100),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(commit),
+		Fly:          proto.Bool(false)}
+
+	entity.Body = proto.String("hello world")
+
+	return entity
+}
+
 func main() {
 	logxml := flag.String("logxml", "./log/log_producer.xml", "-logxml=./log/log_producer.xml")
 	k := flag.Int("k", 1, "-k=1  //kiteclient num ")
