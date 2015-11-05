@@ -7,6 +7,7 @@ KiteQ ![image](./doc/logo.jpg)
     Go:    https://github.com/blackbeans/kiteq/tree/master/client
     Java : https://github.com/blackbeans/kiteq-client-java
     PHP:   https://github.com/blackbeans/kiteq-client-php
+    C++: https://github.com/quguangjie/kiteq-client-cpp
 
 #### 简介
     * 基于zk维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
