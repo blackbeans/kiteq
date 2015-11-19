@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+const (
+	PATH_SERVER = "/kiteq/server"
+	PATH_SUB    = "/kiteq/sub"
+)
+
 //用于管理订阅关系，对接zookeeper的订阅关系变更
 type BindExchanger struct {
 	exchanger   map[string] /*topic*/ map[string] /*groupId*/ []*Binding //保存的订阅关系
@@ -22,7 +27,9 @@ func NewBindExchanger(zkhost string, kiteQServer string) *BindExchanger {
 	ex := &BindExchanger{
 		exchanger: make(map[string]map[string][]*Binding, 100),
 		topics:    make([]string, 0, 50)}
-	zkmanager := NewZKManager(zkhost, ex)
+	zkmanager := NewZKManager(zkhost)
+	zkmanager.RegisteWather(PATH_SERVER, ex)
+	zkmanager.RegisteWather(PATH_SUB, ex)
 	ex.zkmanager = zkmanager
 	ex.kiteqserver = kiteQServer
 	return ex

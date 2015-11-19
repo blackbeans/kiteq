@@ -17,7 +17,7 @@ const (
 
 type ZKManager struct {
 	zkhosts   string
-	watcher   IWatcher
+	wathcers  map[string]IWatcher //基本的路径--->watcher zk可以复用了
 	session   *zk.Conn
 	eventChan <-chan zk.Event
 	isClose   bool
@@ -41,9 +41,10 @@ type IWatcher interface {
 	NodeChange(path string, eventType ZkEvent, children []string)
 }
 
-func NewZKManager(zkhosts string, watcher IWatcher) *ZKManager {
-	zkmanager := &ZKManager{zkhosts: zkhosts, watcher: watcher}
+func NewZKManager(zkhosts string) *ZKManager {
+	zkmanager := &ZKManager{zkhosts: zkhosts, wathcers: make(map[string]IWatcher, 10)}
 	zkmanager.Start()
+
 	return zkmanager
 }
 
@@ -84,30 +85,72 @@ func (self *ZKManager) Start() {
 	go self.listenEvent()
 }
 
+//如果返回false则已经存在
+func (self *ZKManager) RegisteWather(rootpath string, w IWatcher) bool {
+	_, ok := self.wathcers[rootpath]
+	if ok {
+		return false
+	} else {
+		self.wathcers[rootpath] = w
+		return true
+	}
+}
+
 //监听数据变更
 func (self *ZKManager) listenEvent() {
 	for !self.isClose {
-		//根据zk的文档 watcher机制是无法保证可靠的，其次需要在每次处理完watcher后要重新注册watcher
+
+		//根据zk的文档 Watcher机制是无法保证可靠的，其次需要在每次处理完Watcher后要重新注册Watcher
 		change := <-self.eventChan
 		path := change.Path
+		//开始检查符合的watcher
+		watcher := func() IWatcher {
+			for k, w := range self.wathcers {
+				//以给定的
+				if strings.Index(path, k) >= 0 {
+
+					return w
+				}
+			}
+			return nil
+		}()
+
+		//如果没有wacher那么久忽略
+		if nil == watcher {
+			log.Warn("ZKManager|listenEvent|NO  WATCHER|%s", path)
+			continue
+		}
+
 		switch change.Type {
 		case zk.EventSession:
 			if change.State == zk.StateExpired {
-				log.Warn("ZKManager|OnSessionExpired!")
-				//zk链接开则需要重新链接重新推送
-				self.watcher.OnSessionExpired()
+				log.Warn("ZKManager|OnSessionExpired!|Reconnect Zk ....")
+				//阻塞等待重连任务成功
+				succ := <-self.reconnect()
+				if !succ {
+					log.Warn("ZKManager|OnSessionExpired|Reconnect Zk|FAIL| ....")
+					continue
+				}
+
+				//session失效必须通知所有的watcher
+				func() {
+					for _, w := range self.wathcers {
+						//zk链接开则需要重新链接重新推送
+						w.OnSessionExpired()
+					}
+				}()
 
 			}
 		case zk.EventNodeDeleted:
 			self.session.ExistsW(path)
-			self.watcher.NodeChange(path, ZkEvent(change.Type), []string{})
+			watcher.NodeChange(path, ZkEvent(change.Type), []string{})
 			// log.Info("ZKManager|listenEvent|%s|%s\n", path, change)
 		case zk.EventNodeCreated, zk.EventNodeChildrenChanged:
 			childnodes, _, _, err := self.session.ChildrenW(path)
 			if nil != err {
 				log.Error("ZKManager|listenEvent|CD|%s|%s|%t\n", err, path, change.Type)
 			} else {
-				self.watcher.NodeChange(path, ZkEvent(change.Type), childnodes)
+				watcher.NodeChange(path, ZkEvent(change.Type), childnodes)
 				// log.Info("ZKManager|listenEvent|%s|%s|%s\n", path, change, childnodes)
 			}
 
@@ -124,13 +167,59 @@ func (self *ZKManager) listenEvent() {
 				//忽略
 				continue
 			}
-			self.watcher.DataChange(path, binds)
+			watcher.DataChange(path, binds)
 			// log.Info("ZKManager|listenEvent|%s|%s|%s\n", path, change, binds)
 
 		}
 
 	}
 
+}
+
+/*
+*重连zk
+ */
+func (self *ZKManager) reconnect() <-chan bool {
+	ch := make(chan bool, 1)
+	go func() {
+
+		reconnTimes := int64(0)
+		f := func() error {
+			ss, eventChan, err := zk.Connect(strings.Split(self.zkhosts, ","), 5*time.Second)
+			if nil != err {
+				log.Warn("连接zk失败.....%ds后重连任务重新发起...|", (reconnTimes+1)*5)
+				return err
+			} else {
+				log.Info("重连ZK任务成功....")
+				//初始化当前的状态
+				self.session = ss
+				self.eventChan = eventChan
+
+				ch <- true
+				close(ch)
+				return nil
+			}
+
+		}
+		//启动重连任务
+		for !self.isClose {
+			select {
+			case <-time.After(time.Duration(reconnTimes * time.Second.Nanoseconds())):
+				err := f()
+				if nil != err {
+					reconnTimes += 1
+				} else {
+					//重连成功则推出
+					break
+				}
+			}
+		}
+
+		//失败
+		ch <- false
+		close(ch)
+	}()
+	return ch
 }
 
 //去除掉当前的KiteQServer
@@ -163,6 +252,9 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 		// self.session.ExistsW(ppath)
 		self.traverseCreatePath(spath, nil, zk.CreatePersistent)
 		self.session.ExistsW(spath)
+
+		//先删除当前这个临时节点再注册 避免监听不到临时节点变更的事件
+		self.session.Delete(qpath+"/"+hostport, -1)
 
 		//注册当前节点
 		path, err := self.registePath(qpath, hostport, zk.CreateEphemeral, nil)

@@ -18,6 +18,10 @@ import (
 	"time"
 )
 
+const (
+	PATH_KITEQ_SERVER = "/kiteq/server"
+)
+
 //本地事务的方法
 type DoTranscation func(message *protocol.QMessage) (bool, error)
 
@@ -85,7 +89,9 @@ func (self *KiteClientManager) remointflow() {
 //启动
 func (self *KiteClientManager) Start() {
 
-	self.zkManager = binding.NewZKManager(self.zkAddr, self)
+	self.zkManager = binding.NewZKManager(self.zkAddr)
+	//注册kiteqserver的变更
+	self.zkManager.RegisteWather(PATH_KITEQ_SERVER, self)
 
 	hostname, _ := os.Hostname()
 	//推送本机到
