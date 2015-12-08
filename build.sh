@@ -1,27 +1,27 @@
 #!/bin/bash
 
 
-go get  github.com/golang/protobuf/{proto,protoc-gen-go}
-go get  github.com/blackbeans/go-uuid
-go get  github.com/go-sql-driver/mysql
-go get 	github.com/blackbeans/log4go
-go get 	github.com/blackbeans/go-zookeeper/zk
-go get  github.com/blackbeans/turbo
+go get github.com/golang/protobuf/{proto,protoc-gen-go}
+go get github.com/blackbeans/go-uuid
+go get github.com/go-sql-driver/mysql
+go get github.com/blackbeans/log4go
+go get github.com/blackbeans/go-zookeeper/zk
+go get github.com/blackbeans/turbo
 
 
 #protoc --go_out=. ./protocol/*.proto
 
-go build -a kiteq/stat
-go build -a kiteq/protocol
-go build -a kiteq/binding
-go build -a kiteq/store
-go build -a kiteq/store/mysql
-go build -a kiteq/store/file
-go build -a kiteq/store/memory
-go build -a kiteq/handler
-go build -a kiteq/client/chandler
-go build -a kiteq/server
-go build -a kiteq/client
+go build  kiteq/stat
+go build  kiteq/protocol
+go build  kiteq/binding
+go build  kiteq/store
+go build  kiteq/store/mysql
+go build  kiteq/store/file
+go build  kiteq/store/memory
+go build  kiteq/handler
+go build  kiteq/client/chandler
+go build  kiteq/server
+go build  kiteq/client
 
 
 #########
@@ -49,9 +49,8 @@ go build  -a -o ./$PROJ $PROJ.go
 
 tar -zcvf kiteq.tar.gz $PROJ log/log.xml
 
-go build -a kite_benchmark_producer.go
-go build -a kite_benchmark_consumer.go
-
+#go build -a kite_benchmark_producer.go
+#go build -a kite_benchmark_consumer.go
 
 
 
