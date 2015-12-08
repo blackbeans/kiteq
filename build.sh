@@ -4,12 +4,12 @@
 go get  github.com/golang/protobuf/{proto,protoc-gen-go}
 go get  github.com/blackbeans/go-uuid
 go get  github.com/go-sql-driver/mysql
-go get -u github.com/blackbeans/log4go
-go get -u github.com/blackbeans/go-zookeeper/zk
-go get -u  github.com/blackbeans/turbo
+go get 	github.com/blackbeans/log4go
+go get 	github.com/blackbeans/go-zookeeper/zk
+go get  github.com/blackbeans/turbo
 
 
-protoc --go_out=. ./protocol/*.proto
+#protoc --go_out=. ./protocol/*.proto
 
 go build -a kiteq/stat
 go build -a kiteq/protocol
