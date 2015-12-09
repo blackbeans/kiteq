@@ -8,6 +8,7 @@ import (
 	"github.com/blackbeans/turbo/server"
 	"kiteq/binding"
 	"kiteq/handler"
+	"kiteq/stat"
 	"kiteq/store"
 	"os"
 )
@@ -44,6 +45,9 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	// 临时在这里创建的BindExchanger
 	exchanger := binding.NewBindExchanger(kc.zkhost, kc.server)
 
+	//创建消息投递注册器
+	registry := stat.NewDeliveryRegistry(10 * 10000)
+
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
 	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 30))
@@ -65,10 +69,10 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.fly, kc.flowstat))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.maxDeliverWorkers))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver"))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", registry))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.deliverTimeout, kitedb, rw))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.deliverTimeout, kitedb, rw, registry))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 
 	recoverManager := NewRecoverManager(kiteqName, kc.recoverPeriod, pipeline, kitedb)

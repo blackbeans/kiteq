@@ -2,20 +2,27 @@ package handler
 
 import (
 	. "github.com/blackbeans/turbo/pipe"
+	"kiteq/stat"
+	"time"
 	// 	log "github.com/blackbeans/log4go"
+)
+
+const (
+	EXPIRED_SECOND = 10 * time.Second
 )
 
 //----------------投递的handler
 type DeliverHandler struct {
 	BaseDoubleSidedHandler
+	deliveryRegistry *stat.DeliveryRegistry
 }
 
 //------创建deliverpre
-func NewDeliverHandler(name string) *DeliverHandler {
+func NewDeliverHandler(name string, deliveryRegistry *stat.DeliveryRegistry) *DeliverHandler {
 
 	phandler := &DeliverHandler{}
 	phandler.BaseDoubleSidedHandler = NewBaseDoubleSidedHandler(name, phandler)
-
+	phandler.deliveryRegistry = deliveryRegistry
 	return phandler
 }
 
@@ -33,6 +40,14 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	pevent, ok := self.cast(event)
 	if !ok {
 		return ERROR_INVALID_EVENT_TYPE
+	}
+
+	//尝试注册一下当前的投递事件的消息
+	//如果失败则放弃本次投递
+	//会在 deliverResult里取消该注册事件可以继续投递
+	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
+	if !succ {
+		return nil
 	}
 
 	//没有投递分组直接投递结果

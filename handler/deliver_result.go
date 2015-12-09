@@ -5,6 +5,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	. "github.com/blackbeans/turbo/pipe"
+	"kiteq/stat"
 	"kiteq/store"
 	"sort"
 	"time"
@@ -47,22 +48,24 @@ func (self redeliveryWindows) String() string {
 //-------投递结果记录的handler
 type DeliverResultHandler struct {
 	BaseForwardHandler
-	kitestore      store.IKiteStore
-	rw             redeliveryWindows //多个恢复的windows
-	deliverTimeout time.Duration
-	updateChan     chan store.MessageEntity
-	deleteChan     chan string
-	tw             *turbo.TimeWheel
+	kitestore        store.IKiteStore
+	rw               redeliveryWindows //多个恢复的windows
+	deliverTimeout   time.Duration
+	updateChan       chan store.MessageEntity
+	deleteChan       chan string
+	tw               *turbo.TimeWheel
+	deliveryRegistry *stat.DeliveryRegistry
 }
 
 //------创建投递结果处理器
-func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestore store.IKiteStore, rw []RedeliveryWindow) *DeliverResultHandler {
+func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestore store.IKiteStore,
+	rw []RedeliveryWindow, deliveryRegistry *stat.DeliveryRegistry) *DeliverResultHandler {
 	dhandler := &DeliverResultHandler{}
 	dhandler.BaseForwardHandler = NewBaseForwardHandler(name, dhandler)
 	dhandler.kitestore = kitestore
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
-
+	dhandler.deliveryRegistry = deliveryRegistry
 	dhandler.tw = turbo.NewTimeWheel(time.Duration(int64(deliverTimeout)/10), 10, 5)
 
 	go func() {
@@ -114,6 +117,9 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
 		close(fevent.attemptDeliver)
 	}
+
+	//去掉当前消息的投递事件
+	self.deliveryRegistry.UnRegiste(fevent.messageId)
 
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
