@@ -144,19 +144,6 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.
 		// hashGroups[bind.GroupId] = nil
 	}
 
-outter:
-	//加入投递失败的分组
-	for _, fg := range entity.FailGroups {
-
-		for _, g := range groupIds {
-			//如果已经存在则不添加进去
-			if g == fg {
-				continue outter
-			}
-		}
-		groupIds = append(groupIds, fg)
-	}
-
 	pevent.deliverGroups = groupIds
 }
 
