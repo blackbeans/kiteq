@@ -15,7 +15,7 @@ import (
 //  mock    mock://
 //  memory  memory://initcap=1000&maxcap=2000
 //  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1
-//  file    file:///path?cap=10000000&checkPeriod=60
+//  file    file:///path?cap=10000000&checkSeconds=60
 
 func parseDB(kc KiteQConfig) store.IKiteStore {
 	db := kc.db
@@ -173,7 +173,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 
 		//检查文件过期时间
 		checkPeriod := 1 * time.Second
-		fp, ok := params["checkPeriod"]
+		fp, ok := params["checkSeconds"]
 		if ok {
 			v, e := strconv.ParseInt(fp, 10, 32)
 			if nil != e {

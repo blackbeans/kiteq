@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	// log "github.com/blackbeans/log4go"
+	"fmt"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/stat"
 	"kiteq/store"
@@ -83,29 +84,25 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 
 	//提交并且开启优化
 	if self.fly &&
-		pevent.entity.Commit && self.flowstat.OptimzeStatus {
-		//先投递再去根据结果写存储
-		ch := make(chan []string, 3) //用于返回尝试投递结果
+		pevent.entity.Header.GetCommit() {
+		//先投递尝试投递一次再去根据结果写存储
+		ch := make(chan []string, 1) //用于返回尝试投递结果
 		self.send(ctx, pevent, ch)
 		/*如果是成功的则直接返回处理存储成功的
 		 *如果失败了，则需要持久化
 		 */
-		var failGroups *[]string
-		select {
-		case fg := <-ch:
-			failGroups = &fg
-		case <-time.After(self.deliverTimeout):
-
-		}
+		failGroups := <-ch
 		//失败或者超时的持久化
-		if nil == failGroups || len(*failGroups) > 0 {
-			pevent.entity.DeliverCount = 1
+		if len(failGroups) > 0 {
+			pevent.entity.DeliverCount += 1
 			if nil != failGroups {
-				pevent.entity.FailGroups = *failGroups
+				pevent.entity.FailGroups = failGroups
 			}
 
 			//写入到持久化存储里面
 			saveSucc = self.kitestore.Save(pevent.entity)
+			//再投递
+			self.send(ctx, pevent, nil)
 		}
 
 	} else {
@@ -121,7 +118,8 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 
 	//发送存储结果ack
 	remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), saveSucc, "Store SUCC"), []string{pevent.remoteClient.RemoteAddr()})
+		pevent.entity.Header.GetMessageId(), saveSucc, fmt.Sprintf("Store Result %t", saveSucc)),
+		[]string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 
 }

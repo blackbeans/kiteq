@@ -9,23 +9,21 @@ import (
 )
 
 type FlowStat struct {
-	name          string
-	Kitestore     store.IKiteStore
-	OptimzeStatus bool
-	DeliverFlow   *turbo.Flow
-	DeliverPool   *turbo.Flow
-	stop          bool
+	name        string
+	Kitestore   store.IKiteStore
+	DeliverFlow *turbo.Flow
+	DeliverPool *turbo.Flow
+	stop        bool
 	//current deliver count
 	DeliverCount int32
 }
 
 func NewFlowStat(name string) *FlowStat {
 	f := &FlowStat{
-		name:          name,
-		OptimzeStatus: true,
-		DeliverFlow:   &turbo.Flow{},
-		DeliverPool:   &turbo.Flow{},
-		stop:          false}
+		name:        name,
+		DeliverFlow: &turbo.Flow{},
+		DeliverPool: &turbo.Flow{},
+		stop:        false}
 	return f
 }
 

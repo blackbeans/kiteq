@@ -111,7 +111,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
 	}
 
-	attemptDeliver := (nil != fevent.attemptDeliver && fevent.deliverCount <= 1)
+	attemptDeliver := nil != fevent.attemptDeliver
 	//第一次尝试投递失败了立即通知
 	if attemptDeliver {
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
@@ -127,7 +127,8 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		}
 	} else {
 		//重投策略
-		if self.checkRedelivery(fevent) {
+		//不是尝试投递也就是第一次投递并且也是满足重投条件
+		if !attemptDeliver && self.checkRedelivery(fevent) {
 			//去掉当前消息的投递事件
 			self.deliveryRegistry.UnRegiste(fevent.messageId)
 			//再次发起重投策略
@@ -140,13 +141,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 }
 
 func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bool {
-
-	//如果不为fly消息那么需要存储投递结果
-	if !fevent.fly && fevent.deliverCount > 2 {
-		//存储投递结果
-		self.saveDeliverResult(fevent.messageId, fevent.deliverCount,
-			fevent.succGroups, fevent.deliveryFailGroups)
-	}
 
 	//检查当前消息的ttl和有效期是否达到最大的，如果达到最大则不允许再次投递
 	if fevent.expiredTime <= time.Now().Unix() || (fevent.deliverLimit <= fevent.deliverCount &&
@@ -166,6 +160,15 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 			fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
 			fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliveryFailGroups)
 	}
+
+	//如果不为fly消息那么需要存储投递结果
+	//并且消息的投递次数大于等于3那么就应该持久化投递结果
+	if !fevent.fly && fevent.deliverCount >= 3 {
+		//存储投递结果
+		self.saveDeliverResult(fevent.messageId, fevent.deliverCount,
+			fevent.succGroups, fevent.deliveryFailGroups)
+	}
+
 	return false
 }
 

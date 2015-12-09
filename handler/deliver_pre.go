@@ -63,14 +63,6 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		self.flowstat.DeliverFlow.Incr(1)
 	}()
 
-	//如果当前处理的goroutine数已经到达一半的容量则切换到持久化，再投递
-	//或者消息本身就是一个未提交的消息也是先持久化
-	if len(self.maxDeliverNum)*5/4 >= cap(self.maxDeliverNum) {
-		self.flowstat.OptimzeStatus = false
-	} else {
-		self.flowstat.OptimzeStatus = true
-	}
-
 	return nil
 }
 
@@ -125,16 +117,17 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 
 //填充订阅分组
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
-	binds := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(), func(b *binding.Binding) bool {
-		// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
-		//过滤掉已经投递成功的分组
-		for _, sg := range entity.SuccGroups {
-			if sg == b.GroupId {
-				return true
+	binds := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
+		func(b *binding.Binding) bool {
+			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
+			//过滤掉已经投递成功的分组
+			for _, sg := range entity.SuccGroups {
+				if sg == b.GroupId {
+					return true
+				}
 			}
-		}
-		return false
-	})
+			return false
+		})
 
 	//合并本次需要投递的分组
 	groupIds := make([]string, 0, 10)

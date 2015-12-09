@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	fly := flag.Bool("fly", false, "-fly=true //开启服务端飞行模式")
+	fly := flag.Bool("fly", false, "-fly=true //开启服务端优先投递，false为优先存储")
 	logxml := flag.String("logxml", "./log/log.xml", "-logxml=./log/log.xml")
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
