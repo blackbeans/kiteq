@@ -118,9 +118,6 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		close(fevent.attemptDeliver)
 	}
 
-	//去掉当前消息的投递事件
-	self.deliveryRegistry.UnRegiste(fevent.messageId)
-
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
 		if !fevent.fly && !attemptDeliver {
@@ -131,6 +128,8 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	} else {
 		//重投策略
 		if self.checkRedelivery(fevent) {
+			//去掉当前消息的投递事件
+			self.deliveryRegistry.UnRegiste(fevent.messageId)
 			//再次发起重投策略
 			ctx.SendBackward(fevent.deliverEvent)
 		}
