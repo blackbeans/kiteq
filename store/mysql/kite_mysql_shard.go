@@ -30,16 +30,20 @@ func newDbShard(options MysqlOptions) DbShard {
 
 	shardranges := make([]shardrange, 0, hash)
 	for i := 0; i < options.ShardNum; i++ {
+		link := options.Username + "@tcp(" + options.Addr + ")/" + options.DB
+		if len(options.Password) > 0 {
+			link = options.Username + ":" + options.Password + "@tcp(" + options.SlaveAddr + ")/" + options.DB
+		}
 
 		//创建shard的db
 		master := openDb(
-			options.Username+":"+options.Password+"@tcp("+options.Addr+")/"+options.DB,
+			link,
 			i,
 			options.MaxIdleConn, options.MaxOpenConn)
 		slave := master
 		if len(options.SlaveAddr) > 0 {
 			slave = openDb(
-				options.Username+":"+options.Password+"@tcp("+options.SlaveAddr+")/"+options.DB,
+				link,
 				i,
 				options.MaxIdleConn, options.MaxOpenConn)
 		}

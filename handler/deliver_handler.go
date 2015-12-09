@@ -42,19 +42,19 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	//尝试注册一下当前的投递事件的消息
-	//如果失败则放弃本次投递
-	//会在 deliverResult里取消该注册事件可以继续投递
-	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
-	if !succ {
-		return nil
-	}
-
 	//没有投递分组直接投递结果
 	if len(pevent.deliverGroups) <= 0 {
 		//直接显示投递成功
 		resultEvent := newDeliverResultEvent(pevent, nil)
 		ctx.SendForward(resultEvent)
+		return nil
+	}
+
+	//尝试注册一下当前的投递事件的消息
+	//如果失败则放弃本次投递
+	//会在 deliverResult里取消该注册事件可以继续投递
+	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
+	if !succ {
 		return nil
 	}
 

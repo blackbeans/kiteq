@@ -14,7 +14,7 @@ import (
 // storage schema
 //  mock    mock://
 //  memory  memory://initcap=1000&maxcap=2000
-//  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushPeriod=1000
+//  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1
 //  file    file:///path?cap=10000000&checkPeriod=60
 
 func parseDB(kc KiteQConfig) store.IKiteStore {
@@ -86,7 +86,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 		}
 
 		flushPeriod := 1 * time.Second
-		fp, ok := params["flushPeriod"]
+		fp, ok := params["flushSeconds"]
 		if ok {
 			v, e := strconv.ParseInt(fp, 10, 32)
 			if nil != e {
