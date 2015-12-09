@@ -142,7 +142,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bool {
 
 	//如果不为fly消息那么需要存储投递结果
-	if !fevent.fly && fevent.deliverCount > 3 {
+	if !fevent.fly && fevent.deliverCount > 2 {
 		//存储投递结果
 		self.saveDeliverResult(fevent.messageId, fevent.deliverCount,
 			fevent.succGroups, fevent.deliveryFailGroups)
@@ -153,11 +153,11 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		fevent.deliverLimit > 0) {
 		//只是记录一下本次发送记录不发起重投策略
 
-	} else if fevent.deliverCount <= 3 {
+	} else if fevent.deliverCount < 3 {
 		//只有在消息前三次投递才会失败立即重投
 		fevent.deliverGroups = fevent.deliveryFailGroups
 		fevent.packet.Reset()
-		// log.Info("DeliverResultHandler|checkRedelivery|%s\n", fevent.deliverCount, fevent.deliverEvent)
+		log.InfoLog("kite_handler", "DeliverResultHandler|checkRedelivery|%s|%s\n", fevent.messageId, fevent.deliverCount, fevent.deliverEvent)
 		return true
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
