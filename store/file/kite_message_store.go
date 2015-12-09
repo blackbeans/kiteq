@@ -135,7 +135,7 @@ func (self *MessageStore) evict() {
 		self.RUnlock()
 
 		if len(stat) > 0 {
-			log.Info("---------------MessageStore-Stat--------------\n"+
+			log.InfoLog("kite_store", "---------------MessageStore-Stat--------------"+
 				"cached-segments:[%s]\n"+
 				"|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", cache, stat)
 		}
@@ -170,31 +170,31 @@ func (self *MessageStore) remove(s *Segment) {
 
 	err := os.Remove(s.path)
 	if nil != err {
-		log.Warn("MessageStore|Remove|Segment|FAIL|%s|%s", err, s.path)
+		log.WarnLog("kite_store", "MessageStore|Remove|Segment|FAIL|%s|%s", err, s.path)
 	}
 	err = os.Remove(s.slog.path)
 	if nil != err {
-		log.Warn("MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
+		log.WarnLog("kite_store", "MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
 	}
 
 	self.Unlock()
-	log.Info("MessageStore|Remove|Segment|%s", s.path)
+	log.InfoLog("kite_store", "MessageStore|Remove|Segment|%s", s.path)
 }
 
 func (self *MessageStore) load() {
-	log.Info("MessageStore|Load Segments ...")
+	log.InfoLog("kite_store", "MessageStore|Load Segments ...")
 
 	if !dirExist(self.filePath) {
 		err := os.MkdirAll(self.filePath, os.ModePerm)
 		if nil != err {
-			log.Error("MessageStore|Load Segments|MKDIR|FAIL|%s|%s", err, self.filePath)
+			log.ErrorLog("kite_store", "MessageStore|Load Segments|MKDIR|FAIL|%s|%s", err, self.filePath)
 			panic(err)
 		}
 	}
 
 	bashDir, err := os.Open(self.filePath)
 	if nil != err {
-		log.Error("MessageStore|Load Segments|FAIL|%s|%s", err, self.filePath)
+		log.ErrorLog("kite_store", "MessageStore|Load Segments|FAIL|%s|%s", err, self.filePath)
 		panic(err)
 	}
 
@@ -211,7 +211,7 @@ func (self *MessageStore) load() {
 		if len(split) >= 2 {
 			id, err := strconv.ParseInt(split[1], 10, 64)
 			if nil != err {
-				log.Error("MessageStore|Load Segments|Parse SegmentId|FAIL|%s|%s", err, name)
+				log.ErrorLog("kite_store", "MessageStore|Load Segments|Parse SegmentId|FAIL|%s|%s", err, name)
 				return nil
 			}
 			sid = id
@@ -254,7 +254,7 @@ func (self *MessageStore) load() {
 
 	//load fixed num  segments into memory
 
-	log.Info("MessageStore|Load|SUCC|%s", self)
+	log.InfoLog("kite_store", "MessageStore|Load|SUCC|%s", self)
 }
 
 func (self *MessageStore) recoverSnapshot() {
@@ -265,7 +265,7 @@ func (self *MessageStore) recoverSnapshot() {
 		for i, s := range self.segments {
 			err := s.Open(self.replay)
 			if nil != err {
-				log.Error("MessageStore|recoverSnapshot|Fail|%s", err, s.slog.path)
+				log.ErrorLog("kite_store", "MessageStore|recoverSnapshot|Fail|%s", err, s.slog.path)
 				panic(err)
 			}
 
@@ -280,7 +280,7 @@ func (self *MessageStore) recoverSnapshot() {
 					self.chunkId = s.chunks[len(s.chunks)-1].id
 				}
 			}
-			log.Debug("MessageStore|recoverSnapshot|%s", s.name)
+			log.DebugLog("kite_store", "MessageStore|recoverSnapshot|%s", s.name)
 		}
 	}
 }
@@ -355,7 +355,7 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 			//load segment
 			curr = self.loadSegment(idx)
 		}
-		// log.Debug("MessageStore|indexSegment|%d", curr.path)
+		// log.Debug("kite_store","MessageStore|indexSegment|%d", curr.path)
 
 	}
 	return curr
@@ -376,7 +376,7 @@ func (self *MessageStore) loadSegment(idx int) *Segment {
 
 	//push to cache
 	self.segmentCache.PushFront(s)
-	// log.Info("MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
+	// log.InfoLog("kite_store","MessageStore|loadSegment|SUCC|%s|cache-Len:%d", s.name, self.segmentCache.Len())
 	return s
 }
 
@@ -409,7 +409,7 @@ func (self *MessageStore) Delete(c *command) bool {
 		return succ
 
 	} else {
-		// log.Debug("MessageStore|Delete|chunkid:%d|%s\n", c.id, c.logicId)
+		// log.DebugLog("kite_store","MessageStore|Delete|chunkid:%d|%s\n", c.id, c.logicId)
 		return false
 	}
 }
@@ -431,7 +431,7 @@ func (self *MessageStore) Expired(c *command) bool {
 		return succ
 
 	} else {
-		// log.Debug("MessageStore|Expired|chunkid:%d|%s\n", cid, s)
+		// log.DebugLog("kite_store","MessageStore|Expired|chunkid:%d|%s\n", cid, s)
 		return false
 	}
 }
@@ -509,7 +509,7 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 	news := newSegment(self.filePath+name, name, nextStart, sl)
 	err := news.Open(self.replay)
 	if nil != err {
-		log.Error("MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
+		log.ErrorLog("kite_store", "MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
 		return nil, err
 	}
 	// log.Debug("MessageStore|createSegment|SUCC|%s", news.path)
@@ -538,7 +538,7 @@ func (self *MessageStore) sync() {
 		if nil != cmd {
 			s, id := self.checkRoll()
 			if nil == s {
-				log.Error("MessageStore|sync|checkRoll|FAIL...")
+				log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
 				cmd.idchan <- -1
 				close(cmd.idchan)
 				continue
@@ -602,7 +602,7 @@ outter:
 
 	ticker.Stop()
 	self.waitSync.Done()
-	log.Info("MessageStore|SYNC|CLOSE...")
+	log.InfoLog("kite_store", "MessageStore|SYNC|CLOSE...")
 }
 
 func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
@@ -630,7 +630,7 @@ func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
 		//complete
 		err := s.Append(chunks)
 		if nil != err {
-			log.Error("MessageStore|Append|FAIL|%s\n", err)
+			log.ErrorLog("kite_store", "MessageStore|Append|FAIL|%s\n", err)
 		}
 		s.Unlock()
 
@@ -653,11 +653,11 @@ func (self *MessageStore) Destory() {
 	for _, s := range self.segments {
 		err := s.Close()
 		if nil != err {
-			log.Error("MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
+			log.ErrorLog("kite_store", "MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
 		}
 	}
 	self.baseDir.Close()
-	log.Info("MessageStore|Destory...")
+	log.InfoLog("kite_store", "MessageStore|Destory...")
 }
 
 //chunk id

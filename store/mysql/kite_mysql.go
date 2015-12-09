@@ -51,7 +51,7 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		stop:         false}
 	ins.Start()
 
-	log.Info("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
+	log.InfoLog("kite_store", "NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	return ins
 }
 
@@ -97,7 +97,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 	s := self.sqlwrapper.hashQuerySQL(messageId)
 	rows, err := self.dbshard.FindSlave(messageId).Query(s, messageId)
 	if nil != err {
-		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
+		log.ErrorLog("kite_store", "KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
 		return nil
 	}
 	defer rows.Close()
@@ -108,7 +108,7 @@ func (self *KiteMysqlStore) Query(messageId string) *MessageEntity {
 		fc := self.convertor.convertFields(entity, filternothing)
 		err := rows.Scan(fc...)
 		if nil != err {
-			log.Error("KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
+			log.ErrorLog("kite_store", "KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
 			return nil
 		}
 		self.convertor.Convert2Entity(fc, entity, filternothing)
@@ -128,7 +128,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	s := self.sqlwrapper.hashSaveSQL(entity.MessageId)
 	result, err := self.dbshard.FindMaster(entity.MessageId).Exec(s, fvs...)
 	if err != nil {
-		log.Error("KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
+		log.ErrorLog("kite_store", "KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
 		return false
 	}
 
@@ -163,7 +163,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 	rows, err := self.dbshard.FindSlave(hashKey).
 		Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
 	if err != nil {
-		log.Error("KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
+		log.ErrorLog("kite_store", "KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil
 	}
 	defer rows.Close()
@@ -175,7 +175,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 		fc := self.convertor.convertFields(entity, filterbody)
 		err := rows.Scan(fc...)
 		if err != nil {
-			log.Error("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
+			log.ErrorLog("kite_store", "KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
 		} else {
 
 			self.convertor.Convert2Entity(fc, entity, filterbody)

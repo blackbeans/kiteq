@@ -91,14 +91,14 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 						//头部用PB反序列化
 						err := protocol.UnmarshalPbMessage(hd, &header)
 						if nil != err {
-							log.Error("convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
+							log.ErrorLog("kite_store", "convertor|Convert2Entity|Unmarshal Header|FAIL|%s|%s\n", err, c.fieldName)
 						}
 					}
 					fn.Set(reflect.ValueOf(&header))
 				} else if hok {
 					fn.SetBytes(hd)
 				} else {
-					log.Error("convertor|Convert2Entity|FAIL|UnSupport Ptr DataType|%s|%t|%s|%s\n", c.fieldName, rv, hok, ok)
+					log.ErrorLog("kite_store", "convertor|Convert2Entity|FAIL|UnSupport Ptr DataType|%s|%t|%s|%s\n", c.fieldName, rv, hok, ok)
 					return
 				}
 			}
@@ -108,13 +108,13 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 				var data []string
 				err := json.Unmarshal([]byte(rv.(string)), &data)
 				if nil != err {
-					log.Error("convertor|Convert2Entity|FAIL|UnSupport SLICE|%s|%s\n", c.fieldName, rv)
+					log.ErrorLog("kite_store", "convertor|Convert2Entity|FAIL|UnSupport SLICE|%s|%s\n", c.fieldName, rv)
 				}
 				fn.Set(reflect.ValueOf(data))
 			} else if k == reflect.Uint8 {
 				fn.SetBytes(rv.([]byte))
 			} else {
-				log.Error("convertor|Convert2Entity|FAIL|UnSupport SLICE DataType|%s|%s\n", c.columnName, fn.Elem().Kind())
+				log.ErrorLog("kite_store", "convertor|Convert2Entity|FAIL|UnSupport SLICE DataType|%s|%s\n", c.columnName, fn.Elem().Kind())
 				return
 			}
 		default:
@@ -123,11 +123,11 @@ func (self convertor) Convert2Entity(fv []interface{}, entity *store.MessageEnti
 				if ok {
 					fn.Set(rval.Elem())
 				} else {
-					log.Error("convertor|Convert2Entity|FAIL|UnSupport BodyType |REQ:[]byte|%s|%T\n", c.fieldName, rv)
+					log.ErrorLog("kite_store", "convertor|Convert2Entity|FAIL|UnSupport BodyType |REQ:[]byte|%s|%T\n", c.fieldName, rv)
 					return
 				}
 			} else {
-				log.Error("convertor|Convert2Entity|FAIL|UnSupport DataType|%s|%s\n", c.fieldName, rv)
+				log.ErrorLog("kite_store", "convertor|Convert2Entity|FAIL|UnSupport DataType|%s|%s\n", c.fieldName, rv)
 			}
 		}
 	}
@@ -146,7 +146,7 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 			} else if entity.MsgType == protocol.CMD_BYTES_MESSAGE {
 				fv = entity.GetBody().([]byte)
 			} else {
-				log.Error("convertor|Convert2Params|UnSupport MESSAGE TYPE|%s\n", entity.MsgType)
+				log.ErrorLog("kite_store", "convertor|Convert2Params|UnSupport MESSAGE TYPE|%s\n", entity.MsgType)
 			}
 		} else {
 			f := val.FieldByName(v.fieldName)
@@ -160,12 +160,12 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 					//头部用Pb序列化
 					data, err := protocol.MarshalPbMessage(header)
 					if err != nil {
-						log.Error("convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
+						log.ErrorLog("kite_store", "convertor|Convert2Params|Marshal|HEAD|FAIL|%s|%s\n", err, f.Addr().Interface())
 						return nil
 					}
 					fv = data
 				} else {
-					log.Error("convertor|Convert2Params|Not protocol.Header PRT |FAIL|%s\n", f.Addr())
+					log.ErrorLog("kite_store", "convertor|Convert2Params|Not protocol.Header PRT |FAIL|%s\n", f.Addr())
 					return nil
 				}
 
@@ -174,7 +174,7 @@ func (self convertor) Convert2Params(entity *store.MessageEntity) []interface{} 
 				if f.Type().Elem().Kind() == reflect.String {
 					data, err := json.Marshal(f.Interface())
 					if nil != err {
-						log.Error("convertor|Convert2Params|Marshal|Slice|FAIL||%s\n", err)
+						log.ErrorLog("kite_store", "convertor|Convert2Params|Marshal|Slice|FAIL||%s\n", err)
 						return nil
 					}
 					fv = string(data)

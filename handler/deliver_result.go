@@ -76,7 +76,7 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	}()
 	//排好序
 	sort.Sort(dhandler.rw)
-	log.Info("RedeliveryWindows|%s\n ", dhandler.rw)
+	log.InfoLog("kite_handler", "RedeliveryWindows|%s\n ", dhandler.rw)
 	return dhandler
 }
 
@@ -126,7 +126,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		if !fevent.fly && !attemptDeliver {
 			//async batch remove
 			self.kitestore.AsyncDelete(fevent.messageId)
-			// log.Warn("DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%s|%s|%s|%s\n", self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
+			// log.WarnLog("kite_handler", "DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%s|%s|%s|%s\n", self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 		}
 	} else {
 		//重投策略
@@ -163,7 +163,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
 		//log deliver fail
-		log.ErrorLog("kite_deliver", "messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
+		log.InfoLog("kite_handler", "messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
 			fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
 			fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliveryFailGroups)
 	}
@@ -194,7 +194,7 @@ func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
 		}
 	}
 
-	// log.Info("DeliverResultHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
+	// log.InfoLog("kite_handler", "DeliverResultHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间

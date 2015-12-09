@@ -36,7 +36,7 @@ var INVALID_PACKET_ERROR = errors.New("INVALID PACKET ERROR")
 
 func (self *PacketHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
 
-	// log.Printf("PacketHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.DebugLog("kite_client_handler","PacketHandler|Process|%s|%t\n", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
@@ -75,7 +75,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
 		if nil == err {
 			hb := &hearbeat
-			// log.Printf("PacketHandler|handlePacket|HeartBeat|%t\n", hb)
+			// log.DebugLog("kite_client_handler","PacketHandler|handlePacket|HeartBeat|%t\n", hb)
 			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
 		}
 		//消息持久化

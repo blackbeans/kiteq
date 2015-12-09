@@ -75,7 +75,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 
 	err := json.Unmarshal(ol.Body, &body)
 	if nil != err {
-		log.Error("KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
+		log.ErrorLog("kite_store", "KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 		}
 		l.Unlock()
 	} else {
-		log.Error("KiteFileStore|replay|INVALID|%s|%s", ob, ol.Op)
+		log.ErrorLog("kite_store", "KiteFileStore|replay|INVALID|%s|%s", ob, ol.Op)
 	}
 
 }
@@ -123,7 +123,7 @@ func (self *KiteFileStore) Start() {
 		//start snapshost
 		self.snapshot.Start()
 		go self.delSync()
-		log.Info("KiteFileStore|Start...\t%s", self.Monitor())
+		log.InfoLog("kite_store", "KiteFileStore|Start...\t%s", self.Monitor())
 	}
 
 }
@@ -137,7 +137,7 @@ func (self *KiteFileStore) Stop() {
 		//wait delete finish
 		self.Wait()
 		self.snapshot.Destory()
-		log.Info("KiteFileStore|Stop...")
+		log.InfoLog("kite_store", "KiteFileStore|Stop...")
 	}
 
 }
@@ -170,7 +170,7 @@ func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.L
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
 	if nil != err {
-		log.Error("KiteFileStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		log.ErrorLog("kite_store", "KiteFileStore|hash|INVALID MESSAGEID|%s\n", messageid)
 		hashId = 0
 	} else {
 		hashId = hashId % CONCURRENT_LEVEL
@@ -242,12 +242,12 @@ func (self *KiteFileStore) Query(messageId string) *MessageEntity {
 		err = protocol.UnmarshalPbMessage(data[1:], &sms)
 		msg = &sms
 	default:
-		log.Error("KiteFileStore|Query|INVALID|MSGTYPE|%d", msgType)
+		log.ErrorLog("kite_store", "KiteFileStore|Query|INVALID|MSGTYPE|%d", msgType)
 		return nil
 	}
 
 	if nil != err {
-		log.Error("KiteFileStore|Query|UnmarshalPbMessage|Entity|FAIL|%s", err)
+		log.ErrorLog("kite_store", "KiteFileStore|Query|UnmarshalPbMessage|Entity|FAIL|%s", err)
 		return nil
 	} else {
 		entity := NewMessageEntity(protocol.NewQMessage(msg))
@@ -288,7 +288,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 		obd, err := json.Marshal(ob)
 		if nil != err {
-			log.Error("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+			log.ErrorLog("kite_store", "KiteFileStore|Save|Encode|Op|FAIL|%s", err)
 			return false
 		}
 
@@ -330,7 +330,7 @@ func (self *KiteFileStore) Commit(messageId string) bool {
 		v.Commit = true
 		obd, err := json.Marshal(v)
 		if nil != err {
-			log.Error("KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
+			log.ErrorLog("kite_store", "KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
 			return nil
 		}
 		//write oplog
@@ -375,7 +375,7 @@ func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
 
 		obd, err := json.Marshal(v)
 		if nil != err {
-			log.Error("KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
+			log.ErrorLog("kite_store", "KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
 			return nil
 		}
 		//append log
@@ -412,7 +412,7 @@ func (self *KiteFileStore) Delete(messageId string) bool {
 
 	obd, err := json.Marshal(v)
 	if nil != err {
-		log.Error("KiteFileStore|Delete|Encode|Op|FAIL|%s", err)
+		log.ErrorLog("kite_store", "KiteFileStore|Delete|Encode|Op|FAIL|%s", err)
 		return false
 	}
 	cmd := NewCommand(v.Id, messageId, nil, obd)

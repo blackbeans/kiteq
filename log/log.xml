@@ -12,10 +12,10 @@
     <level>INFO</level>
   </filter>
   <filter enabled="true">
-    <tag>kite_info</tag>
+    <tag>kite_server</tag>
     <type>file</type>
     <level>INFO</level>
-    <property name="filename">/home/logs/kiteq/kite_info.log</property>
+    <property name="filename">/home/logs/kiteq/kite_server.log</property>
     <!--
        %T - Time (15:04:05 MST)
        %t - Time (15:04)
@@ -57,10 +57,46 @@
   </filter>
 
    <filter enabled="true">
-    <tag>kite_deliver</tag>
+    <tag>kite_handler</tag>
     <type>file</type>
-    <level>ERROR</level>
-    <property name="filename">/home/logs/kiteq/kite_deliver.log</property>
+    <level>INFO</level>
+    <property name="filename">/home/logs/kiteq/kite_handler.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
+    <filter enabled="true">
+    <tag>kite_client</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="filename">/home/logs/kiteq/kite_client.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
+  <filter enabled="true">
+    <tag>kite_client_handler</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="filename">/home/logs/kiteq/kite_client_handler.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
+  <filter enabled="true">
+    <tag>kite_store</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="filename">/home/logs/kiteq/kite_store.log</property>
     <property name="format">[%D %T] [%L] %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>

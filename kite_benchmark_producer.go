@@ -85,7 +85,7 @@ func buildStringMessage(commit bool) *protocol.StringMessage {
 func main() {
 	logxml := flag.String("logxml", "./log/log_producer.xml", "-logxml=./log/log_producer.xml")
 	k := flag.Int("k", 1, "-k=1  //kiteclient num ")
-	c := flag.Int("c", 10, "-c=100")
+	c := flag.Int("c", 1, "-c=100")
 	tx := flag.Bool("tx", false, "-tx=true send Tx Message")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	flag.Parse()
@@ -153,7 +153,7 @@ func main() {
 							atomic.AddInt32(&count, 1)
 						}
 					}
-					// stop = true
+					stop = true
 				}
 				wg.Done()
 			}(kiteClient)

@@ -18,14 +18,14 @@ type MockListener struct {
 }
 
 func (self *MockListener) OnMessage(msg *protocol.QMessage) bool {
-	log.Debug("MockListener|OnMessage", msg.GetHeader(), msg.GetBody())
+	log.DebugLog("kite_client", "MockListener|OnMessage", msg.GetHeader(), msg.GetBody())
 	return true
 }
 
 func (self *MockListener) OnMessageCheck(tx *protocol.TxResponse) error {
 	log.Debug("MockListener|OnMessageCheck|%s\n", tx.MessageId)
 	v, _ := tx.GetProperty("tradeno")
-	log.Debug("MockListener|OnMessageCheck|PROP|%s\n", v)
+	log.DebugLog("kite_client", "MockListener|OnMessageCheck|PROP|%s\n", v)
 	tx.Commit()
 	return nil
 }

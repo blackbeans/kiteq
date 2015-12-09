@@ -34,7 +34,7 @@ func main() {
 	log.LoadConfiguration(*logxml)
 
 	flag.VisitAll(func(f *flag.Flag) {
-		log.Info("KiteQ[%s:%s]", f.Name, f.Value.String())
+		log.InfoLog("kite_server", "KiteQ[%s:%s]", f.Name, f.Value.String())
 	})
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -80,6 +80,6 @@ func main() {
 	}
 
 	qserver.Shutdown()
-	log.Info("KiteQServer IS STOPPED!")
+	log.InfoLog("kite_server", "KiteQServer IS STOPPED!")
 
 }

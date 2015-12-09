@@ -53,7 +53,7 @@ func openDb(addr string, shardId int, idleConn, maxConn int) *sql.DB {
 
 	db, err := sql.Open("mysql", addr+"_"+strconv.Itoa(shardId))
 	if err != nil {
-		log.Error("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		log.ErrorLog("kite_store", "NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
 		panic(err)
 	}
 	db.SetMaxIdleConns(idleConn)
@@ -102,7 +102,7 @@ func (s DbShard) HashId(key string) int {
 
 	i, err := strconv.ParseInt(num, 16, 16)
 	if nil != err {
-		log.Error("DbShard|HashId|INVALID HASHKEY|%s|%s\n", key, err)
+		log.ErrorLog("kite_store", "DbShard|HashId|INVALID HASHKEY|%s|%s\n", key, err)
 		return 0
 	}
 	// log.Debug("HashId|%s|%d\n", key, i)

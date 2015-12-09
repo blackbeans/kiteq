@@ -58,7 +58,7 @@ func (self *kiteClient) innerSendMessage(cmdType uint8, p []byte, timeout time.D
 			if !ok || !storeAck.GetStatus() {
 				return errors.New(fmt.Sprintf("kiteClient|SendMessage|FAIL|%s\n", resp))
 			} else {
-				// log.Debug("kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
+				//log.DebugLog("kite_client","kiteClient|SendMessage|SUCC|%s|%s\n", storeAck.GetMessageId(), storeAck.GetFeedback())
 				return nil
 			}
 		}

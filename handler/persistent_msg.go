@@ -79,7 +79,7 @@ func (self *PersistentHandler) Process(ctx *DefaultPipelineContext, event IEvent
 func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pevent *persistentEvent) {
 	saveSucc := true
 
-	// log.Info("PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
+	// log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
 
 	//提交并且开启优化
 	if self.fly &&
@@ -112,7 +112,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 		// now := time.Now().UnixNano()
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)
-		// log.Info("PersistentHandler|sendUnFlyMessage|cost:%d", time.Now().UnixNano()-now)
+		// log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|cost:%d", time.Now().UnixNano()-now)
 		if saveSucc && pevent.entity.Commit {
 			self.send(ctx, pevent, nil)
 		}
@@ -136,5 +136,5 @@ func (self *PersistentHandler) send(ctx *DefaultPipelineContext, pevent *persist
 	preDeliver.attemptDeliver = ch
 	ctx.SendForward(preDeliver)
 
-	// log.Println("PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
+	// log.DebugLog("kite_handler", "PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }

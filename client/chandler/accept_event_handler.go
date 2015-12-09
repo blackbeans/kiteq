@@ -53,7 +53,7 @@ func (self *AcceptHandler) cast(event IEvent) (val *acceptEvent, ok bool) {
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
 func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
-	// log.Printf("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.DebugLog("kite_client_handler","AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
 	acceptEvent, ok := self.cast(event)
 	if !ok {
@@ -64,7 +64,7 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 	case protocol.CMD_TX_ACK:
 
 		//回调事务完成的监听器
-		// log.Printf("AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
+		// log.DebugLog("kite_client_handler","AcceptHandler|Check Message|%t\n", acceptEvent.Msg)
 		txPacket := acceptEvent.msg.(*protocol.TxACKPacket)
 		header := txPacket.GetHeader()
 		tx := protocol.NewTxResponse(header)
@@ -83,11 +83,11 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//发送提交结果确认的Packet
 		remotingEvent := NewRemotingEvent(txResp, []string{acceptEvent.remoteClient.RemoteAddr()})
 		ctx.SendForward(remotingEvent)
-		// log.Printf("AcceptHandler|Recieve TXMessage|%t\n", acceptEvent.Msg)
+		// log.DebugLog("kite_client_handler","AcceptHandler|Recieve TXMessage|%t\n", acceptEvent.Msg)
 
 	case protocol.CMD_STRING_MESSAGE, protocol.CMD_BYTES_MESSAGE:
 		//这里应该回调消息监听器然后发送处理结果
-		// log.Printf("AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
+		//log.DebugLog("kite_client_handler","AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
 
 		message := protocol.NewQMessage(acceptEvent.msg)
 

@@ -35,13 +35,13 @@ func (self *defualtListener) monitor() {
 }
 
 func (self *defualtListener) OnMessage(msg *protocol.QMessage) bool {
-	// log.Info("defualtListener|OnMessage", *msg.Header, *msg.Body)
+	log.Info("defualtListener|OnMessage|%s", msg.GetHeader().GetMessageId())
 	atomic.AddInt32(&self.count, 1)
 	return true
 }
 
 func (self *defualtListener) OnMessageCheck(tx *protocol.TxResponse) error {
-	// log.Info("defualtListener|OnMessageCheck", messageId)
+	log.Info("defualtListener|OnMessageCheck", tx.MessageId)
 	tx.Commit()
 	return nil
 }

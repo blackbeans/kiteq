@@ -95,7 +95,7 @@ func (self *KiteQServer) Start() {
 			event := pipe.NewPacketEvent(rclient, p)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
-				log.Error("RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, p)
+				log.ErrorLog("kite_server", "RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, p)
 			} else {
 				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
@@ -105,14 +105,14 @@ func (self *KiteQServer) Start() {
 	if nil != err {
 		log.Crashf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.server)
 	} else {
-		log.Info("KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
+		log.InfoLog("kite_server", "KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
 	}
 	//推送可发送的topic列表并且获取了对应topic下的订阅关系
 	succ := self.exchanger.PushQServer(self.kc.server, self.kc.topics)
 	if !succ {
 		log.Crashf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.topics)
 	} else {
-		log.Info("KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
+		log.InfoLog("kite_server", "KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
 	}
 
 	//开启流量统计
@@ -130,6 +130,6 @@ func (self *KiteQServer) Shutdown() {
 	self.kitedb.Stop()
 	self.clientManager.Shutdown()
 	self.remotingServer.Shutdown()
-	log.Info("KiteQServer|Shutdown...")
+	log.InfoLog("kite_server", "KiteQServer|Shutdown...")
 
 }

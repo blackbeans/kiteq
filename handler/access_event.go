@@ -43,13 +43,13 @@ func (self *AccessHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 
 	//做权限校验.............
 	if false {
-		log.Warn("accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
+		log.WarnLog("kite_handler", "accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
 	}
 
 	// 权限验证通过 保存到clientmanager
 	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
 
-	// log.Info("accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
+	// log.InfoLog("kite_handler", "accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
 
 	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
 	//响应包

@@ -75,7 +75,7 @@ func (self *StmtPool) enhancedPool(size int) error {
 		for ; j < 3; j++ {
 			err, stmt = self.dialFunc()
 			if nil != err {
-				log.Error("POOL_FACTORY|CREATE STMT|INIT|FAIL|%s\n", err)
+				log.ErrorLog("kite_store", "POOL_FACTORY|CREATE STMT|INIT|FAIL|%s\n", err)
 
 			} else {
 				break
@@ -217,7 +217,7 @@ func (self *StmtPool) Release(stmt *sql.Stmt) error {
 	} else {
 		stmt.Close()
 		stmt = nil
-		log.Error("POOL|RELEASE|FAIL|%d\n", self.numActive)
+		log.ErrorLog("kite_store", "POOL|RELEASE|FAIL|%d\n", self.numActive)
 		return errors.New("POOL|RELEASE|INVALID CONN")
 	}
 
@@ -235,7 +235,7 @@ func (self *StmtPool) Shutdown() {
 			break
 		}
 
-		log.Info("Statment Pool|CLOSEING|WORK POOL SIZE|:%d\n", self.numWork)
+		log.InfoLog("kite_store", "Statment Pool|CLOSEING|WORK POOL SIZE|:%d\n", self.numWork)
 		i++
 	}
 
@@ -248,5 +248,5 @@ func (self *StmtPool) Shutdown() {
 		idleStmt = nil
 	}
 
-	log.Info("Statment Pool|SHUTDOWN")
+	log.InfoLog("kite_store", "Statment Pool|SHUTDOWN")
 }

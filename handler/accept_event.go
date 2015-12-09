@@ -63,7 +63,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.StringMessage)))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.Warn("AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
+		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
 	if nil != msg {

@@ -99,7 +99,7 @@ func (self *KiteClientManager) Start() {
 	if nil != err {
 		log.Crashf("KiteClientManager|PublishTopics|FAIL|%s|%s\n", err, self.topics)
 	} else {
-		log.Info("KiteClientManager|PublishTopics|SUCC|%s\n", self.topics)
+		log.InfoLog("kite_client", "KiteClientManager|PublishTopics|SUCC|%s\n", self.topics)
 	}
 
 outter:
@@ -118,7 +118,7 @@ outter:
 		if nil != err {
 			log.Crashf("KiteClientManager|GetQServerAndWatch|FAIL|%s|%s\n", err, topic)
 		} else {
-			log.Info("KiteClientManager|GetQServerAndWatch|SUCC|%s|%s\n", topic, hosts)
+			log.InfoLog("kite_client", "KiteClientManager|GetQServerAndWatch|SUCC|%s|%s\n", topic, hosts)
 		}
 		self.onQServerChanged(topic, hosts)
 	}
@@ -142,12 +142,12 @@ func dial(hostport string) (*net.TCPConn, error) {
 	//连接
 	remoteAddr, err_r := net.ResolveTCPAddr("tcp4", hostport)
 	if nil != err_r {
-		log.Error("KiteClientManager|RECONNECT|RESOLVE ADDR |FAIL|remote:%s\n", err_r)
+		log.ErrorLog("kite_client", "KiteClientManager|RECONNECT|RESOLVE ADDR |FAIL|remote:%s\n", err_r)
 		return nil, err_r
 	}
 	conn, err := net.DialTCP("tcp4", nil, remoteAddr)
 	if nil != err {
-		log.Error("KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
+		log.ErrorLog("kite_client", "KiteClientManager|RECONNECT|%s|FAIL|%s\n", hostport, err)
 		return nil, err
 	}
 
@@ -216,7 +216,7 @@ func (self *KiteClientManager) selectKiteClient(header *protocol.Header) (*kiteC
 
 	clients, ok := self.kiteClients[header.GetTopic()]
 	if !ok || len(clients) <= 0 {
-		// 	log.Warn("KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
+		// 	log.WarnLog("kite_client","KiteClientManager|selectKiteClient|FAIL|NO Remote Client|%s\n", header.GetTopic())
 		return nil, errors.New("NO KITE CLIENT ! [" + header.GetTopic() + "]")
 	}
 

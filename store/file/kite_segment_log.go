@@ -48,7 +48,7 @@ func (self *SegmentLog) Open() error {
 		if os.IsNotExist(err) {
 			_, err := os.Create(self.path)
 			if nil != err {
-				log.Error("SegmentLog|Create|FAIL|%s|%s", err, self.path)
+				log.ErrorLog("kite_store", "SegmentLog|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
 		}
@@ -56,13 +56,13 @@ func (self *SegmentLog) Open() error {
 		//file not exist create file
 		wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
 		if nil != err {
-			log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
+			log.ErrorLog("kite_store", "SegmentLog|Open|FAIL|%s|%s", err, self.path)
 			return err
 		}
 
 		rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
 		if nil != err {
-			log.Error("SegmentLog|Open|FAIL|%s|%s", err, self.path)
+			log.ErrorLog("kite_store", "SegmentLog|Open|FAIL|%s|%s", err, self.path)
 			return err
 		}
 
@@ -71,7 +71,7 @@ func (self *SegmentLog) Open() error {
 		//buffer
 		self.br = bufio.NewReader(rf)
 		self.bw = bufio.NewWriter(wf)
-		log.Info("SegmentLog|Open|SUCC|%s", self.path)
+		log.InfoLog("kite_store", "SegmentLog|Open|SUCC|%s", self.path)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 				self.br.Reset(self.rf)
 				break
 			}
-			log.Warn("SegmentLog|Replay|LEN|%s|Skip...", err)
+			log.WarnLog("kite_store", "SegmentLog|Replay|LEN|%s|Skip...", err)
 			continue
 		}
 
@@ -108,7 +108,7 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 		err = binary.Read(self.br, binary.BigEndian, tmp[:int(length)-4])
 		if nil != err {
 			self.br.Reset(self.rf)
-			log.Error("SegmentLog|Replay|Data|%s", err)
+			log.ErrorLog("kite_store", "SegmentLog|Replay|Data|%s", err)
 			break
 		}
 
@@ -117,7 +117,7 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 		deco := gob.NewDecoder(r)
 		err = deco.Decode(&ol)
 		if nil != err {
-			log.Error("SegmentLog|Replay|unmarshal|oplog|FAIL|%s", err)
+			log.ErrorLog("kite_store", "SegmentLog|Replay|unmarshal|oplog|FAIL|%s", err)
 			continue
 		}
 		// log.Debug("SegmentLog|Replay|oplog|%s", ol)
@@ -144,13 +144,13 @@ func (self *SegmentLog) Appends(logs []*oplog) error {
 			l, err := self.bw.Write(tmp)
 			length += int64(l)
 			if nil != err && err != io.ErrShortWrite {
-				log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+				log.ErrorLog("kite_store", "SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
 				return err
 			} else if nil == err {
 				break
 			} else {
 				self.bw.Reset(self.wf)
-				log.Error("SegmentLog|Append|FAIL|%s", err)
+				log.ErrorLog("kite_store", "SegmentLog|Append|FAIL|%s", err)
 			}
 			tmp = tmp[l:]
 
@@ -178,7 +178,7 @@ func (self *SegmentLog) Append(ol *oplog) error {
 	for {
 		l, err := self.bw.Write(tmp)
 		if nil != err && err != io.ErrShortWrite {
-			log.Error("SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+			log.ErrorLog("kite_store", "SegmentLog|Append|FAIL|%s|%d/%d", err, l, len(tmp))
 			return err
 		} else if nil == err {
 			break
@@ -198,17 +198,17 @@ func (self *SegmentLog) Close() error {
 	if atomic.CompareAndSwapInt32(&self.isOpen, 1, 0) {
 		err := self.bw.Flush()
 		if nil != err {
-			log.Error("SegmentLog|Close|Writer|FLUSH|FAIL|%s|%s\n", err, self.path)
+			log.ErrorLog("kite_store", "SegmentLog|Close|Writer|FLUSH|FAIL|%s|%s\n", err, self.path)
 		}
 
 		err = self.wf.Close()
 		if nil != err {
-			log.Error("SegmentLog|Close|Write FD|FAIL|%s|%s\n", err, self.path)
+			log.ErrorLog("kite_store", "SegmentLog|Close|Write FD|FAIL|%s|%s\n", err, self.path)
 			return err
 		} else {
 			err = self.rf.Close()
 			if nil != err {
-				log.Error("SegmentLog|Close|Read FD|FAIL|%s|%s\n", err, self.path)
+				log.ErrorLog("kite_store", "SegmentLog|Close|Read FD|FAIL|%s|%s\n", err, self.path)
 			}
 			return err
 		}
@@ -246,7 +246,7 @@ func (self *oplog) marshal() []byte {
 	encoder := gob.NewEncoder(buff)
 	err := encoder.Encode(self)
 	if nil != err {
-		log.Error("oplog|marshal|fail|%s|%s", err, self)
+		log.ErrorLog("kite_store", "oplog|marshal|fail|%s|%s", err, self)
 		return nil
 	}
 	b := buff.Bytes()

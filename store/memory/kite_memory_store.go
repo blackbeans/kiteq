@@ -70,7 +70,7 @@ func (self *KiteMemoryStore) hash(messageid string) (l *sync.RWMutex, e map[stri
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
 	if nil != err {
-		log.Error("KiteMemoryStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		log.ErrorLog("kite_store", "KiteMemoryStore|hash|INVALID MESSAGEID|%s\n", messageid)
 		hashId = 0
 	} else {
 		hashId = hashId % CONCURRENT_LEVEL

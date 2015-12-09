@@ -40,7 +40,7 @@ func (self *RecoverManager) Start() {
 		go self.startRecoverTask(fmt.Sprintf("%x%x", i/16, i%16))
 	}
 
-	log.Info("RecoverManager|Start|SUCC....")
+	log.InfoLog("kite_server", "RecoverManager|Start|SUCC....")
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {

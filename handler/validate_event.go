@@ -42,7 +42,7 @@ func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) 
 	remoteClient := aevent.getClient()
 	//做权限校验.............
 	isAuth := self.clientManager.Validate(remoteClient)
-	// log.Debug("ValidateHandler|CONNETION|%s|%s\n", remoteClient.RemoteAddr(), isAuth)
+	// log.DebugLog("kite_handler",  "ValidateHandler|CONNETION|%s|%s\n", remoteClient.RemoteAddr(), isAuth)
 	if isAuth {
 		ctx.SendForward(event)
 	} else {

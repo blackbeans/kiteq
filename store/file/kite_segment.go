@@ -89,7 +89,7 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		if os.IsNotExist(err) {
 			_, err := os.Create(self.path)
 			if nil != err {
-				log.Error("Segment|Create|FAIL|%s|%s", err, self.path)
+				log.ErrorLog("kite_store", "Segment|Create|FAIL|%s|%s", err, self.path)
 				return err
 			}
 		}
@@ -97,13 +97,13 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		//file not exist create file
 		wf, err = os.OpenFile(self.path, os.O_RDWR|os.O_APPEND, os.ModePerm)
 		if nil != err {
-			log.Error("Segment|Open|FAIL|%s|%s", err, self.name)
+			log.ErrorLog("kite_store", "Segment|Open|FAIL|%s|%s", err, self.name)
 			return err
 		}
 
 		rf, err = os.OpenFile(self.path, os.O_RDWR, os.ModePerm)
 		if nil != err {
-			log.Error("Segment|Open|FAIL|%s|%s", err, self.name)
+			log.ErrorLog("kite_store", "Segment|Open|FAIL|%s|%s", err, self.name)
 			return err
 		}
 
@@ -121,7 +121,7 @@ func (self *Segment) Open(do func(ol *oplog)) error {
 		//recover segment
 		self.recover(do)
 		total, n, d, e := self.stat()
-		log.Info("Segment|Open|SUCC|%s|total:%d,n:%d,d:%d,e:%d", self.name, total, n, d, e)
+		log.InfoLog("kite_store", "Segment|Open|SUCC|%s|total:%d,n:%d,d:%d,e:%d", self.name, total, n, d, e)
 		return nil
 	}
 	return nil
@@ -164,14 +164,14 @@ func (self *Segment) loadCheck() {
 		hl, err := io.ReadFull(self.br, buff[:CHUNK_HEADER])
 		if nil != err {
 			if io.EOF != err {
-				log.Error("Segment|Load Segment|Read Header|FAIL|%s|%s", err, self.name)
+				log.ErrorLog("kite_store", "Segment|Load Segment|Read Header|FAIL|%s|%s", err, self.name)
 				continue
 			}
 			break
 		}
 
 		if hl != CHUNK_HEADER {
-			log.Error("Segment|Load Segment|Read Header|FAIL|%s|%d", self.name, hl)
+			log.ErrorLog("kite_store", "Segment|Load Segment|Read Header|FAIL|%s|%d", self.name, hl)
 			break
 		}
 
@@ -181,7 +181,7 @@ func (self *Segment) loadCheck() {
 		al := offset + int64(length)
 		//checklength
 		if al > fi.Size() {
-			log.Error("Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d", self.name, al, fi.Size(), offset, length)
+			log.ErrorLog("kite_store", "Segment|Load Segment|FILE SIZE|%s|%d/%d|offset:%d|length:%d", self.name, al, fi.Size(), offset, length)
 			break
 		}
 
@@ -201,14 +201,14 @@ func (self *Segment) loadCheck() {
 
 		dl, err := io.ReadFull(self.br, buff[16:length])
 		if nil != err || dl < int(l) {
-			log.Error("Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d", err, self.name, l, dl)
+			log.ErrorLog("kite_store", "Segment|Load Segment|Read Data|FAIL|%s|%s|%d/%d", err, self.name, l, dl)
 			break
 		}
 
 		csum := crc32.ChecksumIEEE(buff[16:length])
 		//checkdata
 		if csum != checksum {
-			log.Error("Segment|Load Segment|Data Checksum|FAIL|%s|%d|%d/%d", self.name, chunkId, csum, checksum)
+			log.ErrorLog("kite_store", "Segment|Load Segment|Data Checksum|FAIL|%s|%d|%d/%d", self.name, chunkId, csum, checksum)
 			break
 		}
 
@@ -225,7 +225,7 @@ func (self *Segment) loadCheck() {
 
 		self.chunks = append(self.chunks, chunk)
 		offset += int64(length)
-		// log.Debug("Segment|Load Chunk|%s|%d|%s", self.name, chunkId, ChunkFlag(flag))
+		// log.DebugLog("Segment|Load Chunk|%s|%d|%s", self.name, chunkId, ChunkFlag(flag))
 	}
 
 	//sort chunks
@@ -275,7 +275,7 @@ func (self *Segment) Delete(cid int64) bool {
 			return true
 		}
 	} else {
-		log.Debug("Segment|Delete|NO Chunk|chunkid:%d|%d", cid, idx, len(self.chunks))
+		log.DebugLog("kite_store", "Segment|Delete|NO Chunk|chunkid:%d|%d", cid, idx, len(self.chunks))
 	}
 
 	return true
@@ -323,20 +323,20 @@ func (self *Segment) Get(cid int64) *Chunk {
 		//delete data return nil
 		if self.chunks[idx].flag == DELETE ||
 			self.chunks[idx].flag == EXPIRED {
-			// log.Debug("Segment|Get|Result|%d|%d|%s\n", idx, cid, self.chunks[idx].flag)
+			// log.DebugLog("Segment|Get|Result|%d|%d|%s\n", idx, cid, self.chunks[idx].flag)
 			return nil
 		}
 		return self.chunks[idx]
 
 	} else {
-		// log.Debug("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
+		// log.DebugLog("Segment|Get|Result|%d|%d|%d|%d\n", idx, cid, self.chunks[idx].id, len(self.chunks))
 		return nil
 	}
 }
 
 func (self *Segment) loadChunk(c *Chunk) {
 	if c.length-CHUNK_HEADER <= 0 {
-		log.Error("Segment|LoadChunk|INVALID HEADER|%s|%d|%d", self.name, c.id, c.length)
+		log.ErrorLog("kite_store", "Segment|LoadChunk|INVALID HEADER|%s|%d|%d", self.name, c.id, c.length)
 		return
 	}
 
@@ -346,7 +346,7 @@ func (self *Segment) loadChunk(c *Chunk) {
 	self.br.Reset(self.rf)
 	dl, err := io.ReadFull(self.br, data)
 	if nil != err || dl != cap(data) {
-		log.Error("Segment|LoadChunk|Read Data|FAIL|%s|%s|%d|%d/%d", err, self.name, c.id, c.length, dl)
+		log.ErrorLog("kite_store", "Segment|LoadChunk|Read Data|FAIL|%s|%s|%d|%d/%d", err, self.name, c.id, c.length, dl)
 		return
 	}
 	c.data = data
@@ -369,13 +369,13 @@ func (self *Segment) Append(chunks []*Chunk) error {
 			l, err := self.bw.Write(tmp)
 			length += int64(l)
 			if nil != err && err != io.ErrShortWrite {
-				log.Error("Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
+				log.ErrorLog("kite_store", "Segment|Append|FAIL|%s|%d/%d", err, l, len(tmp))
 				return err
 			} else if nil == err {
 				break
 			} else {
 				self.bw.Reset(self.wf)
-				log.Error("Segment|Append|FAIL|%s", err)
+				log.ErrorLog("kite_store", "Segment|Append|FAIL|%s", err)
 			}
 			tmp = tmp[l:]
 
@@ -384,7 +384,7 @@ func (self *Segment) Append(chunks []*Chunk) error {
 
 	//flush
 	self.bw.Flush()
-	// log.Debug("Segment|Append|SUCC|%d/%d", l, len(buff))
+	// log.DebugLog("Segment|Append|SUCC|%d/%d", l, len(buff))
 	//tmp cache chunk
 	if nil == self.chunks {
 		self.chunks = make([]*Chunk, 0, 1000)
@@ -410,7 +410,7 @@ func (self *Segment) Close() error {
 		//close segment
 		err := self.bw.Flush()
 		if nil != err {
-			log.Error("Segment|Close|Writer|FLUSH|FAIL|%s|%s|%s\n", err, self.path, self.name)
+			log.ErrorLog("kite_store", "Segment|Close|Writer|FLUSH|FAIL|%s|%s|%s\n", err, self.path, self.name)
 		}
 		//free chunk memory
 		self.chunks = nil
@@ -418,12 +418,12 @@ func (self *Segment) Close() error {
 		err = self.wf.Close()
 
 		if nil != err {
-			log.Error("Segment|Close|Write FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
+			log.ErrorLog("kite_store", "Segment|Close|Write FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
 			return err
 		} else {
 			err = self.rf.Close()
 			if nil != err {
-				log.Error("Segment|Close|Read FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
+				log.ErrorLog("kite_store", "Segment|Close|Read FD|FAIL|%s|%s|%s\n", err, self.path, self.name)
 			}
 			return err
 		}

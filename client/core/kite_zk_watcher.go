@@ -17,7 +17,7 @@ func (self *KiteClientManager) NodeChange(path string, eventType binding.ZkEvent
 		split := strings.Split(path, "/")
 		if len(split) < 4 {
 			//不合法的订阅璐姐
-			log.Warn("KiteClientManager|ChildWatcher|INVALID SERVER PATH |%s|%t\n", path, children)
+			log.WarnLog("kite_client", "KiteClientManager|ChildWatcher|INVALID SERVER PATH |%s|%t\n", path, children)
 			return
 		}
 		//获取topic
@@ -44,7 +44,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 			//这里就新建一个remote客户端连接
 			conn, err := dial(host)
 			if nil != err {
-				log.Error("KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
+				log.ErrorLog("kite_client", "KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
 				continue
 			}
 			remoteClient = c.NewRemotingClient(conn,
@@ -52,14 +52,14 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 					event := pipe.NewPacketEvent(rc, p)
 					err := self.pipeline.FireWork(event)
 					if nil != err {
-						log.Error("KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, p)
+						log.ErrorLog("kite_client", "KiteClientManager|onPacketRecieve|FAIL|%s|%t\n", err, p)
 					}
 				}, self.rc)
 			remoteClient.Start()
 			auth, err := handshake(self.ga, remoteClient)
 			if !auth || nil != err {
 				remoteClient.Shutdown()
-				log.Error("KiteClientManager|onQServerChanged|HANDSHAKE|FAIL|%s|%s\n", err, auth)
+				log.ErrorLog("kite_client", "KiteClientManager|onQServerChanged|HANDSHAKE|FAIL|%s|%s\n", err, auth)
 				continue
 			}
 			self.clientManager.Auth(self.ga, remoteClient)
@@ -70,7 +70,7 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 		clients = append(clients, kiteClient)
 	}
 
-	log.Info("KiteClientManager|onQServerChanged|SUCC|%s|%s\n", topic, hosts)
+	log.InfoLog("kite_client", "KiteClientManager|onQServerChanged|SUCC|%s|%s\n", topic, hosts)
 
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -97,12 +97,12 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 
 func (self *KiteClientManager) DataChange(path string, binds []*binding.Binding) {
 	//IGNORE
-	log.Info("KiteClientManager|DataChange|%s|%s\n", path, binds)
+	log.InfoLog("kite_client", "KiteClientManager|DataChange|%s|%s\n", path, binds)
 }
 
 func (self *KiteClientManager) OnSessionExpired() {
 	//推送订阅关系和topics
 	self.Start()
 
-	log.Info("KiteClientManager|OnSessionExpired|Restart...")
+	log.InfoLog("kite_client", "KiteClientManager|OnSessionExpired|Restart...")
 }

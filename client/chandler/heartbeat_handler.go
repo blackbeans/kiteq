@@ -51,10 +51,10 @@ func (self *HeartbeatHandler) keepAlive() {
 								err := c.Ping(hp, time.Duration(self.heartbeatTimeout))
 								//如果有错误则需要记录
 								if nil != err {
-									log.Warn("HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
+									log.WarnLog("kite_client_handler", "HeartbeatHandler|KeepAlive|FAIL|%s|local:%s|remote:%s|%d\n", err, c.LocalAddr(), h, id)
 									continue
 								} else {
-									log.Info("HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
+									log.InfoLog("kite_client_handler", "HeartbeatHandler|KeepAlive|SUCC|local:%s|remote:%s|%d|%d ...\n", c.LocalAddr(), h, id, i)
 									break
 								}
 							}
@@ -64,7 +64,7 @@ func (self *HeartbeatHandler) keepAlive() {
 						//说明连接有问题需要重连
 						c.Shutdown()
 						self.clientMangager.SubmitReconnect(c)
-						log.Warn("HeartbeatHandler|SubmitReconnect|%s\n", c.RemoteAddr())
+						log.WarnLog("kite_client_handler", "HeartbeatHandler|SubmitReconnect|%s\n", c.RemoteAddr())
 					}
 				}
 			}()
@@ -90,7 +90,7 @@ func (self *HeartbeatHandler) Process(ctx *DefaultPipelineContext, event IEvent)
 		return ERROR_INVALID_EVENT_TYPE
 	}
 
-	// log.Debug("HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	// log.DebugLog("kite_client_handler","HeartbeatHandler|%s|Process|Recieve|Pong|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	hevent.RemoteClient.Attach(hevent.Opaque, hevent.Version)
 	return nil
 }
