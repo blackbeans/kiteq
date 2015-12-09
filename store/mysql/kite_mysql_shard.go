@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	SHARD_SEED = 32
+	SHARD_SEED = 16
 )
 
 type shardrange struct {
@@ -106,7 +106,7 @@ func (s DbShard) HashId(key string) int {
 		return 0
 	}
 	// log.Debug("HashId|%s|%d\n", key, i)
-	return int(i) % SHARD_SEED
+	return int(i) / SHARD_SEED
 }
 
 func (s DbShard) ShardNum() int {

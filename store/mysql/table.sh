@@ -2,14 +2,27 @@
 
 # "db 初始化kiteq脚本 单库多表"
 
+
+if [[ $1 < 1 ]]; then
+  echo "------------输入分库的数量（可被16整除）------------------"
+   exit -1
+fi
+
+shardNum=$1
+
+hashNum=`expr 16 / $shardNum`
+
+
+echo "------------分库："$shardNum"\t每个表"$hashNum"张表------------------"
+
 DB_NAME="kite"
 TB_NAME="kite_msg"
-for db_index in {0..9}; do
+for db_index in {0..8}; do
     mysql -u root -e "
         drop database if exists ${DB_NAME}_${db_index};
         create database ${DB_NAME}_${db_index};"
 
-        for tb_index in {0..9}; do
+        for tb_index in {0..4}; do
             mysql -u root -e "
             use ${DB_NAME}_${db_index};
             DROP TABLE IF EXISTS ${TB_NAME}_${tb_index};

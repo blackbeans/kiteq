@@ -122,7 +122,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 		}
 
 		//shard的数量
-		shardnum := 8
+		shardnum := 4
 		sd, sdok := params["shardnum"]
 		if sdok {
 			v, e := strconv.ParseInt(sd, 10, 32)
