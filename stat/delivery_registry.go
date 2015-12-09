@@ -15,7 +15,7 @@ type DeliveryRegistry struct {
 *
 *
  */
-func NewDeliveryRegistry(capacity int) DeliveryRegistry {
+func NewDeliveryRegistry(capacity int) *DeliveryRegistry {
 
 	maxCapacity := capacity / 16
 	locks := make([]chan bool, 0, 16)
@@ -23,28 +23,29 @@ func NewDeliveryRegistry(capacity int) DeliveryRegistry {
 		locks = append(locks, make(chan bool, 1))
 	}
 
-	registry := make([]*lru.Cache, 16)
+	registry := make([]*lru.Cache, 0, 16)
 	for i := 0; i < 16; i++ {
 		cache := lru.New(maxCapacity)
 		registry = append(registry, cache)
 	}
 
-	return DeliveryRegistry{registry: registry, locks: locks}
+	return &DeliveryRegistry{registry: registry, locks: locks}
 }
 
 /*
 *注册投递事件
 **/
-func (self DeliveryRegistry) Registe(messageId string, expiredTime time.Time) bool {
+func (self DeliveryRegistry) Registe(messageId string, exp time.Duration) bool {
 	hashKey := messageId[len(messageId)-1]
 	hashKey = hashKey % 16
 	ch := self.locks[hashKey]
 	defer func() { <-ch }()
 	ch <- true
-
 	//过期或者不存在在直接覆盖设置
 	val, ok := self.registry[hashKey].Get(messageId)
-	if !ok || time.Time(val.(time.Time)).Before(expiredTime) {
+	now := time.Now()
+	expiredTime := now.Add(exp)
+	if !ok || time.Time(val.(time.Time)).Before(now) {
 		self.registry[hashKey].Add(messageId, expiredTime)
 		return true
 	} else {
