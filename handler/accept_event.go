@@ -49,6 +49,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	switch ae.msgType {
 	case protocol.CMD_DELIVER_ACK:
 		//收到投递结果直接attach响应
+		log.DebugLog("kite_handler", "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
 		ae.remoteClient.Attach(ae.opaque, ae.msg)
 		return nil
 	case protocol.CMD_HEARTBEAT:
@@ -63,7 +64,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.StringMessage)))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t\n", INVALID_MSG_TYPE_ERROR, ae.msg)
+		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
 	if nil != msg {
