@@ -34,9 +34,9 @@ func (self *FlowStat) Start() {
 		for !self.stop {
 			self.DeliverCount = self.DeliverFlow.Changes()
 			line := fmt.Sprintf("%s\tdeliver:%d\tdeliver-go:%d\t", self.name, self.DeliverCount, self.DeliverPool.Count())
-			log.Info(line)
+			log.InfoLog("kite_server", line)
 			if nil != self.Kitestore {
-				log.Info(self.Kitestore.Monitor())
+				log.InfoLog("kite_server", self.Kitestore.Monitor())
 			}
 			<-t.C
 		}

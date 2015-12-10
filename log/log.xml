@@ -36,7 +36,7 @@
    <filter enabled="true">
     <tag>debug</tag>
     <type>file</type>
-    <level>WARNING</level>
+    <level>DEBUG</level>
     <property name="filename">/home/logs/kiteq/kite_debug.log</property>
     <property name="format">[%D %T] [%L] %M</property>
     <property name="rotate">false</property>
@@ -47,7 +47,7 @@
      <filter enabled="true">
     <tag>info</tag>
     <type>file</type>
-    <level>WARNING</level>
+    <level>INFO</level>
     <property name="filename">/home/logs/kiteq/kite_info.log</property>
     <property name="format">[%D %T] [%L] %M</property>
     <property name="rotate">false</property>
@@ -70,7 +70,7 @@
     <tag>error</tag>
     <type>file</type>
     <level>ERROR</level>
-    <property name="filename">/home/logs/kiteq/stderr_error.log</property>
+    <property name="filename">/home/logs/kiteq/stderr.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
