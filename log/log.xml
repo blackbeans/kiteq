@@ -33,6 +33,28 @@
     <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
     <property name="daily">true</property> <!-- Automatically rotates when a log message is written after midnight -->
   </filter>
+   <filter enabled="true">
+    <tag>debug</tag>
+    <type>file</type>
+    <level>WARNING</level>
+    <property name="filename">/home/logs/kiteq/kite_debug.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+     <filter enabled="true">
+    <tag>info</tag>
+    <type>file</type>
+    <level>WARNING</level>
+    <property name="filename">/home/logs/kiteq/kite_info.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
   <filter enabled="true">
     <tag>warn</tag>
     <type>file</type>
@@ -48,7 +70,7 @@
     <tag>error</tag>
     <type>file</type>
     <level>ERROR</level>
-    <property name="filename">/home/logs/kiteq/kite_error.log</property>
+    <property name="filename">/home/logs/kiteq/stderr_error.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
     <property name="maxsize">100M</property>
