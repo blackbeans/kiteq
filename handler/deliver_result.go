@@ -117,7 +117,8 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
 		close(fevent.attemptDeliver)
 	}
-	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%v|%s|%s|%s",
+
+	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND RESULT |attemptDeliver:%v|%s|%s|%s",
 		self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
