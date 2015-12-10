@@ -158,17 +158,27 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan i
 func (self *deliverResultEvent) wait(ch chan bool) bool {
 
 	timeout := false
-	//统计回调结果
+	//等待回调结果
 	for g, f := range self.futures {
-
 		if timeout {
-			//结果超时
-			self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+			//一旦超时直接启用非阻塞模式有结果的算是有结果无结果的直接认为超时失败
+			select {
+			case resp := <-f:
+				ack, ok := resp.(*protocol.DeliverAck)
+				if !ok || !ack.GetStatus() {
+					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+				} else {
+					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
+				}
+			default:
+				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+			}
 		} else {
 			select {
 			case <-ch:
 				//timeout
 				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
+				//设置为超时状态
 				timeout = true
 			case resp := <-f:
 				// log.Printf("deliverResultEvent|wait|%s\n", resp)
@@ -178,7 +188,6 @@ func (self *deliverResultEvent) wait(ch chan bool) bool {
 				} else {
 					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
 				}
-
 			}
 		}
 
