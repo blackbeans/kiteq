@@ -2,8 +2,8 @@ package handler
 
 import (
 	"errors"
-	// log "github.com/blackbeans/log4go"
 	"fmt"
+	log "github.com/blackbeans/log4go"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/stat"
 	"kiteq/store"
@@ -103,6 +103,8 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *DefaultPipelineContext, pev
 			saveSucc = self.kitestore.Save(pevent.entity)
 			//再投递
 			self.send(ctx, pevent, nil)
+		} else {
+			log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|FLY|%s", pevent.entity)
 		}
 
 	} else {

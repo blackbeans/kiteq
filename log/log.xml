@@ -34,7 +34,7 @@
     <property name="daily">true</property> <!-- Automatically rotates when a log message is written after midnight -->
   </filter>
   <filter enabled="true">
-    <tag>kite_warn</tag>
+    <tag>warn</tag>
     <type>file</type>
     <level>WARNING</level>
     <property name="filename">/home/logs/kiteq/kite_warn.log</property>
@@ -45,7 +45,7 @@
     <property name="daily">true</property> 
   </filter>
   <filter enabled="true">
-    <tag>kite_error</tag>
+    <tag>error</tag>
     <type>file</type>
     <level>ERROR</level>
     <property name="filename">/home/logs/kiteq/kite_error.log</property>

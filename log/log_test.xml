@@ -1,14 +1,15 @@
 <logging>
   <filter enabled="true">
     <tag>stdout</tag>
-    <type>console</type>
+    <type>file</type>
     <!-- level is (:?FINEST|FINE|DEBUG|TRACE|INFO|WARNING|ERROR) -->
     <level>DEBUG</level>
+     <property name="filename">./logs/kiteq/stdout.log</property>
   </filter>
   <filter enabled="true">
     <tag>kite_server</tag>
     <type>file</type>
-    <level>INFO</level>
+    <level>DEBUG</level>
     <property name="filename">./logs/kiteq/kite_server.log</property>
     <!--
        %T - Time (15:04:05 MST)
@@ -30,7 +31,7 @@
   <filter enabled="true">
     <tag>kite_warn</tag>
     <type>file</type>
-    <level>WARNING</level>
+    <level>DEBUG</level>
     <property name="filename">./logs/kiteq/kite_warn.log</property>
     <property name="format">[%D %T] [%L]  %M</property>
     <property name="rotate">false</property>
@@ -41,7 +42,7 @@
   <filter enabled="true">
     <tag>kite_error</tag>
     <type>file</type>
-    <level>ERROR</level>
+    <level>DEBUG</level>
     <property name="filename">./logs/kiteq/kite_error.log</property>
     <property name="format">[%D %T] [%L] (%S) %M</property>
     <property name="rotate">false</property>
