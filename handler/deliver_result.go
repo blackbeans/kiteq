@@ -117,13 +117,14 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		fevent.attemptDeliver <- fevent.deliveryFailGroups
 		close(fevent.attemptDeliver)
 	}
+	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%s|%s|%s|%s",
+		self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 
 	//都投递成功
 	if len(fevent.deliveryFailGroups) <= 0 {
 		if !fevent.fly && !attemptDeliver {
 			//async batch remove
 			self.kitestore.AsyncDelete(fevent.messageId)
-			log.WarnLog("kite_handler", "DeliverResultHandler|%s|Process|ALL GROUP SEND |SUCC|attemptDeliver:%s|%s|%s|%s\n", self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
 		}
 	} else {
 		//重投策略
