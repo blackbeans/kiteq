@@ -59,13 +59,13 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	var event IEvent
 	packet := pevent.Packet
 	//根据类型反解packet
-	switch packet.CmdType {
+	switch packet.Header.CmdType {
 	//连接授权确认
 	case protocol.CMD_CONN_AUTH:
 		var auth protocol.ConnAuthAck
 		err = protocol.UnmarshalPbMessage(packet.Data, &auth)
 		if nil == err {
-			pevent.RemoteClient.Attach(packet.Opaque, &auth)
+			pevent.RemoteClient.Attach(packet.Header.Opaque, &auth)
 			event = &SunkEvent{}
 		}
 
@@ -76,7 +76,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		if nil == err {
 			hb := &hearbeat
 			// log.DebugLog("kite_client_handler","PacketHandler|handlePacket|HeartBeat|%t\n", hb)
-			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Opaque, hb.GetVersion())
+			event = NewHeartbeatEvent(pevent.RemoteClient, packet.Header.Opaque, hb.GetVersion())
 		}
 		//消息持久化
 	case protocol.CMD_MESSAGE_STORE_ACK:
@@ -84,7 +84,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		err = protocol.UnmarshalPbMessage(packet.Data, &pesisteAck)
 		if nil == err {
 			//直接通知当前的client对应chan
-			pevent.RemoteClient.Attach(packet.Opaque, &pesisteAck)
+			pevent.RemoteClient.Attach(packet.Header.Opaque, &pesisteAck)
 			event = eventSunk
 		}
 
@@ -92,21 +92,21 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		var txAck protocol.TxACKPacket
 		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_TX_ACK, &txAck, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_TX_ACK, &txAck, pevent.RemoteClient, packet.Header.Opaque)
 		}
 	//发送的是bytesmessage
 	case protocol.CMD_BYTES_MESSAGE:
 		var msg protocol.BytesMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Header.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_STRING_MESSAGE:
 		var msg protocol.StringMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Header.Opaque)
 		}
 	}
 

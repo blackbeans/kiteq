@@ -59,14 +59,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 
 	packet := pevent.Packet
 	//根据类型反解packet
-	switch packet.CmdType {
+	switch packet.Header.CmdType {
 	//连接的元数据
 	case protocol.CMD_CONN_META:
 		var connMeta protocol.ConnMeta
 		err = protocol.UnmarshalPbMessage(packet.Data, &connMeta)
 		if nil == err {
 			meta := &connMeta
-			event = newAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Opaque)
+			event = newAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Header.Opaque)
 		}
 
 	//心跳
@@ -74,7 +74,7 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		var hearbeat protocol.HeartBeat
 		err = protocol.UnmarshalPbMessage(packet.Data, &hearbeat)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_HEARTBEAT, &hearbeat, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_HEARTBEAT, &hearbeat, pevent.RemoteClient, packet.Header.Opaque)
 		}
 		//投递结果确认
 	case protocol.CMD_DELIVER_ACK:
@@ -82,14 +82,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		err = protocol.UnmarshalPbMessage(packet.Data, &delAck)
 
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_DELIVER_ACK, &delAck, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_DELIVER_ACK, &delAck, pevent.RemoteClient, packet.Header.Opaque)
 		}
 
 	case protocol.CMD_TX_ACK:
 		var txAck protocol.TxACKPacket
 		err = protocol.UnmarshalPbMessage(packet.Data, &txAck)
 		if nil == err {
-			event = newTxAckEvent(&txAck, packet.Opaque, pevent.RemoteClient)
+			event = newTxAckEvent(&txAck, packet.Header.Opaque, pevent.RemoteClient)
 		}
 
 	//发送的是bytesmessage
@@ -97,14 +97,14 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 		var msg protocol.BytesMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_BYTES_MESSAGE, &msg, pevent.RemoteClient, packet.Header.Opaque)
 		}
 	//发送的是StringMessage
 	case protocol.CMD_STRING_MESSAGE:
 		var msg protocol.StringMessage
 		err = protocol.UnmarshalPbMessage(packet.Data, &msg)
 		if nil == err {
-			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Opaque)
+			event = newAcceptEvent(protocol.CMD_STRING_MESSAGE, &msg, pevent.RemoteClient, packet.Header.Opaque)
 		}
 	}
 
