@@ -95,7 +95,7 @@ func (self *KiteQServer) Start() {
 			event := pipe.NewPacketEvent(rclient, p)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
-				log.ErrorLog("kite_server", "RemotingServer|onPacketRecieve|FAIL|%s|%t\n", err, p)
+				log.ErrorLog("kite_server", "RemotingServer|onPacketRecieve|FAIL|%s|%t", err, packet.MarshalPacket(p))
 			} else {
 				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}

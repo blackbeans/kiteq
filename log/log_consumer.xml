@@ -49,5 +49,16 @@
     <property name="maxlines">10M</property>
     <property name="daily">true</property> 
   </filter>
+    <filter enabled="true">
+    <tag>kite_client</tag>
+    <type>file</type>
+    <level>DEBUG</level>
+    <property name="filename">./logs/kiteq/kite_client.log</property>
+    <property name="format">[%D %T] [%L] (%S) %M</property>
+    <property name="rotate">false</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
 
 </logging>
