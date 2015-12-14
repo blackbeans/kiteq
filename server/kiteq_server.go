@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo/client"
 	"github.com/blackbeans/turbo/packet"
@@ -11,6 +12,7 @@ import (
 	"kiteq/stat"
 	"kiteq/store"
 	"os"
+	"time"
 )
 
 type KiteQServer struct {
@@ -22,6 +24,7 @@ type KiteQServer struct {
 	recoverManager *RecoverManager
 	kc             KiteQConfig
 	kitedb         store.IKiteStore
+	stop           bool
 }
 
 //握手包
@@ -84,7 +87,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 		pipeline:       pipeline,
 		recoverManager: recoverManager,
 		kc:             kc,
-		kitedb:         kitedb}
+		kitedb:         kitedb,
+		stop:           false}
 
 }
 
@@ -116,14 +120,37 @@ func (self *KiteQServer) Start() {
 	}
 
 	//开启流量统计
-	self.kc.flowstat.Start()
+	self.startFlow()
 
 	//开启recover
 	self.recoverManager.Start()
 
 }
 
+func (self *KiteQServer) startFlow() {
+
+	go func() {
+		t := time.NewTicker(1 * time.Second)
+		for !self.stop {
+			ns := self.remotingServer.NetworkStat()
+			line := fmt.Sprintf("Remoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%s\n", ns.ReadBytes, ns.ReadCount,
+				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
+
+			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d\t", line, self.kc.flowstat.DeliverFlow.Changes(),
+				self.kc.flowstat.DeliverGo.Count())
+			if nil != self.kitedb {
+				line = fmt.Sprintf("%s\n%s", self.kitedb.Monitor())
+
+			}
+			log.InfoLog("kite_server", line)
+			<-t.C
+		}
+		t.Stop()
+	}()
+}
+
 func (self *KiteQServer) Shutdown() {
+	self.stop = true
 	//先关闭exchanger让客户端不要再输送数据
 	self.exchanger.Shutdown()
 	self.recoverManager.Stop()

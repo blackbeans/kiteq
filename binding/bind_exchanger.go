@@ -35,6 +35,24 @@ func NewBindExchanger(zkhost string, kiteQServer string) *BindExchanger {
 	return ex
 }
 
+//当前topic到Groups的对应关系
+func (self *BindExchanger) Topic2Groups() map[string][]string {
+	binds := make(map[string][]string, 10)
+	for topic, groups := range self.exchanger {
+		v, ok := binds[topic]
+		if !ok {
+			v = make([]string, len(groups))
+			binds[topic] = v
+
+		}
+
+		for g, _ := range groups {
+			v = append(v, g)
+		}
+	}
+	return binds
+}
+
 //推送Qserver到配置中心
 func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	err := self.zkmanager.PublishQServer(hostport, topics)

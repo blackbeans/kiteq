@@ -72,7 +72,6 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		zkAddr:        zkAddr}
 	//开启流量统计
 	manager.remointflow()
-	manager.flowstat.Start()
 	return manager
 }
 
@@ -80,7 +79,9 @@ func (self *KiteClientManager) remointflow() {
 	go func() {
 		t := time.NewTicker(1 * time.Second)
 		for {
-			log.Info(self.rc.FlowStat.Monitor())
+			ns := self.rc.FlowStat.Stat()
+			log.InfoLog("kite_client", "Remoting read:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%s", ns.ReadBytes, ns.ReadCount,
+				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
 			<-t.C
 		}
 	}()

@@ -54,7 +54,8 @@ func main() {
 
 	go func() {
 		if *pprofPort > 0 {
-			http.HandleFunc("/stat", qserver.HandleMonitor)
+			http.HandleFunc("/stat", qserver.HandleStat)
+			http.HandleFunc("/binds", qserver.HandleBindings)
 			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(*pprofPort), nil))
 		}
 	}()

@@ -24,9 +24,13 @@ func NewKiteQConfig(name string, server, zkhost string, fly bool, deliverTimeout
 	topics []string,
 	db string,
 	rc *turbo.RemotingConfig) KiteQConfig {
+	flowstat := stat.NewFlowStat(name)
+	for _, topic := range topics {
+		flowstat.TopicsFlows[topic] = &turbo.Flow{}
+	}
 	return KiteQConfig{
 		fly:               fly,
-		flowstat:          stat.NewFlowStat(name),
+		flowstat:          flowstat,
 		rc:                rc,
 		server:            server,
 		zkhost:            zkhost,
