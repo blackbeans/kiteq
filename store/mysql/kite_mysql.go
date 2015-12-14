@@ -5,6 +5,7 @@ import (
 	log "github.com/blackbeans/log4go"
 	"kiteq/protocol"
 	. "kiteq/store"
+	"sort"
 	"time"
 )
 
@@ -71,7 +72,16 @@ func (self *KiteMysqlStore) Length() int {
 
 func (self *KiteMysqlStore) Monitor() string {
 	line := "Stmt-Pool\t"
-	for k, v := range self.stmtPools {
+
+	bt := make([]batchType, 0, 10)
+	for k, _ := range self.stmtPools {
+		bt = append(bt, k)
+	}
+
+	sort.Sort(batchTypes(bt))
+
+	for _, t := range bt {
+		v, _ := self.stmtPools[t]
 		numWork := 0
 		active := 0
 		idle := 0
@@ -86,7 +96,7 @@ func (self *KiteMysqlStore) Monitor() string {
 		}
 
 		line +=
-			fmt.Sprintf("%s[work:%d\tactive:%d\tidle:%d]\t", k, numWork, active, idle)
+			fmt.Sprintf("%s[work:%d\tactive:%d\tidle:%d]\t", t, numWork, active, idle)
 	}
 	return line
 }

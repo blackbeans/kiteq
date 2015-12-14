@@ -139,7 +139,7 @@ func (self *KiteQServer) startFlow() {
 			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d\t", line, self.kc.flowstat.DeliverFlow.Changes(),
 				self.kc.flowstat.DeliverGo.Count())
 			if nil != self.kitedb {
-				line = fmt.Sprintf("%s\n%s", self.kitedb.Monitor())
+				line = fmt.Sprintf("%s\ndb:%s", line, self.kitedb.Monitor())
 
 			}
 			log.InfoLog("kite_server", line)

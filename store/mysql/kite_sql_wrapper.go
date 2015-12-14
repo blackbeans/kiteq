@@ -21,6 +21,19 @@ func (s batchType) String() string {
 	return "Stmt-Unknown"
 }
 
+type batchTypes []batchType
+
+func (s batchTypes) Len() int {
+	return len(s)
+}
+
+func (s batchTypes) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s batchTypes) Less(i, j int) bool {
+	return s[i] <= s[j]
+}
+
 const (
 	COMMIT batchType = 1
 	UPDATE batchType = 2
