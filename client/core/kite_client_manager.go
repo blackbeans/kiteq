@@ -80,7 +80,7 @@ func (self *KiteClientManager) remointflow() {
 		t := time.NewTicker(1 * time.Second)
 		for {
 			ns := self.rc.FlowStat.Stat()
-			log.InfoLog("kite_client", "Remoting read:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%s", ns.ReadBytes, ns.ReadCount,
+			log.InfoLog("kite_client", "Remoting read:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d", ns.ReadBytes, ns.ReadCount,
 				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
 			<-t.C
 		}

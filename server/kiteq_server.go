@@ -133,10 +133,10 @@ func (self *KiteQServer) startFlow() {
 		t := time.NewTicker(1 * time.Second)
 		for !self.stop {
 			ns := self.remotingServer.NetworkStat()
-			line := fmt.Sprintf("Remoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%s\n", ns.ReadBytes, ns.ReadCount,
+			line := fmt.Sprintf("Remoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
 				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
 
-			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d\t", line, self.kc.flowstat.DeliverFlow.Changes(),
+			line = fmt.Sprintf("%s\t\tKiteQ:\tdeliver:%d\tdeliver-go:%d\t", line, self.kc.flowstat.DeliverFlow.Changes(),
 				self.kc.flowstat.DeliverGo.Count())
 			if nil != self.kitedb {
 				line = fmt.Sprintf("%s\ndb:%s", line, self.kitedb.Monitor())
