@@ -49,7 +49,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	switch ae.msgType {
 	case protocol.CMD_DELIVER_ACK:
 		//收到投递结果直接attach响应
-		log.DebugLog("kite_handler", "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
+		// log.DebugLog("kite_handler", "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
 		ae.remoteClient.Attach(ae.opaque, ae.msg)
 		return nil
 	case protocol.CMD_HEARTBEAT:
