@@ -9,10 +9,12 @@ import (
 )
 
 const (
-	KITEQ        = "/kiteq"
-	KITEQ_SERVER = KITEQ + "/server" // 临时节点 # /kiteq/server/${topic}/ip:port
-	KITEQ_PUB    = KITEQ + "/pub"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
-	KITEQ_SUB    = KITEQ + "/sub"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}-bind/#$data(bind)
+	KITEQ               = "/kiteq"
+	KITEQ_ALL_SERVERS   = KITEQ + "/all_servers"
+	KITEQ_ALIVE_SERVERS = KITEQ + "/alive_servers"
+	KITEQ_SERVER        = KITEQ + "/server" // 临时节点 # /kiteq/server/${topic}/ip:port
+	KITEQ_PUB           = KITEQ + "/pub"    // 临时节点 # /kiteq/pub/${topic}/${groupId}/ip:port
+	KITEQ_SUB           = KITEQ + "/sub"    // 持久订阅/或者临时订阅 # /kiteq/sub/${topic}/${groupId}-bind/#$data(bind)
 )
 
 type ZKManager struct {
@@ -230,19 +232,21 @@ func (self *ZKManager) UnpushlishQServer(hostport string, topics []string) {
 
 		//删除当前该Topic下的本机
 		err := self.session.Delete(qpath, -1)
+
 		if nil != err {
 			log.Error("ZKManager|UnpushlishQServer|FAIL|%s|%s\n", err, qpath)
 		} else {
 			log.Info("ZKManager|UnpushlishQServer|SUCC|%s\n", qpath)
 		}
 	}
+	//注册当前的kiteqserver
+	self.session.Delete(KITEQ_ALIVE_SERVERS+"/"+hostport, -1)
 }
 
 //发布topic对应的server
 func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 
 	for _, topic := range topics {
-
 		qpath := KITEQ_SERVER + "/" + topic
 		spath := KITEQ_SUB + "/" + topic
 		ppath := KITEQ_PUB + "/" + topic
@@ -265,6 +269,10 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 		log.Info("ZKManager|PublishQServer|SUCC|%s\n", path)
 	}
 
+	//注册当前的kiteqserver
+	self.session.Delete(KITEQ_ALIVE_SERVERS+"/"+hostport, -1)
+	self.registePath(KITEQ_ALIVE_SERVERS, hostport, zk.CreateEphemeral, nil)
+	self.registePath(KITEQ_ALL_SERVERS, hostport, zk.CreateEphemeral, nil)
 	return nil
 }
 
