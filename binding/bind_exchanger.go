@@ -41,7 +41,7 @@ func (self *BindExchanger) Topic2Groups() map[string][]string {
 	for topic, groups := range self.exchanger {
 		v, ok := binds[topic]
 		if !ok {
-			v = make([]string, len(groups))
+			v = make([]string, 0, len(groups))
 		}
 
 		for g, _ := range groups {
