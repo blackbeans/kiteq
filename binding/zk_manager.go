@@ -272,7 +272,7 @@ func (self *ZKManager) PublishQServer(hostport string, topics []string) error {
 	//注册当前的kiteqserver
 	self.session.Delete(KITEQ_ALIVE_SERVERS+"/"+hostport, -1)
 	self.registePath(KITEQ_ALIVE_SERVERS, hostport, zk.CreateEphemeral, nil)
-	self.registePath(KITEQ_ALL_SERVERS, hostport, zk.CreateEphemeral, nil)
+	self.registePath(KITEQ_ALL_SERVERS, hostport, zk.CreatePersistent, nil)
 	return nil
 }
 
