@@ -99,30 +99,32 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 	if len(fevent.futures) > 0 {
 		tid, ch := self.tw.After(self.deliverTimeout, func() {})
-		//等待回调结果
-		timeout := fevent.wait(ch)
-		if timeout {
-			self.tw.Remove(tid)
-		}
+		func() {
+			defer self.tw.Remove(tid)
+			//等待回调结果
+			fevent.wait(ch)
+		}()
+
 	}
 
 	//增加投递成功的分组
-	if len(fevent.deliverySuccGroups) > 0 {
-		fevent.succGroups = append(fevent.succGroups, fevent.deliverySuccGroups...)
+	if len(fevent.deliverSuccGroups) > 0 {
+		fevent.succGroups = append(fevent.succGroups, fevent.deliverSuccGroups...)
+
 	}
 
 	attemptDeliver := nil != fevent.attemptDeliver
 	//第一次尝试投递失败了立即通知
 	if attemptDeliver {
-		fevent.attemptDeliver <- fevent.deliveryFailGroups
+		fevent.attemptDeliver <- fevent.deliverFailGroups
 		close(fevent.attemptDeliver)
 	}
 
 	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND RESULT |attemptDeliver:%v|%s|%s|%s",
-		self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroups, fevent.deliveryFailGroups)
+		self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.succGroupFuture, fevent.failGroupFuture)
 
 	//都投递成功
-	if len(fevent.deliveryFailGroups) <= 0 {
+	if len(fevent.deliverFailGroups) <= 0 {
 		if !fevent.fly && !attemptDeliver {
 			//async batch remove
 			self.kitestore.AsyncDelete(fevent.messageId)
@@ -151,7 +153,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 
 	} else if fevent.deliverCount < 3 {
 		//只有在消息前三次投递才会失败立即重投
-		fevent.deliverGroups = fevent.deliveryFailGroups
+		fevent.deliverGroups = fevent.deliverFailGroups
 		fevent.packet.Reset()
 		return true
 	} else {
@@ -159,7 +161,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 		//log deliver fail
 		log.DebugLog("kite_handler", "DeliverResultHandler|checkRedelivery|messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
 			fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
-			fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliveryFailGroups)
+			fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliverFailGroups)
 	}
 
 	//如果不为fly消息那么需要存储投递结果
@@ -167,7 +169,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 	if !fevent.fly && fevent.deliverCount >= 3 {
 		//存储投递结果
 		self.saveDeliverResult(fevent.messageId, fevent.deliverCount,
-			fevent.succGroups, fevent.deliveryFailGroups)
+			fevent.succGroups, fevent.deliverFailGroups)
 	}
 
 	return false

@@ -157,7 +157,7 @@ func (self *KiteFileStore) Length() int {
 }
 
 func (self *KiteFileStore) Monitor() string {
-	return fmt.Sprintf("message-length:%d\n", self.Length())
+	return fmt.Sprintf("\nmessage-length:%d\n", self.Length())
 }
 
 func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }

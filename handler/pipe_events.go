@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"fmt"
+	"github.com/blackbeans/turbo"
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
@@ -135,63 +137,65 @@ func newDeliverEvent(messageId string, topic string, messageType string,
 		attemptDeliver: attemptDeliver}
 }
 
+type GroupFuture struct {
+	*turbo.Future
+	groupId string
+}
+
+func (self GroupFuture) String() string {
+	return fmt.Sprintf("groupId:%s[%s],err:%s", self.groupId, self.TargetHost, self.Err.Error())
+}
+
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
 	IBackwardEvent
-	futures            map[string]chan interface{}
-	deliveryFailGroups []string
-	deliverySuccGroups []string
+	futures           map[string]*turbo.Future
+	failGroupFuture   []GroupFuture
+	succGroupFuture   []GroupFuture
+	deliverFailGroups []string
+	deliverSuccGroups []string
 }
 
-func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]chan interface{}) *deliverResultEvent {
+func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]*turbo.Future) *deliverResultEvent {
 	re := &deliverResultEvent{}
 	re.deliverEvent = deliverEvent
 	re.futures = futures
-	re.deliverySuccGroups = make([]string, 0, 5)
-	re.deliveryFailGroups = make([]string, 0, 5)
+	re.succGroupFuture = make([]GroupFuture, 0, 5)
+	re.failGroupFuture = make([]GroupFuture, 0, 5)
 
 	return re
 }
 
 //等待响应
 func (self *deliverResultEvent) wait(ch chan bool) bool {
-
 	timeout := false
 	//等待回调结果
 	for g, f := range self.futures {
-		if timeout {
-			//一旦超时直接启用非阻塞模式有结果的算是有结果无结果的直接认为超时失败
-			select {
-			case resp := <-f:
-				ack, ok := resp.(*protocol.DeliverAck)
-				if !ok || !ack.GetStatus() {
-					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-				} else {
-					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
-				}
-			default:
-				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-			}
-		} else {
-			select {
-			case <-ch:
-				//timeout
-				self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-				//设置为超时状态
-				timeout = true
-			case resp := <-f:
-				// log.Printf("deliverResultEvent|wait|%s\n", resp)
-				ack, ok := resp.(*protocol.DeliverAck)
-				if !ok || !ack.GetStatus() {
-					self.deliveryFailGroups = append(self.deliveryFailGroups, g)
-				} else {
-					self.deliverySuccGroups = append(self.deliverySuccGroups, g)
-				}
+		resp, err := f.Get(ch)
+		if err == turbo.TIMEOUT_ERROR {
+			timeout = true
+			self.failGroupFuture = append(self.failGroupFuture, GroupFuture{f, g})
+		} else if nil != resp {
+			ack, ok := resp.(*protocol.DeliverAck)
+			if !ok || !ack.GetStatus() {
+				self.failGroupFuture = append(self.failGroupFuture, GroupFuture{f, g})
+			} else {
+				self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, g})
 			}
 		}
-
 	}
 
+	fg := make([]string, 0, len(self.failGroupFuture))
+	for _, g := range self.failGroupFuture {
+		fg = append(fg, g.groupId)
+	}
+	self.deliverFailGroups = fg
+
+	sg := make([]string, 0, len(self.succGroupFuture))
+	for _, g := range self.succGroupFuture {
+		sg = append(sg, g.groupId)
+	}
+	self.deliverSuccGroups = sg
 	return timeout
 }
