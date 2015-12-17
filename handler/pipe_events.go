@@ -143,7 +143,7 @@ type GroupFuture struct {
 }
 
 func (self GroupFuture) String() string {
-	return fmt.Sprintf("groupId:%s[%s],err:%s", self.groupId, self.TargetHost, self.Err.Error())
+	return fmt.Sprintf("groupId:%s[%s],err:%s", self.groupId, self.TargetHost, self.Err)
 }
 
 //统计投递结果的事件，决定不决定重发
