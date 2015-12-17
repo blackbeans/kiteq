@@ -231,6 +231,8 @@ func TestFileStoreInit(t *testing.T) {
 
 	fs.Stop()
 
+	time.Sleep(10 * time.Second)
+	log.Println("-------------------Query")
 	fs = NewKiteFileStore(".", 5000000, 1*time.Second)
 	fs.Start()
 

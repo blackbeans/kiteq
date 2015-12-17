@@ -542,6 +542,7 @@ func (self *MessageStore) sync() {
 		}
 
 		if nil != cmd {
+
 			s, id := self.checkRoll()
 			if nil == s {
 				log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
@@ -587,9 +588,7 @@ outter:
 
 			if nil != cmd {
 				if nil == cmd.seg {
-					log.Warn("MessageStore|sync|checkRoll|%s...", cmd)
 					s, id := self.checkRoll()
-					log.Warn("MessageStore|sync|checkRoll|%s...", cmd)
 					if nil == s {
 						log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
 						cmd.idchan <- -1
@@ -665,20 +664,23 @@ func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
 }
 
 func (self *MessageStore) Destory() {
-	self.Lock()
-	defer self.Unlock()
+
 	self.running = false
 	close(self.writeChannel)
 	self.waitSync.Wait()
 
-	//close all segment
-	for _, s := range self.segments {
-		err := s.Close()
-		if nil != err {
-			log.ErrorLog("kite_store", "MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
+	func() {
+		self.Lock()
+		defer self.Unlock()
+		//close all segment
+		for _, s := range self.segments {
+			err := s.Close()
+			if nil != err {
+				log.ErrorLog("kite_store", "MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
+			}
 		}
-	}
-	self.baseDir.Close()
+		self.baseDir.Close()
+	}()
 	log.InfoLog("kite_store", "MessageStore|Destory...")
 }
 
