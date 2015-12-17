@@ -265,7 +265,7 @@ func BenchmarkQuery(t *testing.B) {
 
 	i := 0
 	for ; i < t.N; i++ {
-		id := int64(rand.Intn(20)) + 1
+		id := int64(rand.Intn(20))
 		_, err := snapshot.Query(id)
 		if nil != err {
 			log.Printf("Query|%s|%d\n", err, id)
