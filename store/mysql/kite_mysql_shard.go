@@ -96,8 +96,8 @@ func (s DbShard) FindShardById(id int) shardrange {
 
 func (s DbShard) HashId(key string) int {
 	num := key
-	if len(key) > 2 {
-		num = string(key[len(key)-2:])
+	if len(key) > 1 {
+		num = string(key[len(key)-1:])
 	}
 
 	i, err := strconv.ParseInt(num, 16, 16)
@@ -105,8 +105,7 @@ func (s DbShard) HashId(key string) int {
 		log.ErrorLog("kite_store", "DbShard|HashId|INVALID HASHKEY|%s|%s\n", key, err)
 		return 0
 	}
-	// log.Debug("HashId|%s|%d\n", key, i)
-	return int(i) / SHARD_SEED
+	return int(i)
 }
 
 func (s DbShard) ShardNum() int {

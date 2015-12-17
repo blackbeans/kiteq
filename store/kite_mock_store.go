@@ -21,10 +21,10 @@ func (self *MockKiteStore) RecoverNum() int {
 	return 0
 }
 
-func (self *MockKiteStore) Length() int {
+func (self *MockKiteStore) Length() map[string] /*topic*/ int {
 	//TODO mysql中的未过期的消息数量
 
-	return 0
+	return make(map[string] /*topic*/ int, 1)
 }
 
 func (self *MockKiteStore) AsyncUpdate(entity *MessageEntity) bool { return true }

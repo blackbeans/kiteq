@@ -37,7 +37,7 @@ func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline 
 //开始启动恢复程序
 func (self *RecoverManager) Start() {
 	for i := 0; i < self.kitestore.RecoverNum(); i++ {
-		go self.startRecoverTask(fmt.Sprintf("%x%x", i/16, i%16))
+		go self.startRecoverTask(fmt.Sprintf("%x", i))
 	}
 
 	log.InfoLog("kite_server", "RecoverManager|Start|SUCC....")

@@ -108,31 +108,37 @@ func (self *MessageStore) evict() {
 		time.Sleep(self.checkPeriod)
 		stat := ""
 		cache := ""
-		self.RLock()
-		//保证当前数据都是已经写入了至少一个分块
-		if len(self.segments) < 2 {
-			//do nothing
-		} else {
+		func() {
+			self.RLock()
+			defer self.RUnlock()
+			//保证当前数据都是已经写入了至少一个分块
+			if len(self.segments) < 2 {
+				//do nothing
+			} else {
 
-			//check 0...n-1 segment stat
-			for _, s := range self.segments[:len(self.segments)-1] {
-				//try open
-				s.RLock()
-				total, normal, del, expired := s.stat()
-				stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
-				s.RUnlock()
-				if normal <= 0 {
-					removeChan <- s
+				//check 0...n-1 segment stat
+				for _, s := range self.segments[:len(self.segments)-1] {
+					//try open
+					func() {
+						s.RLock()
+						defer s.RUnlock()
+						total, normal, del, expired := s.stat()
+						stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
+
+						if normal <= 0 {
+							removeChan <- s
+						}
+					}()
+				}
+
+				//cache
+				for e := self.segmentCache.Front(); nil != e; e = e.Next() {
+					cache += e.Value.(*Segment).name
+					cache += ","
 				}
 			}
 
-			//cache
-			for e := self.segmentCache.Front(); nil != e; e = e.Next() {
-				cache += e.Value.(*Segment).name
-				cache += ","
-			}
-		}
-		self.RUnlock()
+		}()
 
 		if len(stat) > 0 {
 			log.InfoLog("kite_store", "---------------MessageStore-Stat--------------"+
@@ -149,6 +155,7 @@ func (self *MessageStore) evict() {
 func (self *MessageStore) remove(s *Segment) {
 
 	self.Lock()
+	defer self.Unlock()
 	//remove from segments
 	for i, s := range self.segments {
 		if s.sid == s.sid {
@@ -177,7 +184,6 @@ func (self *MessageStore) remove(s *Segment) {
 		log.WarnLog("kite_store", "MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
 	}
 
-	self.Unlock()
 	log.InfoLog("kite_store", "MessageStore|Remove|Segment|%s", s.path)
 }
 
@@ -522,12 +528,12 @@ func (self *MessageStore) sync() {
 	batch := make([]*command, 0, self.batchSize)
 	batchLog := make([]*oplog, 0, self.batchSize)
 	chunks := make(Chunks, 0, self.batchSize)
-	var cmd *command
+
 	currBytes := 0
 	ticker := time.NewTicker(5 * time.Millisecond)
 	var curr *Segment
 	for self.running {
-
+		var cmd *command
 		//no batch / wait for data
 		select {
 		case cmd = <-self.writeChannel:
@@ -570,23 +576,39 @@ func (self *MessageStore) sync() {
 			flush(curr, chunks[:0], batchLog[:0], batch)
 			batch = batch[:0]
 		}
-		cmd = nil
 	}
 
 	// need flush left data
 outter:
 	for {
+		var cmd *command
 		select {
-		case c := <-self.writeChannel:
-			if nil != c {
-				if nil == curr {
-					curr = c.seg
+		case cmd = <-self.writeChannel:
+
+			if nil != cmd {
+				if nil == cmd.seg {
+					log.Warn("MessageStore|sync|checkRoll|%s...", cmd)
+					s, id := self.checkRoll()
+					log.Warn("MessageStore|sync|checkRoll|%s...", cmd)
+					if nil == s {
+						log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
+						cmd.idchan <- -1
+						close(cmd.idchan)
+						continue
+					}
+					cmd.seg = s
+					cmd.id = id
 				}
-				if c.seg.sid != curr.sid {
+
+				if nil == curr {
+					curr = cmd.seg
+				}
+
+				if cmd.seg.sid != curr.sid {
 					flush(curr, chunks[:0], batchLog[:0], batch)
 					batch = batch[:0]
 				}
-				batch = append(batch, c)
+				batch = append(batch, cmd)
 			} else {
 				//channel close
 				break outter

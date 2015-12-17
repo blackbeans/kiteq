@@ -10,7 +10,7 @@ type kiteqstat struct {
 	Goroutine    int32                         `json:"goroutine"`
 	DeliverGo    int32                         `json:"deliver_go"`
 	DeliverCount int32                         `json:"deliver_count"`
-	MessageCount int32                         `json:"message_count"`
+	MessageCount map[string]int                `json:"message_count"`
 	Topics       map[string] /*topicId*/ int32 `json:"topics"`
 }
 
@@ -32,7 +32,7 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 		Goroutine:    int32(runtime.NumGoroutine()),
 		DeliverGo:    self.kc.flowstat.DeliverFlow.Changes(),
 		DeliverCount: self.kc.flowstat.DeliverGo.Count(),
-		MessageCount: int32(self.kitedb.Length()),
+		MessageCount: self.kitedb.Length(),
 		Topics:       topics}
 
 	result := make(map[string]interface{}, 2)

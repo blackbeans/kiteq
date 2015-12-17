@@ -47,13 +47,26 @@ func (self *KiteMemoryStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
-func (self *KiteMemoryStore) Length() int {
-	l := 0
+func (self *KiteMemoryStore) Length() map[string] /*topic*/ int {
+	defer func() {
+		if err := recover(); nil != err {
+
+		}
+	}()
+	stat := make(map[string]int, 10)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		_, _, dl := self.hash(fmt.Sprintf("%x", i))
-		l += dl.Len()
+		for e := dl.Back(); nil != e; e = e.Prev() {
+			enity := e.Value.(*MessageEntity)
+			v, ok := stat[enity.Topic]
+			if !ok {
+				v = 0
+			}
+			stat[enity.Topic] = (v + 1)
+		}
 	}
-	return l
+
+	return stat
 }
 
 func (self *KiteMemoryStore) Monitor() string {

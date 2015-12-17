@@ -17,7 +17,7 @@ import (
 //  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1
 //  file    file:///path?cap=10000000&checkSeconds=60
 
-func parseDB(kc KiteQConfig) store.IKiteStore {
+func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
 	db := kc.db
 
 	var kitedb store.IKiteStore
@@ -144,7 +144,7 @@ func parseDB(kc KiteQConfig) store.IKiteStore {
 			FlushPeriod:  flushPeriod,
 			MaxIdleConn:  maxConn / 2,
 			MaxOpenConn:  maxConn}
-		kitedb = smq.NewKiteMysql(options)
+		kitedb = smq.NewKiteMysql(options, serverName)
 	} else if strings.HasPrefix(db, "file://") {
 		url := strings.TrimPrefix(db, "file://")
 		mp := strings.Split(url, "?")

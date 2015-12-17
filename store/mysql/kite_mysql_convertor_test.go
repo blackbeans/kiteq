@@ -16,7 +16,7 @@ func TestConvertFields(t *testing.T) {
 		Addr:         "localhost:3306",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  1000,
 		BatchDelSize: 1000,
 		FlushPeriod:  1 * time.Minute,
@@ -46,7 +46,7 @@ func TestConvert2Entity(t *testing.T) {
 		Addr:         "localhost:3306",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  1000,
 		BatchDelSize: 1000,
 		FlushPeriod:  1 * time.Minute,
@@ -63,7 +63,7 @@ func TestConvert2Entity(t *testing.T) {
 	//创建消息
 	msg := &protocol.BytesMessage{}
 	msg.Header = &protocol.Header{
-		MessageId:    proto.String("26c03f00665862591f696a980b5a6c4"),
+		MessageId:    proto.String("26c03f00665462591f696a980b5a6c4"),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
 		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -101,7 +101,7 @@ func TestConvert2Params(t *testing.T) {
 		Addr:         "localhost:3306",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  1000,
 		BatchDelSize: 1000,
 		FlushPeriod:  1 * time.Minute,

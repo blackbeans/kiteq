@@ -240,7 +240,7 @@ func TestFileStoreInit(t *testing.T) {
 			log.Printf("TestFileStoreInit|Check|%d|%s", ob.Id, ob.MessageId)
 		}
 	}
-
+	log.Printf("TestFileStoreInit|Check|SUCC|\n")
 	//commit and check
 	for i := 50; i < 100; i++ {
 		id := fmt.Sprint(i) + "26c03f00665862591f696a980b5ac"
@@ -250,8 +250,12 @@ func TestFileStoreInit(t *testing.T) {
 		if nil == entity || !entity.Commit {
 			log.Printf("TestFileStoreInit|Exist|FAIL|%s|%s", id, entity)
 			t.Fail()
+			return
 		}
+		log.Printf("TestFileStoreInit|Exist|SUCC|%d|%s|%s", i, id, entity)
 	}
+
+	log.Printf("TestFileStoreInit|Exist|\n")
 
 	//commit and check
 	for i := 0; i < 50; i++ {
@@ -265,6 +269,7 @@ func TestFileStoreInit(t *testing.T) {
 		}
 	}
 
+	log.Printf("TestFileStoreInit|Delete\n")
 	fs.Stop()
 	cleanSnapshot("./snapshot/")
 }

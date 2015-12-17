@@ -72,7 +72,7 @@ type IKiteStore interface {
 	Start()
 	Stop()
 	Monitor() string
-	Length() int //堆积消息的数量
+	Length() map[string] /*topic*/ int //堆积消息的数量
 
 	//recover数量
 	RecoverNum() int

@@ -18,14 +18,14 @@ func TestPageQuery(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options)
+	kiteMysql := NewKiteMysql(options, "localhost")
 	truncate(kiteMysql)
 	hn, _ := os.Hostname()
 	for i := 0; i < 10; i++ {
@@ -122,14 +122,14 @@ func TestBatch(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options)
+	kiteMysql := NewKiteMysql(options, "localhost")
 
 	truncate(kiteMysql)
 
@@ -198,7 +198,7 @@ func TestBatch(t *testing.T) {
 }
 
 func truncate(k *KiteMysqlStore) {
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 4; i++ {
 		for j := 0; j < 4; j++ {
 			m := k.dbshard.FindShardById(i*4 + j).master
 			_, err := m.Exec(fmt.Sprintf("truncate table kite_msg_%d", j))
@@ -218,14 +218,14 @@ func TestStringSave(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options)
+	kiteMysql := NewKiteMysql(options, "localhost")
 
 	for i := 0; i < 32; i++ {
 		//创建消息
@@ -253,14 +253,14 @@ func TestBytesSave(t *testing.T) {
 		DB:           "kite",
 		Username:     "root",
 		Password:     "",
-		ShardNum:     8,
+		ShardNum:     4,
 		BatchUpSize:  100,
 		BatchDelSize: 100,
 		FlushPeriod:  10 * time.Millisecond,
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options)
+	kiteMysql := NewKiteMysql(options, "localhost")
 
 	for i := 0; i < 32; i++ {
 		//创建消息

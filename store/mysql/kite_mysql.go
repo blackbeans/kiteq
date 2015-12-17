@@ -34,9 +34,10 @@ type KiteMysqlStore struct {
 	flushPeriod  time.Duration
 	stmtPools    map[batchType][][]*StmtPool //第一层dblevel 第二维table level
 	stop         bool
+	serverName   string
 }
 
-func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
+func NewKiteMysql(options MysqlOptions, serverName string) *KiteMysqlStore {
 
 	shard := newDbShard(options)
 
@@ -49,6 +50,7 @@ func NewKiteMysql(options MysqlOptions) *KiteMysqlStore {
 		batchUpSize:  options.BatchUpSize,
 		batchDelSize: options.BatchDelSize,
 		flushPeriod:  options.FlushPeriod,
+		serverName:   serverName,
 		stop:         false}
 	ins.Start()
 
@@ -64,10 +66,42 @@ var filternothing = func(colname string) bool {
 	return false
 }
 
-func (self *KiteMysqlStore) Length() int {
+func (self *KiteMysqlStore) Length() map[string] /*topic*/ int {
 	//TODO mysql中的未过期的消息数量
+	defer func() {
+		if err := recover(); nil != err {
 
-	return 0
+		}
+	}()
+	stat := make(map[string]int, 10)
+	//开始查询Mysql中的堆积消息数量
+	for i := 0; i < self.RecoverNum(); i++ {
+		hashKey := fmt.Sprintf("%x%x", i/16, i%16)
+		s := self.sqlwrapper.hashPQSQL(hashKey)
+		// log.Println(s)
+		rows, err := self.dbshard.FindSlave(hashKey).Query(s, self.serverName)
+		if err != nil {
+			log.ErrorLog("kite_store", "KiteMysqlStore|Length|Query|FAIL|%s|%s|%s", err, hashKey, s)
+			continue
+		}
+		defer rows.Close()
+		if rows.Next() {
+			topic := ""
+			num := 0
+			err = rows.Scan(&topic, &num)
+			if nil != err {
+				log.ErrorLog("kite_store", "KiteMysqlStore|Length|Scan|FAIL|%s|%s|%s\n", err, hashKey, s)
+			} else {
+				v, ok := stat[topic]
+				if !ok {
+					v = 0
+				}
+				stat[topic] = (v + num)
+			}
+		}
+	}
+
+	return stat
 }
 
 func (self *KiteMysqlStore) Monitor() string {

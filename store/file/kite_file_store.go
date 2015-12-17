@@ -147,13 +147,25 @@ func (self *KiteFileStore) RecoverNum() int {
 }
 
 //length
-func (self *KiteFileStore) Length() int {
-	l := 0
+func (self *KiteFileStore) Length() map[string]int {
+	defer func() {
+		if err := recover(); nil != err {
+
+		}
+	}()
+	stat := make(map[string]int, 10)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		_, link, _ := self.hash(fmt.Sprintf("%x", i))
-		l += link.Len()
+		for e := link.Back(); nil != e; e = e.Prev() {
+			enity := e.Value.(*MessageEntity)
+			v, ok := stat[enity.Topic]
+			if !ok {
+				v = 0
+			}
+			stat[enity.Topic] = (v + 1)
+		}
 	}
-	return l
+	return stat
 }
 
 func (self *KiteFileStore) Monitor() string {

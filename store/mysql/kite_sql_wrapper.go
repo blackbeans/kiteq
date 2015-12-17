@@ -55,6 +55,7 @@ type sqlwrapper struct {
 	queryPrepareSQL []string
 	pageQuerySQL    []string
 	savePrepareSQL  []string
+	msgStatSQL      []string
 	dbshard         DbShard
 }
 
@@ -257,6 +258,29 @@ func (self *sqlwrapper) initSQL() {
 	for i := 0; i < self.dbshard.HashNum(); i++ {
 		st := strconv.Itoa(i)
 		self.batchSQL[UPDATE] = append(self.batchSQL[UPDATE], strings.Replace(sql, "{}", st, -1))
+	}
+
+	//----------- 查询本机消息堆积数
+
+	// select
+	// 		topic,count(message_id) total
+	// from kite_msg_3
+	// where
+	//		kite_server='vm-golang001.vm.momo.com' group by topic;
+
+	s.Reset()
+	s.WriteString("select topic,count(message_id) total ")
+	s.WriteString(" from ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" where kite_server=? group by topic")
+
+	sql = s.String()
+
+	self.msgStatSQL = make([]string, 0, self.dbshard.HashNum())
+	for i := 0; i < self.dbshard.HashNum(); i++ {
+		st := strconv.Itoa(i)
+		self.msgStatSQL = append(self.msgStatSQL, strings.Replace(sql, "{}", st, -1))
 	}
 
 }
