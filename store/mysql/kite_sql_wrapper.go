@@ -105,6 +105,10 @@ func (self *sqlwrapper) hashPQSQL(hashkey string) string {
 	return self.pageQuerySQL[self.dbshard.FindForKey(hashkey)]
 }
 
+func (self *sqlwrapper) hashMessageStatSQL(hashkey string) string {
+	return self.msgStatSQL[self.dbshard.FindForKey(hashkey)]
+}
+
 func (self *sqlwrapper) initSQL() {
 
 	//query

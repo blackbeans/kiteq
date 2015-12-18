@@ -77,7 +77,7 @@ func (self *KiteMysqlStore) Length() map[string] /*topic*/ int {
 	//开始查询Mysql中的堆积消息数量
 	for i := 0; i < self.RecoverNum(); i++ {
 		hashKey := fmt.Sprintf("%x%x", i/16, i%16)
-		s := self.sqlwrapper.hashPQSQL(hashKey)
+		s := self.sqlwrapper.hashMessageStatSQL(hashKey)
 		// log.Println(s)
 		rows, err := self.dbshard.FindSlave(hashKey).Query(s, self.serverName)
 		if err != nil {
