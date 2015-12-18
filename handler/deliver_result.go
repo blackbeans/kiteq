@@ -120,9 +120,10 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 		close(fevent.attemptDeliver)
 	}
 
-	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND RESULT |attemptDeliver:%v||messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
+	log.DebugLog("kite_handler", "%s|Process|ALL GROUP SEND RESULT |attemptDeliver:%v\n|messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d\n"+
+		"DeliverySUCCGROUPS:%s\n|SUCCGROUPS:%s\nFAILGROUPS:%s",
 		self.GetName(), attemptDeliver, fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
-		fevent.deliverCount, fevent.succGroupFuture, fevent.failGroupFuture)
+		fevent.deliverCount, fevent.succGroups, fevent.succGroupFuture, fevent.failGroupFuture)
 	//都投递成功
 	if len(fevent.deliverFailGroups) <= 0 {
 		if !fevent.fly && !attemptDeliver {
