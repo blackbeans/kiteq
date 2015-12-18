@@ -9,7 +9,7 @@ go get github.com/blackbeans/go-zookeeper/zk
 go get github.com/blackbeans/turbo
 
 
-protoc --go_out=. ./protocol/*.proto
+#protoc --go_out=. ./protocol/*.proto
 
 go build  kiteq/stat
 go build  kiteq/protocol
