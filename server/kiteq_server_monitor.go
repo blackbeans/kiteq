@@ -26,6 +26,18 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 	for topic, f := range self.kc.flowstat.TopicsFlows {
 		topics[topic] = f.Changes()
 	}
+	msgMap := self.kitedb.Length()
+	for _, t := range self.kc.topics {
+		_, ok := msgMap[t]
+		if !ok {
+			msgMap[t] = 0
+		}
+
+		_, ok = topics[t]
+		if !ok {
+			topics[t] = 0
+		}
+	}
 
 	//kiteq
 	ks := kiteqstat{
