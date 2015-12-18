@@ -44,7 +44,7 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 		Goroutine:    int32(runtime.NumGoroutine()),
 		DeliverGo:    self.kc.flowstat.DeliverFlow.Changes(),
 		DeliverCount: self.kc.flowstat.DeliverGo.Count(),
-		MessageCount: self.kitedb.Length(),
+		MessageCount: msgMap,
 		Topics:       topics}
 
 	result := make(map[string]interface{}, 2)
