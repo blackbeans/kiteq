@@ -51,7 +51,8 @@ func (self *acceptEvent) getClient() *client.RemotingClient {
 	return self.remoteClient
 }
 
-func newAcceptEvent(msgType uint8, msg interface{}, remoteClient *client.RemotingClient, opaque int32) *acceptEvent {
+func newAcceptEvent(msgType uint8, msg interface{},
+	remoteClient *client.RemotingClient, opaque int32) *acceptEvent {
 	ae := &acceptEvent{
 		msgType:      msgType,
 		msg:          msg,
@@ -139,11 +140,13 @@ func newDeliverEvent(messageId string, topic string, messageType string,
 
 type GroupFuture struct {
 	*turbo.Future
+	resp    interface{}
 	groupId string
 }
 
 func (self GroupFuture) String() string {
-	return fmt.Sprintf("groupId:%s[%s],err:%s", self.groupId, self.TargetHost, self.Err)
+
+	return fmt.Sprintf("groupId:%s[%s],%s,err:%s", self.groupId, self.TargetHost, self.resp, self.Err)
 }
 
 //统计投递结果的事件，决定不决定重发
@@ -175,13 +178,15 @@ func (self *deliverResultEvent) wait(ch chan bool) bool {
 		resp, err := f.Get(ch)
 		if err == turbo.TIMEOUT_ERROR {
 			timeout = true
-			self.failGroupFuture = append(self.failGroupFuture, GroupFuture{f, g})
+			gf := GroupFuture{f, resp, g}
+			gf.Err = err
+			self.failGroupFuture = append(self.failGroupFuture, gf)
 		} else if nil != resp {
 			ack, ok := resp.(*protocol.DeliverAck)
 			if !ok || !ack.GetStatus() {
-				self.failGroupFuture = append(self.failGroupFuture, GroupFuture{f, g})
+				self.failGroupFuture = append(self.failGroupFuture, GroupFuture{f, resp, g})
 			} else {
-				self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, g})
+				self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, resp, g})
 			}
 		}
 	}

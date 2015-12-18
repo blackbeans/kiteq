@@ -80,7 +80,6 @@ func (self *PacketHandler) handlePacket(pevent *PacketEvent) (IEvent, error) {
 	case protocol.CMD_DELIVER_ACK:
 		var delAck protocol.DeliverAck
 		err = protocol.UnmarshalPbMessage(packet.Data, &delAck)
-
 		if nil == err {
 			event = newAcceptEvent(protocol.CMD_DELIVER_ACK, &delAck, pevent.RemoteClient, packet.Header.Opaque)
 		}

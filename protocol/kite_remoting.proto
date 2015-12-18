@@ -32,6 +32,7 @@ message DeliverAck{
     required string messageType = 3;
     required string groupId = 4; //消息处理  
     required bool status =  5 [default = true];//处理状态
+    optional string feedback = 6;//处理状态
 }
 
 //事务确认数据包

@@ -140,6 +140,7 @@ type DeliverAck struct {
 	MessageType      *string `protobuf:"bytes,3,req,name=messageType" json:"messageType,omitempty"`
 	GroupId          *string `protobuf:"bytes,4,req,name=groupId" json:"groupId,omitempty"`
 	Status           *bool   `protobuf:"varint,5,req,name=status,def=1" json:"status,omitempty"`
+	Feedback         *string `protobuf:"bytes,6,opt,name=feedback" json:"feedback,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
@@ -182,6 +183,13 @@ func (m *DeliverAck) GetStatus() bool {
 		return *m.Status
 	}
 	return Default_DeliverAck_Status
+}
+
+func (m *DeliverAck) GetFeedback() string {
+	if m != nil && m.Feedback != nil {
+		return *m.Feedback
+	}
+	return ""
 }
 
 // 事务确认数据包

@@ -2,6 +2,7 @@ package chandler
 
 import (
 	"errors"
+	"fmt"
 	c "github.com/blackbeans/turbo/client"
 	"github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
@@ -90,10 +91,18 @@ func (self *AcceptHandler) Process(ctx *DefaultPipelineContext, event IEvent) er
 		//log.DebugLog("kite_client_handler","AcceptHandler|Recieve Message|%t\n", acceptEvent.Msg)
 
 		message := protocol.NewQMessage(acceptEvent.msg)
+		var err error
+		succ := false
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.New(fmt.Sprintf("%s", r))
+				}
+			}()
+			succ = self.listener.OnMessage(message)
+		}()
 
-		succ := self.listener.OnMessage(message)
-
-		dpacket := protocol.MarshalDeliverAckPacket(message.GetHeader(), succ)
+		dpacket := protocol.MarshalDeliverAckPacket(message.GetHeader(), succ, err)
 
 		respPacket := packet.NewRespPacket(acceptEvent.opaque, protocol.CMD_DELIVER_ACK, dpacket)
 

@@ -139,13 +139,18 @@ func MarshalHeartbeatPacket(version int64) []byte {
 	return data
 }
 
-func MarshalDeliverAckPacket(header *Header, status bool) []byte {
+func MarshalDeliverAckPacket(header *Header, status bool, err error) []byte {
+	feedback := ""
+	if nil != err {
+		feedback = err.Error()
+	}
 	data, _ := MarshalPbMessage(&DeliverAck{
 		MessageId:   proto.String(header.GetMessageId()),
 		Topic:       proto.String(header.GetTopic()),
 		MessageType: proto.String(header.GetMessageType()),
 		GroupId:     proto.String(header.GetGroupId()),
-		Status:      proto.Bool(status)})
+		Status:      proto.Bool(status),
+		Feedback:    proto.String(feedback)})
 	return data
 }
 
