@@ -72,18 +72,6 @@ KiteQ ![image](./doc/logo.jpg)
         3. 直到Producer明确告诉Commit或者Rollback该消息
         4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
 
-##### Benchmark
-k:为代表链接数量
-c:为并发数
-
-Memory:
-
- ![image](./doc/kiteq_bench_memory.png)
-
-Mysql:
-
- ![image](./doc/kiteq_bench_mysql.png)
-
 #####  QuickStart
     1.编译：sh build.sh 
     2.安装装Zookeeper:省略
@@ -95,7 +83,7 @@ Mysql:
         -topics //本机可以处理的topics列表逗号分隔
         -zkhost //zk的地址
         -logxml=./log.xml //log4go的配置
-        -fly=true //是否开启投递优化
+        -fly=true //是否开启投递优化，投递优先，尝试投递一次如果成功则省去持久化，如果失败则直接持久化走正常消息流程
 
     启动客户端：
         对于KiteQClient需要实现消息监听器，我们定义了如下的接口：
