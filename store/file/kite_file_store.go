@@ -16,6 +16,7 @@ import (
 type opBody struct {
 	Id              int64      `json:"id"`
 	MessageId       string     `json:"mid"`
+	Topic           string     `json:"topic"`
 	Commit          bool       `json:"commit"`
 	FailGroups      []string   `json:"fg",omitempty`
 	SuccGroups      []string   `json:"sg",omitempty`
@@ -31,7 +32,7 @@ const (
 
 type KiteFileStore struct {
 	oplogs     []map[string] /*messageId*/ *list.Element //用于oplog的replay
-	loglink    []*list.List                              //*opBody
+	datalink   []*list.List                              //*opBody
 	locks      []*sync.RWMutex
 	maxcap     int
 	currentSid int64 // 当前segment的id
@@ -44,22 +45,22 @@ type KiteFileStore struct {
 
 func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFileStore {
 
-	loglink := make([]*list.List, 0, CONCURRENT_LEVEL)
+	datalink := make([]*list.List, 0, CONCURRENT_LEVEL)
 	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)
 	locks := make([]*sync.RWMutex, 0, CONCURRENT_LEVEL)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		splitMap := make(map[string] /*messageId*/ *list.Element, maxcap/CONCURRENT_LEVEL)
 		locks = append(locks, &sync.RWMutex{})
 		oplogs = append(oplogs, splitMap)
-		loglink = append(loglink, list.New())
+		datalink = append(datalink, list.New())
 	}
 
 	kms := &KiteFileStore{
-		loglink: loglink,
-		oplogs:  oplogs,
-		locks:   locks,
-		maxcap:  maxcap / CONCURRENT_LEVEL,
-		delChan: make(chan *command, 1000)}
+		datalink: datalink,
+		oplogs:   oplogs,
+		locks:    locks,
+		maxcap:   maxcap / CONCURRENT_LEVEL,
+		delChan:  make(chan *command, 1000)}
 
 	kms.snapshot =
 		NewMessageStore(dir+"/snapshot/", 300, 2, checkPeriod, func(ol *oplog) {
@@ -150,19 +151,19 @@ func (self *KiteFileStore) RecoverNum() int {
 func (self *KiteFileStore) Length() map[string]int {
 	defer func() {
 		if err := recover(); nil != err {
-
+			log.ErrorLog("kite_store", "KiteFileStore|Length|%s", err)
 		}
 	}()
 	stat := make(map[string]int, 10)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		_, link, _ := self.hash(fmt.Sprintf("%x", i))
 		for e := link.Back(); nil != e; e = e.Prev() {
-			enity := e.Value.(*MessageEntity)
-			v, ok := stat[enity.Topic]
+			body := e.Value.(*opBody)
+			v, ok := stat[body.Topic]
 			if !ok {
 				v = 0
 			}
-			stat[enity.Topic] = (v + 1)
+			stat[body.Topic] = (v + 1)
 		}
 	}
 	return stat
@@ -192,8 +193,8 @@ func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.L
 
 	//hash part
 	l = self.locks[hashId]
+	link = self.datalink[hashId]
 	ol = self.oplogs[hashId]
-	link = self.loglink[hashId]
 	return
 }
 
@@ -292,6 +293,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		ob := &opBody{
 			Id:              -1,
 			MessageId:       entity.MessageId,
+			Topic:           entity.Header.GetTopic(),
 			Commit:          entity.Commit,
 			FailGroups:      entity.FailGroups,
 			SuccGroups:      entity.SuccGroups,

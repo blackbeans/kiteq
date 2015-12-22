@@ -128,7 +128,7 @@ func main() {
 		kiteClient.Start()
 		clients = append(clients, kiteClient)
 		time.Sleep(3 * time.Second)
-		log.Debug("Open Client %d", j)
+		fmt.Printf("Open Client %d\n", j)
 		for i := 0; i < *c; i++ {
 			go func(kite *client.KiteQClient) {
 				wg.Add(1)
@@ -157,6 +157,8 @@ func main() {
 				wg.Done()
 			}(kiteClient)
 		}
+
+		time.Sleep(10 * time.Second)
 	}
 
 	var s = make(chan os.Signal, 1)
