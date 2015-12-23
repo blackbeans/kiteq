@@ -15,12 +15,13 @@ type KiteQConfig struct {
 	deliverTimeout    time.Duration //投递超时时间
 	maxDeliverWorkers int           //最大执行实际那
 	recoverPeriod     time.Duration //recover的周期
+	dlqHour           int           //dlq的处理每天固定时间点
 	topics            []string      //可以处理的topics列表
 	db                string        //持久层配置
 }
 
 func NewKiteQConfig(name string, server, zkhost string, fly bool, deliverTimeout time.Duration, maxDeliverWorkers int,
-	recoverPeriod time.Duration,
+	recoverPeriod time.Duration, dlqHour int,
 	topics []string,
 	db string,
 	rc *turbo.RemotingConfig) KiteQConfig {
@@ -37,6 +38,7 @@ func NewKiteQConfig(name string, server, zkhost string, fly bool, deliverTimeout
 		deliverTimeout:    deliverTimeout,
 		maxDeliverWorkers: maxDeliverWorkers,
 		recoverPeriod:     recoverPeriod,
+		dlqHour:           dlqHour,
 		topics:            topics,
 		db:                db}
 }

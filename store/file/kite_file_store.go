@@ -503,6 +503,10 @@ func (self *KiteFileStore) Expired(messageId string) bool {
 	return true
 }
 
+func (self *KiteFileStore) MoveExpired() {
+	//donothing
+}
+
 //根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
 func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 

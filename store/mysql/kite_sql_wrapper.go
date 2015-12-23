@@ -35,9 +35,12 @@ func (s batchTypes) Less(i, j int) bool {
 }
 
 const (
-	COMMIT batchType = 1
-	UPDATE batchType = 2
-	DELETE batchType = 3
+	COMMIT          batchType = 1
+	UPDATE          batchType = 2
+	DELETE          batchType = 3
+	DLQ_MOVE_QUERY  batchType = 4
+	DLQ_MOVE_INSERT batchType = 5
+	DLQ_MOVE_DELETE batchType = 6
 )
 
 type column struct {
@@ -56,6 +59,7 @@ type sqlwrapper struct {
 	pageQuerySQL    []string
 	savePrepareSQL  []string
 	msgStatSQL      []string
+	dlqMoveSQL      map[batchType][]string
 	dbshard         DbShard
 }
 
@@ -80,6 +84,8 @@ func newSqlwrapper(tablename string, dbshard DbShard, i interface{}) *sqlwrapper
 				c.isPK = true
 				c.isHashKey = true
 			}
+		} else if tag == "transient" {
+			continue
 		}
 		columns = append(columns, c)
 	}
@@ -107,6 +113,10 @@ func (self *sqlwrapper) hashPQSQL(hashkey string) string {
 
 func (self *sqlwrapper) hashMessageStatSQL(hashkey string) string {
 	return self.msgStatSQL[self.dbshard.FindForKey(hashkey)]
+}
+
+func (self *sqlwrapper) hashDLQSQL(bt batchType, hashkey string) string {
+	return self.dlqMoveSQL[bt][self.dbshard.FindForKey(hashkey)]
 }
 
 func (self *sqlwrapper) initSQL() {
@@ -270,14 +280,14 @@ func (self *sqlwrapper) initSQL() {
 	// 		topic,count(message_id) total
 	// from kite_msg_3
 	// where
-	//		kite_server='vm-golang001.vm.momo.com' group by topic;
+	//		kite_server='vm-golang001.vm.momo.com' and deliver_count<deliver_limit and expired_time>=?  group by topic;
 
 	s.Reset()
 	s.WriteString("select topic,count(message_id) total ")
 	s.WriteString(" from ")
 	s.WriteString(self.tablename)
 	s.WriteString("_{} ")
-	s.WriteString(" where kite_server=? group by topic")
+	s.WriteString(" where kite_server=?  and deliver_count<deliver_limit and expired_time>=?  group by topic")
 
 	sql = s.String()
 
@@ -287,4 +297,61 @@ func (self *sqlwrapper) initSQL() {
 		self.msgStatSQL = append(self.msgStatSQL, strings.Replace(sql, "{}", st, -1))
 	}
 
+	//-----------查询最后一条数据的Id
+	s.Reset()
+	s.WriteString("select id,message_id from ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" where kite_server=?  and (deliver_count>=deliver_limit or expired_time<=?) and id > ? order by id asc limit ? ")
+	sql = s.String()
+
+	self.dlqMoveSQL = make(map[batchType][]string, 3)
+	self.dlqMoveSQL[DLQ_MOVE_QUERY] = make([]string, self.dbshard.hashNum)
+	for i := 0; i < self.dbshard.HashNum(); i++ {
+		st := strconv.Itoa(i)
+		self.dlqMoveSQL[DLQ_MOVE_QUERY][i] = strings.Replace(sql, "{}", st, -1)
+	}
+
+	s.Reset()
+	//------------批量写入本机的DLQ列表中
+	s.WriteString("insert into  ")
+	s.WriteString(self.tablename)
+	s.WriteString("_dlq( ")
+	for i, v := range self.columns {
+		s.WriteString(v.columnName)
+		if i < len(self.columns)-1 {
+			s.WriteString(",")
+		}
+	}
+	s.WriteString(") select ")
+	for i, v := range self.columns {
+		s.WriteString(v.columnName)
+		if i < len(self.columns)-1 {
+			s.WriteString(",")
+		}
+	}
+	s.WriteString(" from ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" where message_id in({ids}) ")
+
+	sql = s.String()
+	self.dlqMoveSQL[DLQ_MOVE_INSERT] = make([]string, self.dbshard.hashNum)
+	for i := 0; i < self.dbshard.HashNum(); i++ {
+		st := strconv.Itoa(i)
+		self.dlqMoveSQL[DLQ_MOVE_INSERT][i] = strings.Replace(sql, "{}", st, -1)
+	}
+
+	//---------------清理已经导入的过期数据
+	s.Reset()
+	s.WriteString("delete from ")
+	s.WriteString(self.tablename)
+	s.WriteString("_{} ")
+	s.WriteString(" where kite_server=? and message_id in ({ids})")
+	sql = s.String()
+	self.dlqMoveSQL[DLQ_MOVE_DELETE] = make([]string, self.dbshard.hashNum)
+	for i := 0; i < self.dbshard.HashNum(); i++ {
+		st := strconv.Itoa(i)
+		self.dlqMoveSQL[DLQ_MOVE_DELETE][i] = strings.Replace(sql, "{}", st, -1)
+	}
 }

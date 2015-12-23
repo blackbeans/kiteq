@@ -124,6 +124,31 @@ func (self *KiteQServer) Start() {
 	//开启recover
 	self.recoverManager.Start()
 
+	//启动DLQ的时间
+	self.startDLQ()
+}
+
+func (self *KiteQServer) startDLQ() {
+	go func() {
+		for {
+			now := time.Now()
+			next := now.Add(time.Hour * 24)
+			next = time.Date(next.Year(), next.Month(), next.Day(), self.kc.dlqHour, 0, 0, 0, next.Location())
+			t := time.NewTimer(next.Sub(now))
+			<-t.C
+			func() {
+				defer func() {
+					if err := recover(); nil != err {
+						log.ErrorLog("kite_server", "KiteQServer|startDLQ|FAIL|%s|%s", err, time.Now())
+					}
+				}()
+				//开始做迁移
+				self.kitedb.MoveExpired()
+			}()
+			log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
+		}
+	}()
+	log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
 }
 
 func (self *KiteQServer) startFlow() {

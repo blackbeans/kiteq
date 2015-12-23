@@ -289,7 +289,7 @@ func (self *KiteMysqlStore) Stop() {
 				p.Shutdown()
 			}
 		}
-		log.InfoLog("kite_store", "KiteMysqlStore|Stop|Stmt|%t\n", k)
+		log.InfoLog("kite_store", "KiteMysqlStore|Stop|Stmt|%s", k)
 	}
 	self.dbshard.Stop()
 }

@@ -47,7 +47,8 @@ func main() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig("kiteq-"+*bindHost, *bindHost, *zkhost, *fly, 5*time.Second, 8000, 5*time.Second, strings.Split(*topics, ","), *db, rc)
+	kc := server.NewKiteQConfig("kiteq-"+*bindHost, *bindHost, *zkhost, *fly, 5*time.Second, 8000,
+		5*time.Second, 2 /*每天凌晨2点执行*/, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()

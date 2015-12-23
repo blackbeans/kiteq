@@ -58,6 +58,10 @@ func (self *MockKiteStore) BatchUpdate(entity []*MessageEntity) bool {
 	return true
 }
 
+func (self *MockKiteStore) MoveExpired() {
+
+}
+
 func (self *MockKiteStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
 	recoverMessage := buildStringMessage(MessageId())
 	entity := NewMessageEntity(protocol.NewQMessage(recoverMessage))

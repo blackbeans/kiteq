@@ -19,6 +19,7 @@ func MessageId() string {
 
 //用于持久化的messageEntity
 type MessageEntity struct {
+	Id        int32            `kiteq:"id" db:"transient"`
 	MessageId string           `kiteq:"messageId" db:"message_id,pk"`
 	Header    *protocol.Header `kiteq:"header" db:"header"`
 	Body      interface{}      `kiteq:"body" db:"body"` //序列化后的消息
@@ -73,6 +74,8 @@ type IKiteStore interface {
 	Stop()
 	Monitor() string
 	Length() map[string] /*topic*/ int //堆积消息的数量
+
+	MoveExpired() //将过期的消息迁移走
 
 	//recover数量
 	RecoverNum() int

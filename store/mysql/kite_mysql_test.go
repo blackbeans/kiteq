@@ -6,7 +6,6 @@ import (
 	"kiteq/protocol"
 	"kiteq/store"
 	"log"
-	"os"
 	"testing"
 	"time"
 )
@@ -27,7 +26,7 @@ func TestPageQuery(t *testing.T) {
 
 	kiteMysql := NewKiteMysql(options, "localhost")
 	truncate(kiteMysql)
-	hn, _ := os.Hostname()
+	hn := "localhost"
 	for i := 0; i < 10; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
@@ -134,11 +133,11 @@ func TestBatch(t *testing.T) {
 	truncate(kiteMysql)
 
 	mids := make([]string, 0, 16)
-	for i := 0; i < 32; i++ {
+	for i := 0; i < 16; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x", i)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -150,7 +149,7 @@ func TestBatch(t *testing.T) {
 
 		entity := store.NewMessageEntity(protocol.NewQMessage(msg))
 		entity.SuccGroups = []string{"go-kite-test"}
-		hn, _ := os.Hostname()
+		hn := "localhost"
 		entity.KiteServer = hn
 		entity.PublishTime = time.Now().Unix()
 		kiteMysql.Save(entity)
@@ -207,6 +206,12 @@ func truncate(k *KiteMysqlStore) {
 			} else {
 				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s\n", i, j, err)
 			}
+			_, err = m.Exec(fmt.Sprintf("truncate table kite_msg_dlq"))
+			if nil != err {
+				log.Printf("ERROR|truncate table kite_msg_%d.kite_msg_dlq|%s\n", i, j, err)
+			} else {
+				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s\n", i, j, err)
+			}
 		}
 	}
 }
@@ -226,12 +231,12 @@ func TestStringSave(t *testing.T) {
 		MaxOpenConn:  10}
 
 	kiteMysql := NewKiteMysql(options, "localhost")
-
-	for i := 0; i < 32; i++ {
+	truncate(kiteMysql)
+	for i := 0; i < 16; i++ {
 		//创建消息
 		msg := &protocol.StringMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x", i)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -261,12 +266,12 @@ func TestBytesSave(t *testing.T) {
 		MaxOpenConn:  10}
 
 	kiteMysql := NewKiteMysql(options, "localhost")
-
-	for i := 0; i < 32; i++ {
+	truncate(kiteMysql)
+	for i := 0; i < 16; i++ {
 		//创建消息
 		msg := &protocol.BytesMessage{}
 		msg.Header = &protocol.Header{
-			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x%x", i/16, i%16)),
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x", i)),
 			Topic:        proto.String("trade"),
 			MessageType:  proto.String("pay-succ"),
 			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
@@ -284,13 +289,94 @@ func TestBytesSave(t *testing.T) {
 	kiteMysql.Stop()
 }
 
-func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing.T) {
+//增加迁移
+func TestExpiredDLQ(t *testing.T) {
+
+	options := MysqlOptions{
+		Addr:         "localhost:3306",
+		DB:           "kite",
+		Username:     "root",
+		Password:     "",
+		ShardNum:     4,
+		BatchUpSize:  100,
+		BatchDelSize: 100,
+		FlushPeriod:  10 * time.Millisecond,
+		MaxIdleConn:  10,
+		MaxOpenConn:  10}
+
+	kiteMysql := NewKiteMysql(options, "localhost")
 	truncate(kiteMysql)
+	messageIds := make([]string, 0, 10)
+	for i := 0; i < 256; i++ {
+		//创建消息
+		msg := &protocol.BytesMessage{}
+		msg.Header = &protocol.Header{
+			MessageId:    proto.String("26c03f00665862591f696a980b5a6" + fmt.Sprintf("%x", i)),
+			Topic:        proto.String("trade"),
+			MessageType:  proto.String("pay-succ"),
+			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Second).Unix()),
+			DeliverLimit: proto.Int32(100),
+			GroupId:      proto.String("go-kite-test"),
+			Commit:       proto.Bool(false),
+			Fly:          proto.Bool(false)}
+
+		msg.Body = []byte("hello world")
+		qm := protocol.NewQMessage(msg)
+		entity := store.NewMessageEntity(qm)
+		entity.SuccGroups = []string{"go-kite-test"}
+		hn := "localhost"
+		entity.KiteServer = hn
+		entity.PublishTime = time.Now().Unix()
+		entity.DeliverCount = 101
+
+		succ := kiteMysql.Save(entity)
+		if !succ {
+			t.Fail()
+		} else {
+			// fmt.Printf("SAVE|SUCC|%s\n", entity)
+		}
+		messageIds = append(messageIds, msg.GetHeader().GetMessageId())
+	}
+
+	//开始清理
+	kiteMysql.MoveExpired()
+
+	for _, messageId := range messageIds {
+
+		entity := kiteMysql.Query(messageId)
+		if nil != entity {
+			t.Fail()
+			fmt.Println("MoveExpired|FAIL|" + messageId)
+		}
+	}
+
+	total := 0
+	for i := 0; i < 4; i++ {
+		db := kiteMysql.dbshard.FindSlave(fmt.Sprintf("%x", i))
+		rows, _ := db.Query("select count(*) from kite_msg_dlq")
+		if rows.Next() {
+			var count int
+			rows.Scan(&count)
+			t.Logf("TestExpiredDLQ|COUNT|%s|%d\n", fmt.Sprintf("%x", i), total)
+			total += count
+		}
+	}
+
+	if total != 256 {
+		t.Fail()
+		t.Logf("TestExpiredDLQ|TOTAL NOT EQUAL|%d\n", total)
+	}
+
+	truncate(kiteMysql)
+	kiteMysql.Stop()
+}
+
+func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing.T) {
 
 	qm := protocol.NewQMessage(msg)
 	entity := store.NewMessageEntity(qm)
 	entity.SuccGroups = []string{"go-kite-test"}
-	hn, _ := os.Hostname()
+	hn := "localhost"
 	entity.KiteServer = hn
 	entity.PublishTime = time.Now().Unix()
 
@@ -333,7 +419,7 @@ func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing
 		t.Fail()
 	}
 	t.Logf("Commint END")
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	ret = kiteMysql.Query(msgid)
 	t.Logf("PageQueryEntity|COMMIT RESULT|%s\n", ret)
 	if !ret.Commit {
