@@ -25,6 +25,7 @@ func main() {
 	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
+	dlqHourPerDay := flag.Int("dlqHourPerDay", 2, "-dlqExecHour=2 过期消息迁移时间点")
 	db := flag.String("db", "memory://initcap=100000&maxcap=200000",
 		"-db=mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1000")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
@@ -48,7 +49,7 @@ func main() {
 		10*time.Second, 160000)
 
 	kc := server.NewKiteQConfig("kiteq-"+*bindHost, *bindHost, *zkhost, *fly, 5*time.Second, 8000,
-		5*time.Second, 2 /*每天凌晨2点执行*/, strings.Split(*topics, ","), *db, rc)
+		5*time.Second, *dlqHourPerDay /*每天凌晨2点执行*/, strings.Split(*topics, ","), *db, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()
