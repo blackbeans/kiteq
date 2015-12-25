@@ -217,16 +217,18 @@ func (self *KiteMysqlStore) MoveExpired() {
 //迁移过期的消息
 func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 
+	log.InfoLog("kite_store", "KiteMysqlStore|MoveExpired|START|%s|%d", hashKey)
+
 	//需要将过期的消息迁移到DLQ中
 	sql := self.sqlwrapper.hashDLQSQL(DLQ_MOVE_QUERY, hashKey)
 	//获取到需要导入的id，然后导入
 	isql := self.sqlwrapper.hashDLQSQL(DLQ_MOVE_INSERT, hashKey)
 	//删除已导入的数据
 	dsql := self.sqlwrapper.hashDLQSQL(DLQ_MOVE_DELETE, hashKey)
+
 	start := 0
 	limit := 50
 	for {
-		log.InfoLog("kite_store", "KiteMysqlStore|migrateMessage|Query|SQL|%s|%s|%s", sql, isql, dsql)
 		rows, err := self.dbshard.FindSlave(hashKey).Query(sql, self.serverName, now, start, limit)
 		if err != nil {
 			log.ErrorLog("kite_store", "KiteMysqlStore|migrateMessage|Query|FAIL|%s|%s|%s", err, hashKey, sql)
