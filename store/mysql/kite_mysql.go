@@ -229,28 +229,31 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 	start := 0
 	limit := 50
 	for {
-		rows, err := self.dbshard.FindSlave(hashKey).Query(sql, self.serverName, now, start, limit)
-		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|migrateMessage|Query|FAIL|%s|%s|%s", err, hashKey, sql)
-			continue
-		}
-		defer rows.Close()
 		messageIds := make([]interface{}, 1, 50)
-		for rows.Next() {
-			var id int
-			var messageId string
-			err = rows.Scan(&id, &messageId)
-			if nil != err {
-				log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|Scan|FAIL|%s|%s|%s", err, hashKey, sql)
-			} else {
-				start = id
-				messageIds = append(messageIds, messageId)
+		err := func() error {
+			rows, err := self.dbshard.FindSlave(hashKey).Query(sql, self.serverName, now, start, limit)
+			if err != nil {
+				log.ErrorLog("kite_store", "KiteMysqlStore|migrateMessage|Query|FAIL|%s|%s|%s", err, hashKey, sql)
+				return err
 			}
-		}
+			defer rows.Close()
+			for rows.Next() {
+				var id int
+				var messageId string
+				err = rows.Scan(&id, &messageId)
+				if nil != err {
+					log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|Scan|FAIL|%s|%s|%s", err, hashKey, sql)
+				} else {
+					start = id
+					messageIds = append(messageIds, messageId)
+				}
+			}
+			return nil
+		}()
 
 		//已经搬迁完毕则退出进行下一个
-		if len(messageIds[1:]) <= 0 {
-			log.InfoLog("kite_store", "KiteMysqlStore|MoveExpired|SUCC|%s|%d", hashKey, start)
+		if nil != err || len(messageIds[1:]) <= 0 {
+			log.WarnLog("kite_store", "KiteMysqlStore|MoveExpired|SUCC|%s|%d|%s", hashKey, start, err)
 			break
 		}
 
@@ -260,7 +263,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 		_, err = self.dbshard.FindMaster(hashKey).Exec(isqlTmp, messageIds[1:]...)
 		if err != nil {
 			log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|Insert|FAIL|%s|%s", err, isqlTmp, messageIds)
-			continue
+			break
 		}
 
 		dsqlTmp := strings.Replace(dsql, "{ids}", in, 1)
@@ -268,7 +271,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 		_, err = self.dbshard.FindMaster(hashKey).Exec(dsqlTmp, messageIds...)
 		if err != nil {
 			log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|DELETE|FAIL|%s|%s|%s|%s", err, dsql, dsqlTmp, messageIds)
-			continue
+			break
 		}
 	}
 }
