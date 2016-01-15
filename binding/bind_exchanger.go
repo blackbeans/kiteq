@@ -169,7 +169,7 @@ func (self *BindExchanger) DataChange(path string, binds []*Binding) {
 		split := strings.Split(path, "/")
 		//获取topic
 		topic := split[3]
-		groupId := split[4]
+		groupId := strings.TrimSuffix(split[4], "-bind")
 		self.lock.Lock()
 		defer self.lock.Unlock()
 		//开始处理变化的订阅关系

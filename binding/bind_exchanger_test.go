@@ -58,8 +58,8 @@ func (self *MockWatcher) NodeChange(path string, eventType ZkEvent, childNode []
 
 func TestSubscribeBindings(t *testing.T) {
 
-	watcher := &MockWatcher{}
-	zkmanager := NewZKManager("localhost:2181", watcher)
+	zkmanager := NewZKManager("localhost:2181")
+	zkmanager.RegisteWather("/kiteq", &MockWatcher{})
 	cleanUp(t, zkmanager, "/kiteq")
 
 	exchanger := NewBindExchanger("localhost:2181", "127.0.0.1:13800")
