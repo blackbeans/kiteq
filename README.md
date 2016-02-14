@@ -19,12 +19,12 @@ KiteQ ![image](./doc/logo.jpg)
 #### 工程结构
     kiteq/
     ├── README.md
+    ├── benchmark         KiteQ的Benchmark程序
     ├── binding           订阅关系管理处理跟ZK的交互
     ├── build.sh          安装脚本
     ├── client            KiteQ的客户端
     ├── doc               文档
     ├── handler           KiteQ所需要的处理Handler
-    ├── kite_benchmark_xxx.go KiteQ的Benchmark程序
     ├── kiteq.go          KiteQ对外启动入口
     ├── protocol          KiteQ的协议包，基于PB和定义的Packet
     ├── server            KiteQ的Server端组装需要的组件
@@ -75,17 +75,22 @@ KiteQ ![image](./doc/logo.jpg)
 #####  QuickStart
     1.编译：sh build.sh 
     2.安装装Zookeeper:省略
-    启动KiteQ:
-        ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="memory://initcap=10000&maxcap=20000" -topics=trade,feed -zkhost=localhost:2181
-        -bind  //绑定本地IP:Port
-        -pport //pprof的Http端口
-        -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
-        -topics //本机可以处理的topics列表逗号分隔
-        -zkhost //zk的地址
-        -logxml=./log.xml //log4go的配置
-        -fly=true //是否开启投递优化，投递优先，尝试投递一次如果成功则省去持久化，如果失败则直接持久化走正常消息流程
+    3.启动KiteQ:
+        命令参数：
+            ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="memory://initcap=10000&maxcap=20000" -topics=trade,feed -zkhost=localhost:2181
+            -bind  //绑定本地IP:Port
+            -pport //pprof的Http端口
+            -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
+            -topics //本机可以处理的topics列表逗号分隔
+            -zkhost //zk的地址
+            -logxml=./log.xml //log4go的配置
+            -deliveryFirst=false //是否投递优先
 
-    启动客户端：
+        toml配置启动（推荐）
+            ./kiteq -clusterName=集群名称 -configFile=配置文件路径
+            文件样例见[cluster_config_demo.toml]
+
+##### 启动客户端：
         对于KiteQClient需要实现消息监听器，我们定义了如下的接口：
         type IListener interface {
             //接受投递消息的回调

@@ -11,7 +11,10 @@ import (
 	"kiteq/handler"
 	"kiteq/stat"
 	"kiteq/store"
+	"net"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -68,7 +71,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.topics))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.fly, kc.flowstat))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.deliveryFirst, kc.flowstat))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.maxDeliverWorkers))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", registry))
@@ -126,6 +129,16 @@ func (self *KiteQServer) Start() {
 
 	//启动DLQ的时间
 	self.startDLQ()
+
+	//启动pprof
+	host, _, _ := net.SplitHostPort(self.kc.server)
+	go func() {
+		if self.kc.pprofPort > 0 {
+			http.HandleFunc("/stat", self.HandleStat)
+			http.HandleFunc("/binds", self.HandleBindings)
+			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(self.kc.pprofPort), nil))
+		}
+	}()
 }
 
 func (self *KiteQServer) startDLQ() {

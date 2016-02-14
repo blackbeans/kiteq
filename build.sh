@@ -7,6 +7,7 @@ go get github.com/go-sql-driver/mysql
 go get github.com/blackbeans/log4go
 go get github.com/blackbeans/go-zookeeper/zk
 go get github.com/blackbeans/turbo
+go get github.com/naoina/toml
 
 
 #protoc --go_out=. ./protocol/*.proto
@@ -48,9 +49,6 @@ PROJ=`pwd | awk -F'/' '{print $(NF)}'`
 go build  -a -o ./$PROJ $PROJ.go
 
 tar -zcvf kiteq.tar.gz $PROJ log/log.xml
-
-#go build -a kite_benchmark_producer.go
-#go build -a kite_benchmark_consumer.go
 
 
 

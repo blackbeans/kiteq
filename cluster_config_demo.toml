@@ -1,0 +1,26 @@
+# This is a TOML document.
+
+#zookeeper的管理
+[zookeeper]
+	[zookeeper.dev]
+		hosts="localhost:2181"
+	[zookeeper.online]
+		hosts="vm-bibi-zk-mq001.vm:2181,vm-bibi-zk-mq002.vm:2181,vm-bibi-zk-mq003.vm:2181" 
+
+#kiteq的服务器
+[clusters]
+	[clusters.bibi]
+		env="online" #env=dev/online
+		topics=["relation","message","profile"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="/home/deploy/kiteq/log/log.xml"
+		db="file:///data/kiteq?cap=10000000&checkSeconds=10"
+	
+	[clusters.bibi_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="file://.?cap=10000000&checkSeconds=10"
