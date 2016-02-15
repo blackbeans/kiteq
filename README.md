@@ -89,8 +89,8 @@ KiteQ ![image](./doc/logo.jpg)
             -deliveryFirst=false //是否投递优先
 
         toml配置启动（推荐）
-            ./kiteq -clusterName=集群名称 -configFile=配置文件路径
-            文件样例见[cluster_config_demo.toml]
+            ./kiteq -clusterName=集群名称 -configPath=配置文件路径
+            文件样例见[conf/cluster.toml]
 
 ##### 启动客户端：
         对于KiteQClient需要实现消息监听器，我们定义了如下的接口：

@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"flag"
-	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/naoina/toml"
@@ -134,7 +133,6 @@ func Parse() ServerOption {
 
 	}
 
-	fmt.Printf("---------%s\n", so)
 	//加载log4go的配置
 	log.LoadConfiguration(so.logxml)
 	return so
