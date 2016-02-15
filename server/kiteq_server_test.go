@@ -61,7 +61,7 @@ func BenchmarkRemotingServer(t *testing.B) {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := NewKiteQConfig("kiteq-localhost:13800", "localhost:13800", "localhost:2181", true, 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "memory://", rc)
+	kc := NewKiteQConfig(MockServerOption(), rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()
@@ -110,7 +110,7 @@ func TestRemotingServer(t *testing.T) {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := NewKiteQConfig("kiteq-localhost:13800", "localhost:13800", "localhost:2181", true, 1*time.Second, 10, 1*time.Minute, []string{"trade"}, "memory://", rc)
+	kc := NewKiteQConfig(MockServerOption(), rc)
 
 	kiteQServer = NewKiteQServer(kc)
 	kiteQServer.Start()

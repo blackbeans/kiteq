@@ -48,7 +48,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	clientManager := client.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger(kc.zkhost, kc.server)
+	exchanger := binding.NewBindExchanger(kc.so.zkhosts, kc.so.bindHost)
 
 	//创建消息投递注册器
 	registry := stat.NewDeliveryRegistry(10 * 10000)
@@ -70,17 +70,17 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
-	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.topics))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.deliverTimeout, kitedb, kc.deliveryFirst, kc.flowstat))
+	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.so.topics))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst, kc.flowstat))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.maxDeliverWorkers))
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", registry))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
-	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.deliverTimeout, kitedb, rw, registry))
+	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.so.deliveryTimeout, kitedb, rw, registry))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 
-	recoverManager := NewRecoverManager(kiteqName, kc.recoverPeriod, pipeline, kitedb)
+	recoverManager := NewRecoverManager(kiteqName, kc.so.recoverPeriod, pipeline, kitedb)
 
 	return &KiteQServer{
 		reconnManager:  reconnManager,
@@ -96,7 +96,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 func (self *KiteQServer) Start() {
 
-	self.remotingServer = server.NewRemotionServer(self.kc.server, self.kc.rc,
+	self.remotingServer = server.NewRemotionServer(self.kc.so.bindHost, self.kc.rc,
 		func(rclient *client.RemotingClient, p *packet.Packet) {
 			event := pipe.NewPacketEvent(rclient, p)
 			err := self.pipeline.FireWork(event)
@@ -109,16 +109,16 @@ func (self *KiteQServer) Start() {
 
 	err := self.remotingServer.ListenAndServer()
 	if nil != err {
-		log.Crashf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.server)
+		log.Crashf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.so.bindHost)
 	} else {
-		log.InfoLog("kite_server", "KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.server)
+		log.InfoLog("kite_server", "KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.so.bindHost)
 	}
 	//推送可发送的topic列表并且获取了对应topic下的订阅关系
-	succ := self.exchanger.PushQServer(self.kc.server, self.kc.topics)
+	succ := self.exchanger.PushQServer(self.kc.so.bindHost, self.kc.so.topics)
 	if !succ {
-		log.Crashf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.topics)
+		log.Crashf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.so.topics)
 	} else {
-		log.InfoLog("kite_server", "KiteQServer|PushQServer|SUCC|%s\n", self.kc.topics)
+		log.InfoLog("kite_server", "KiteQServer|PushQServer|SUCC|%s\n", self.kc.so.topics)
 	}
 
 	//开启流量统计
@@ -131,12 +131,12 @@ func (self *KiteQServer) Start() {
 	self.startDLQ()
 
 	//启动pprof
-	host, _, _ := net.SplitHostPort(self.kc.server)
+	host, _, _ := net.SplitHostPort(self.kc.so.bindHost)
 	go func() {
-		if self.kc.pprofPort > 0 {
+		if self.kc.so.pprofPort > 0 {
 			http.HandleFunc("/stat", self.HandleStat)
 			http.HandleFunc("/binds", self.HandleBindings)
-			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(self.kc.pprofPort), nil))
+			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(self.kc.so.pprofPort), nil))
 		}
 	}()
 }
@@ -146,7 +146,7 @@ func (self *KiteQServer) startDLQ() {
 		for {
 			now := time.Now()
 			next := now.Add(time.Hour * 24)
-			next = time.Date(next.Year(), next.Month(), next.Day(), self.kc.dlqHour, 0, 0, 0, next.Location())
+			next = time.Date(next.Year(), next.Month(), next.Day(), self.kc.so.dlqExecHour, 0, 0, 0, next.Location())
 			t := time.NewTimer(next.Sub(now))
 			<-t.C
 			func() {

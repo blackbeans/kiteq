@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/blackbeans/turbo"
-	"strings"
+	"os"
 	"testing"
 	"time"
 )
@@ -14,12 +14,10 @@ func TestParse(t *testing.T) {
 		2000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
-
-	kc := NewKiteQConfig("kiteq-localhost:138000", "localhost:138000",
-		"localhost:2181", true, 1*time.Second, 8000, 5*time.Second,
-		strings.Split("trade", ","),
-		"mysql://localhost:3306,localhost:3306?db=kite&username=root", rc)
-
-	store := parseDB(kc)
+	so := MockServerOption()
+	so.db = "mysql://localhost:3306,localhost:3306?db=kite&username=root"
+	kc := NewKiteQConfig(MockServerOption(), rc)
+	kiteqName, _ := os.Hostname()
+	store := parseDB(kc, kiteqName)
 	store.Delete("123456")
 }

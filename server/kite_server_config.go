@@ -13,39 +13,20 @@ import (
 )
 
 type KiteQConfig struct {
-	deliveryFirst     bool //投递的飞行模式是否开启
-	flowstat          *stat.FlowStat
-	rc                *turbo.RemotingConfig
-	server            string
-	pprofPort         int
-	zkhost            string
-	deliverTimeout    time.Duration //投递超时时间
-	maxDeliverWorkers int           //最大执行实际那
-	recoverPeriod     time.Duration //recover的周期
-	dlqHour           int           //dlq的处理每天固定时间点
-	topics            []string      //可以处理的topics列表
-	db                string        //持久层配置
+	so       ServerOption
+	flowstat *stat.FlowStat
+	rc       *turbo.RemotingConfig
 }
 
-func NewKiteQConfig(so ServerOption, deliverTimeout time.Duration, maxDeliverWorkers int,
-	recoverPeriod time.Duration, rc *turbo.RemotingConfig) KiteQConfig {
+func NewKiteQConfig(so ServerOption, rc *turbo.RemotingConfig) KiteQConfig {
 	flowstat := stat.NewFlowStat("KiteQ-" + so.bindHost)
 	for _, topic := range so.topics {
 		flowstat.TopicsFlows[topic] = &turbo.Flow{}
 	}
 	return KiteQConfig{
-		deliveryFirst:     so.deliveryFirst,
-		flowstat:          flowstat,
-		rc:                rc,
-		server:            so.bindHost,
-		pprofPort:         so.pprofPort,
-		zkhost:            so.zkhosts,
-		deliverTimeout:    deliverTimeout,
-		maxDeliverWorkers: maxDeliverWorkers,
-		recoverPeriod:     recoverPeriod,
-		dlqHour:           so.dlqExecHour,
-		topics:            so.topics,
-		db:                so.db}
+		flowstat: flowstat,
+		rc:       rc,
+		so:       so}
 }
 
 const (
@@ -65,24 +46,31 @@ type Option struct {
 //----------------------------------------
 //Cluster配置
 type Cluster struct {
-	Env           string   //当前环境使用的是dev还是online
-	Topics        []string //当前集群所能够处理的topics
-	DlqExecHour   int      //过期消息清理时间点 24小时
-	DeliveryFirst bool     //投递优先还是存储优先
-	Logxml        string   //日志路径
-	Db            string   //数据文件
+	Env               string   //当前环境使用的是dev还是online
+	Topics            []string //当前集群所能够处理的topics
+	DlqExecHour       int      //过期消息清理时间点 24小时
+	DeliveryFirst     bool     //投递优先还是存储优先
+	Logxml            string   //日志路径
+	Db                string   //数据文件
+	DeliverySeconds   int64    //投递超时时间 单位为s
+	MaxDeliverWorkers int      //最大执行协程数
+	RecoverSeconds    int64    //recover的周期 单位为s
 }
 
 type ServerOption struct {
-	clusterName   string   //集群名称
-	zkhosts       string   //zk地址
-	bindHost      string   //绑定的端口和IP
-	pprofPort     int      //pprof的Port
-	topics        []string //当前集群所能够处理的topics
-	dlqExecHour   int      //过期消息清理时间点 24小时
-	deliveryFirst bool     //服务端是否投递优先 默认是false，优先存储
-	logxml        string   //日志文件路径
-	db            string   //底层对应的存储是什么
+	clusterName       string        //集群名称
+	configPath        string        //配置文件路径
+	zkhosts           string        //zk地址
+	bindHost          string        //绑定的端口和IP
+	pprofPort         int           //pprof的Port
+	topics            []string      //当前集群所能够处理的topics
+	dlqExecHour       int           //过期消息清理时间点 24小时
+	deliveryFirst     bool          //服务端是否投递优先 默认是false，优先存储
+	logxml            string        //日志文件路径
+	db                string        //底层对应的存储是什么
+	deliveryTimeout   time.Duration //投递超时时间
+	maxDeliverWorkers int           //最大执行协程数
+	recoverPeriod     time.Duration //recover的周期
 }
 
 //only for test
@@ -96,6 +84,9 @@ func MockServerOption() ServerOption {
 	so.dlqExecHour = 2
 	so.db = "memory://"
 	so.clusterName = DEFAULT_APP
+	so.deliveryTimeout = 5 * time.Second
+	so.maxDeliverWorkers = 10
+	so.recoverPeriod = 60 * time.Second
 	return so
 }
 
@@ -111,14 +102,14 @@ func Parse() ServerOption {
 		"-db=mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1000")
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 
-	clusterName := flag.String("clusterName", DEFAULT_APP, "-clusterName=default")
-	configFile := flag.String("configFile", "", "-configFile=${path} kiteq配置的toml文件")
+	clusterName := flag.String("clusterName", "default_dev", "-clusterName=default_dev")
+	configPath := flag.String("configPath", "", "-configPath=conf/cluster.toml kiteq配置的toml文件")
 	flag.Parse()
 
 	so := ServerOption{}
 	//判断当前采用配置文件加载
-	if nil != configFile && len(*configFile) > 0 {
-		f, err := os.Open(*configFile)
+	if nil != configPath && len(*configPath) > 0 {
+		f, err := os.Open(*configPath)
 		if err != nil {
 			panic(err)
 		}
@@ -146,7 +137,6 @@ func Parse() ServerOption {
 		}
 
 		//解析
-
 		so.zkhosts = zk.Hosts
 		so.bindHost = *bindHost
 		so.pprofPort = *pprofPort
@@ -156,6 +146,9 @@ func Parse() ServerOption {
 		so.logxml = cluster.Logxml
 		so.db = cluster.Db
 		so.clusterName = *clusterName
+		so.deliveryTimeout = time.Duration(cluster.DeliverySeconds * int64(time.Second))
+		so.maxDeliverWorkers = cluster.MaxDeliverWorkers
+		so.recoverPeriod = time.Duration(cluster.RecoverSeconds * int64(time.Second))
 
 	} else {
 		//采用传参
@@ -168,6 +161,9 @@ func Parse() ServerOption {
 		so.logxml = *logxml
 		so.db = *db
 		so.clusterName = DEFAULT_APP
+		so.deliveryTimeout = 5 * time.Second
+		so.maxDeliverWorkers = 8000
+		so.recoverPeriod = 60 * time.Second
 
 	}
 

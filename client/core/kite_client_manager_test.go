@@ -80,7 +80,7 @@ func init() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(server.MockServerOption(), 1*time.Second, 10, 1*time.Minute, rc)
+	kc := server.NewKiteQConfig(server.MockServerOption(), rc)
 	kiteQ = server.NewKiteQServer(kc)
 
 	// 创建客户端

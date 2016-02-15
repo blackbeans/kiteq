@@ -56,7 +56,6 @@ func TestRecoverManager(t *testing.T) {
 	}()
 
 	fs := stat.NewFlowStat("recover")
-	fs.Start()
 	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger

@@ -19,6 +19,8 @@ KiteQ ![image](./doc/logo.jpg)
 #### 工程结构
     kiteq/
     ├── README.md
+    ├── conf              配置信息
+    ├── log               log4go的配置
     ├── benchmark         KiteQ的Benchmark程序
     ├── binding           订阅关系管理处理跟ZK的交互
     ├── build.sh          安装脚本

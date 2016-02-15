@@ -27,7 +27,7 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 		topics[topic] = f.Changes()
 	}
 	msgMap := self.kitedb.Length()
-	for _, t := range self.kc.topics {
+	for _, t := range self.kc.so.topics {
 		_, ok := msgMap[t]
 		if !ok {
 			msgMap[t] = 0

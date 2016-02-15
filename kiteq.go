@@ -27,7 +27,7 @@ func main() {
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 
-	kc := server.NewKiteQConfig(so, 5*time.Second, 8000, 5*time.Second, rc)
+	kc := server.NewKiteQConfig(so, rc)
 
 	qserver := server.NewKiteQServer(kc)
 	qserver.Start()

@@ -18,7 +18,7 @@ import (
 //  file    file:///path?cap=10000000&checkSeconds=60
 
 func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
-	db := kc.db
+	db := kc.so.db
 
 	var kitedb store.IKiteStore
 	if strings.HasPrefix(db, "mock://") {
