@@ -1,7 +1,9 @@
 package server
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/naoina/toml"
@@ -109,65 +111,76 @@ func Parse() ServerOption {
 	so := ServerOption{}
 	//判断当前采用配置文件加载
 	if nil != configPath && len(*configPath) > 0 {
-		f, err := os.Open(*configPath)
-		if err != nil {
-			panic(err)
-		}
-		defer f.Close()
-		buff, rerr := ioutil.ReadAll(f)
-		if nil != rerr {
-			panic(rerr)
-		}
-		log.DebugLog("kite_server", "ServerConfig|Parse|toml:%s", string(buff))
-		//读取配置
-		var option Option
-		err = toml.Unmarshal(buff, &option)
-		if nil != err {
-			panic(err)
-		}
-
-		cluster, ok := option.Clusters[*clusterName]
-		if !ok {
-			panic("no cluster config for " + *clusterName)
-		}
-
-		zk, exist := option.Zookeeper[cluster.Env]
-		if !exist {
-			panic("no zk  for " + *clusterName + ":" + cluster.Env)
-		}
-
 		//解析
-		so.zkhosts = zk.Hosts
-		so.bindHost = *bindHost
-		so.pprofPort = *pprofPort
-		so.topics = cluster.Topics
-		so.deliveryFirst = cluster.DeliveryFirst
-		so.dlqExecHour = cluster.DlqExecHour
-		so.logxml = cluster.Logxml
-		so.db = cluster.Db
-		so.clusterName = *clusterName
-		so.deliveryTimeout = time.Duration(cluster.DeliverySeconds * int64(time.Second))
-		so.maxDeliverWorkers = cluster.MaxDeliverWorkers
-		so.recoverPeriod = time.Duration(cluster.RecoverSeconds * int64(time.Second))
+		err := loadTomlConf(*configPath, *clusterName, *bindHost, *pprofPort, &so)
+		if nil != err {
+			panic("loadTomlConf|FAIL|" + err.Error())
+		}
 
 	} else {
 		//采用传参
 		so.zkhosts = *zkhost
 		so.bindHost = *bindHost
 		so.pprofPort = *pprofPort
+		so.clusterName = DEFAULT_APP
 		so.topics = strings.Split(*topics, ",")
 		so.deliveryFirst = *deliveryFirst
 		so.dlqExecHour = *dlqHourPerDay
 		so.logxml = *logxml
 		so.db = *db
-		so.clusterName = DEFAULT_APP
 		so.deliveryTimeout = 5 * time.Second
 		so.maxDeliverWorkers = 8000
 		so.recoverPeriod = 60 * time.Second
 
 	}
 
+	fmt.Printf("---------%s\n", so)
 	//加载log4go的配置
 	log.LoadConfiguration(so.logxml)
 	return so
+}
+
+func loadTomlConf(path, clusterName, bindHost string, pprofPort int, so *ServerOption) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	buff, rerr := ioutil.ReadAll(f)
+	if nil != rerr {
+		return rerr
+	}
+	log.DebugLog("kite_server", "ServerConfig|Parse|toml:%s", string(buff))
+	//读取配置
+	var option Option
+	err = toml.Unmarshal(buff, &option)
+	if nil != err {
+		return err
+	}
+
+	cluster, ok := option.Clusters[clusterName]
+	if !ok {
+		return errors.New("no cluster config for " + clusterName)
+	}
+
+	zk, exist := option.Zookeeper[cluster.Env]
+	if !exist {
+		return errors.New("no zk  for " + clusterName + ":" + cluster.Env)
+	}
+
+	//解析
+	so.zkhosts = zk.Hosts
+	so.topics = cluster.Topics
+	so.deliveryFirst = cluster.DeliveryFirst
+	so.dlqExecHour = cluster.DlqExecHour
+	so.logxml = cluster.Logxml
+	so.db = cluster.Db
+	so.deliveryTimeout = time.Duration(cluster.DeliverySeconds * int64(time.Second))
+	so.maxDeliverWorkers = cluster.MaxDeliverWorkers
+	so.recoverPeriod = time.Duration(cluster.RecoverSeconds * int64(time.Second))
+	so.bindHost = bindHost
+	so.pprofPort = pprofPort
+	so.clusterName = clusterName
+	so.configPath = path
+	return nil
 }

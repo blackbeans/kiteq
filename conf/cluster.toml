@@ -18,7 +18,7 @@
 		db="file:///data/kiteq?cap=10000000&checkSeconds=10"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
-		RecoverSeconds=60
+		recoverSeconds=60
 	
 	[clusters.default_dev]
 		env="dev" #env=dev/online
@@ -29,4 +29,4 @@
 		db="file://.?cap=10000000&checkSeconds=10"
 		deliverySeconds=5000
 		maxDeliverWorkers=8000
-		RecoverSeconds=60000
+		recoverSeconds=60000

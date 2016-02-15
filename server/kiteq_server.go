@@ -130,6 +130,11 @@ func (self *KiteQServer) Start() {
 	//启动DLQ的时间
 	self.startDLQ()
 
+	//检查配置更新
+	if len(self.kc.so.configPath) > 0 {
+		self.startCheckConf()
+	}
+
 	//启动pprof
 	host, _, _ := net.SplitHostPort(self.kc.so.bindHost)
 	go func() {
@@ -180,6 +185,36 @@ func (self *KiteQServer) startFlow() {
 
 			}
 			log.InfoLog("kite_server", line)
+			<-t.C
+		}
+		t.Stop()
+	}()
+}
+
+func (self *KiteQServer) startCheckConf() {
+	go func() {
+		t := time.NewTicker(1 * time.Minute)
+		for !self.stop {
+			so := ServerOption{}
+			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName,
+				self.kc.so.bindHost, self.kc.so.pprofPort, &so)
+			if nil != err {
+				log.ErrorLog("kite_server", "KiteQServer|startCheckConf|FAIL|%s", err)
+			}
+
+			//新增或者减少topics
+			if len(so.topics) != len(self.kc.so.topics) {
+				//推送可发送的topic列表并且获取了对应topic下的订阅关系
+				succ := self.exchanger.PushQServer(self.kc.so.bindHost, so.topics)
+				if !succ {
+					log.ErrorLog("kite_server", "KiteQServer|startCheckConf|PushQServer|FAIL|%s|%s\n", err, so.topics)
+				} else {
+					log.InfoLog("kite_server", "KiteQServer|startCheckConf|PushQServer|SUCC|%s\n", so.topics)
+				}
+				//重置数据
+				self.kc.so = so
+			}
+
 			<-t.C
 		}
 		t.Stop()
