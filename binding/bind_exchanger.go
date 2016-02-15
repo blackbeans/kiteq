@@ -60,25 +60,6 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 		return false
 	}
 
-	//处理新增topic
-	addedTopics := make([]string, 0, 2)
-	for _, t := range topics {
-		exist := false
-		for _, v := range self.topics {
-			if v == t {
-				exist = true
-				break
-			}
-		}
-		//不存在则是新增的
-		if !exist {
-			addedTopics = append(addedTopics, t)
-		}
-	}
-	//订阅订阅关系变更
-	succ := self.subscribeBinds(addedTopics)
-	log.InfoLog("kite_bind", "BindExchanger|PushQServer|SUCC|%s|%s\n", hostport, topics)
-
 	//删除掉不需要的topics
 	delTopics := make([]string, 0, 2)
 	for _, t := range self.topics {
@@ -107,13 +88,31 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 		}()
 		log.InfoLog("kite_bind", "BindExchanger|UnpushlishQServer|SUCC|%s|%s\n", hostport, delTopics)
 	}
+
+	//处理新增topic
+	addedTopics := make([]string, 0, 2)
+	for _, t := range topics {
+		exist := false
+		for _, v := range self.topics {
+			if v == t {
+				exist = true
+				break
+			}
+		}
+		//不存在则是新增的
+		if !exist {
+			addedTopics = append(addedTopics, t)
+		}
+	}
 	sort.Strings(topics)
 	func() {
 		self.lock.Lock()
 		defer self.lock.Unlock()
 		self.topics = topics
 	}()
-
+	//订阅订阅关系变更
+	succ := self.subscribeBinds(addedTopics)
+	log.InfoLog("kite_bind", "BindExchanger|PushQServer|SUCC|%s|%s\n", hostport, topics)
 	return succ
 }
 
