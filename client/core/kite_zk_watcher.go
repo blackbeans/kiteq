@@ -3,6 +3,7 @@ package core
 import (
 	log "github.com/blackbeans/log4go"
 	c "github.com/blackbeans/turbo/client"
+	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/pipe"
 	"kiteq/binding"
@@ -47,7 +48,11 @@ func (self *KiteClientManager) onQServerChanged(topic string, hosts []string) {
 				log.ErrorLog("kite_client", "KiteClientManager|onQServerChanged|Create REMOTE CLIENT|FAIL|%s|%s\n", err, host)
 				continue
 			}
-			remoteClient = c.NewRemotingClient(conn,
+			remoteClient = c.NewRemotingClient(conn, func() codec.ICodec {
+				return codec.LengthBasedCodec{
+					MaxFrameLength: packet.MAX_PACKET_BYTES,
+					SkipLength:     4}
+			},
 				func(rc *c.RemotingClient, p *packet.Packet) {
 					event := pipe.NewPacketEvent(rc, p)
 					err := self.pipeline.FireWork(event)
