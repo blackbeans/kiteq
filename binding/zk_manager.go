@@ -186,13 +186,13 @@ func (self *ZKManager) reconnect() <-chan bool {
 	go func() {
 
 		reconnTimes := int64(0)
-		f := func() error {
+		f := func(times time.Duration) error {
 			ss, eventChan, err := zk.Connect(strings.Split(self.zkhosts, ","), 5*time.Second)
 			if nil != err {
-				log.WarnLog("kite_bind", "连接zk失败.....%ds后重连任务重新发起...|", (reconnTimes+1)*5)
+				log.WarnLog("kite_bind", "Zk Reconneting FAIL|%ds", times.Seconds())
 				return err
 			} else {
-				log.InfoLog("kite_bind", "重连ZK任务成功....")
+				log.InfoLog("kite_bind", "Zk Reconneting SUCC....")
 				//初始化当前的状态
 				self.session = ss
 				self.eventChan = eventChan
@@ -205,9 +205,10 @@ func (self *ZKManager) reconnect() <-chan bool {
 		}
 		//启动重连任务
 		for !self.isClose {
+			duration := time.Duration(reconnTimes * time.Second.Nanoseconds())
 			select {
-			case <-time.After(time.Duration(reconnTimes * time.Second.Nanoseconds())):
-				err := f()
+			case <-time.After(duration):
+				err := f(duration)
 				if nil != err {
 					reconnTimes += 1
 				} else {

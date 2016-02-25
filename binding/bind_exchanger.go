@@ -259,8 +259,16 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*Bind
 
 //当zk断开链接时
 func (self *BindExchanger) OnSessionExpired() {
-	self.PushQServer(self.kiteqserver, self.topics)
-	log.InfoLog("kite_bind", "BindExchanger|OnSessionExpired|Restart...")
+	err := self.zkmanager.PublishQServer(self.kiteqserver, self.topics)
+	if nil != err {
+		log.ErrorLog("kite_bind", "BindExchanger|OnSessionExpired|PushQServer|FAIL|%s|%s|%s", err, self.kiteqserver, self.topics)
+		return
+	}
+
+	//订阅订阅关系变更
+	succ := self.subscribeBinds(self.topics)
+	log.InfoLog("kite_bind", "BindExchanger|OnSessionExpired|SUCC|subscribeBinds|%v|%s|%s", succ, self.kiteqserver, self.topics)
+
 }
 
 //关闭掉exchanger

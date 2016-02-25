@@ -61,6 +61,7 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 	pipeline.RegisteHandler("kiteclient-accept", chandler.NewAcceptHandler("kiteclient-accept", listen))
 	pipeline.RegisteHandler("kiteclient-remoting", pipe.NewRemotingHandler("kiteclient-remoting", clientm))
 
+	zkManager := binding.NewZKManager(zkAddr)
 	manager := &KiteClientManager{
 		ga:            c.NewGroupAuth(groupId, secretKey),
 		kiteClients:   make(map[string][]*kiteClient, 10),
@@ -69,7 +70,8 @@ func NewKiteClientManager(zkAddr, groupId, secretKey string, listen listener.ILi
 		clientManager: clientm,
 		rc:            rc,
 		flowstat:      flowstat,
-		zkAddr:        zkAddr}
+		zkAddr:        zkAddr,
+		zkManager:     zkManager}
 	//开启流量统计
 	manager.remointflow()
 	return manager
@@ -90,10 +92,8 @@ func (self *KiteClientManager) remointflow() {
 //启动
 func (self *KiteClientManager) Start() {
 
-	self.zkManager = binding.NewZKManager(self.zkAddr)
 	//注册kiteqserver的变更
 	self.zkManager.RegisteWather(PATH_KITEQ_SERVER, self)
-
 	hostname, _ := os.Hostname()
 	//推送本机到
 	err := self.zkManager.PublishTopics(self.topics, self.ga.GroupId, hostname)
