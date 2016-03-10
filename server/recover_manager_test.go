@@ -1,13 +1,13 @@
 package server
 
 import (
+	"github.com/blackbeans/kiteq-common/binding"
+	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq-common/stat"
+	"github.com/blackbeans/kiteq-common/store"
+	"github.com/blackbeans/kiteq-common/store/memory"
 	. "github.com/blackbeans/turbo/pipe"
-	"kiteq/binding"
 	"kiteq/handler"
-	"kiteq/protocol"
-	"kiteq/stat"
-	"kiteq/store"
-	"kiteq/store/memory"
 	"log"
 	"os"
 	"testing"

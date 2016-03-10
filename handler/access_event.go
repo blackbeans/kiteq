@@ -1,11 +1,11 @@
 package handler
 
 import (
+	"github.com/blackbeans/kiteq-common/protocol"
 	log "github.com/blackbeans/log4go"
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
-	"kiteq/protocol"
 )
 
 //----------------鉴权handler

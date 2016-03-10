@@ -1,11 +1,11 @@
 package server
 
 import (
+	"github.com/blackbeans/kiteq-common/store"
+	smf "github.com/blackbeans/kiteq-common/store/file"
+	sm "github.com/blackbeans/kiteq-common/store/memory"
+	smq "github.com/blackbeans/kiteq-common/store/mysql"
 	log "github.com/blackbeans/log4go"
-	"kiteq/store"
-	smf "kiteq/store/file"
-	sm "kiteq/store/memory"
-	smq "kiteq/store/mysql"
 	"strconv"
 	"strings"
 	"time"

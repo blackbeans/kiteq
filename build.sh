@@ -8,35 +8,24 @@ go get github.com/blackbeans/log4go
 go get github.com/blackbeans/go-zookeeper/zk
 go get github.com/blackbeans/turbo
 go get github.com/naoina/toml
+go get github.com/blackbeans/kiteq-common/stat
+go get github.com/blackbeans/kiteq-common/protocol
+go get github.com/blackbeans/kiteq-common/binding
+go get github.com/blackbeans/kiteq-common/store
+go get github.com/blackbeans/kiteq-common/store/mysql
+go get github.com/blackbeans/kiteq-common/store/file
+go get github.com/blackbeans/kiteq-common/store/memory
 
 
 #protoc --go_out=. ./protocol/*.proto
-
-go build  kiteq/stat
-go build  kiteq/protocol
-go build  kiteq/binding
-go build  kiteq/store
-go build  kiteq/store/mysql
-go build  kiteq/store/file
-go build  kiteq/store/memory
 go build  kiteq/handler
-go build  kiteq/client/chandler
+
 go build  kiteq/server
-go build  kiteq/client
 
 
 #########
-go install kiteq/stat
-go install kiteq/protocol
-go install kiteq/binding
-go install kiteq/store
-go install kiteq/store/mysql
-go install kiteq/store/memory
-go install kiteq/store/file
 go install kiteq/handler
-go install kiteq/client/chandler
 go install kiteq/server
-go install kiteq/client
 
 
 

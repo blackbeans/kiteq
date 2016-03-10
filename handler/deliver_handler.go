@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"github.com/blackbeans/kiteq-common/stat"
 	. "github.com/blackbeans/turbo/pipe"
-	"kiteq/stat"
 	"time"
 	// 	log "github.com/blackbeans/log4go"
 )

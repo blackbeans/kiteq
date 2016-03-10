@@ -2,10 +2,10 @@ package handler
 
 import (
 	"errors"
+	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo/pipe"
-	"kiteq/protocol"
-	"kiteq/store"
 	"os"
 	"time"
 )

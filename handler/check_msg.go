@@ -1,9 +1,9 @@
 package handler
 
 import (
+	"github.com/blackbeans/kiteq-common/protocol"
 	packet "github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
-	"kiteq/protocol"
 	"regexp"
 	"sort"
 	"time"
