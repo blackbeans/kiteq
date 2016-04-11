@@ -21,17 +21,11 @@ KiteQ ![image](./doc/logo.jpg)
     ├── README.md
     ├── conf              配置信息
     ├── log               log4go的配置
-    ├── benchmark         KiteQ的Benchmark程序
-    ├── binding           订阅关系管理处理跟ZK的交互
     ├── build.sh          安装脚本
-    ├── client            KiteQ的客户端
     ├── doc               文档
     ├── handler           KiteQ所需要的处理Handler
-    ├── kiteq.go          KiteQ对外启动入口
-    ├── protocol          KiteQ的协议包，基于PB和定义的Packet
-    ├── server            KiteQ的Server端组装需要的组件
-    ├── stat              状态信息统计
-    └── store             KiteQ的存储结构
+    ├── kiteq.go          KiteQ对外启动入口        
+    └── server             KiteQ的Server端组装需要的组件
 
 ##### 概念：
     

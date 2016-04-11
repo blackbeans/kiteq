@@ -95,7 +95,7 @@ func Parse() ServerOption {
 	//两种方式都支持
 	deliveryFirst := flag.Bool("deliveryFirst", false, "-deliveryFirst=true //开启服务端优先投递，false为优先存储")
 	logxml := flag.String("logxml", "./log/log.xml", "-logxml=./log/log.xml")
-	bindHost := flag.String("bind", ":13800", "-bind=localhost:13800")
+	bindHost := flag.String("bind", "localhost:13800", "-bind=localhost:13800")
 	zkhost := flag.String("zkhost", "localhost:2181", "-zkhost=localhost:2181")
 	topics := flag.String("topics", "", "-topics=trade,a,b")
 	dlqHourPerDay := flag.Int("dlqHourPerDay", 2, "-dlqExecHour=2 过期消息迁移时间点")
