@@ -1,11 +1,11 @@
 package server
 
 import (
-	"fmt"
 	"github.com/blackbeans/kiteq-common/binding"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/pipe"
@@ -28,6 +28,8 @@ type KiteQServer struct {
 	kc             KiteQConfig
 	kitedb         store.IKiteStore
 	stop           bool
+	lastNetstat    *turbo.NetworkStat
+	lastKiteStat   *kiteqstat
 }
 
 //握手包
@@ -167,28 +169,6 @@ func (self *KiteQServer) startDLQ() {
 		}
 	}()
 	log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
-}
-
-func (self *KiteQServer) startFlow() {
-
-	go func() {
-		t := time.NewTicker(1 * time.Second)
-		for !self.stop {
-			ns := self.remotingServer.NetworkStat()
-			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
-				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
-
-			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d", line, self.kc.flowstat.DeliverFlow.Changes(),
-				self.kc.flowstat.DeliverGo.Count())
-			if nil != self.kitedb {
-				line = fmt.Sprintf("%s\nKiteStore:%s", line, self.kitedb.Monitor())
-
-			}
-			log.InfoLog("kite_server", line)
-			<-t.C
-		}
-		t.Stop()
-	}()
 }
 
 func (self *KiteQServer) startCheckConf() {
