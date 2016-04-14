@@ -21,9 +21,6 @@ type KiteQConfig struct {
 
 func NewKiteQConfig(so ServerOption, rc *turbo.RemotingConfig) KiteQConfig {
 	flowstat := stat.NewFlowStat("KiteQ-" + so.bindHost)
-	for _, topic := range so.topics {
-		flowstat.TopicsFlows[topic] = &turbo.Flow{}
-	}
 	return KiteQConfig{
 		flowstat: flowstat,
 		rc:       rc,

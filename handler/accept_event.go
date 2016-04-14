@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo/pipe"
@@ -15,13 +16,15 @@ type AcceptHandler struct {
 	pipe.BaseForwardHandler
 	topics     []string
 	kiteserver string
+	flowstat   *stat.FlowStat
 }
 
-func NewAcceptHandler(name string) *AcceptHandler {
+func NewAcceptHandler(name string, flowstat *stat.FlowStat) *AcceptHandler {
 	ahandler := &AcceptHandler{}
 	ahandler.BaseForwardHandler = pipe.NewBaseForwardHandler(name, ahandler)
 	hn, _ := os.Hostname()
 	ahandler.kiteserver = hn
+	ahandler.flowstat = flowstat
 	return ahandler
 }
 
@@ -71,6 +74,10 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 		msg.PublishTime = time.Now().Unix()
 		msg.KiteServer = self.kiteserver
 		deliver := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
+
+		//接收消息的统计
+		self.flowstat.IncrTopicReceiveFlow(msg.Topic, 1)
+		self.flowstat.RecieveFlow.Incr(1)
 		ctx.SendForward(deliver)
 		return nil
 	}

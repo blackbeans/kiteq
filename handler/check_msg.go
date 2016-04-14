@@ -54,6 +54,8 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 
 	if nil != pevent.entity {
 
+		//增加接受消息的统计
+
 		//先判断是否是可以处理的topic的消息
 		idx := sort.SearchStrings(self.topics, pevent.entity.Header.GetTopic())
 		if idx == len(self.topics) {

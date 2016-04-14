@@ -10,24 +10,34 @@ import (
 )
 
 type kiteqstat struct {
-	Goroutine    int32                         `json:"goroutine"`
-	DeliverGo    int32                         `json:"deliver_go"`
-	DeliverCount int32                         `json:"deliver_count"`
-	MessageCount map[string]int                `json:"message_count"`
-	Topics       map[string] /*topicId*/ int32 `json:"topics"`
-	Groups       map[string][]string           `json:"groups"`
+	Goroutine     int32                         `json:"goroutine"`
+	DeliverGo     int32                         `json:"deliver_go"`
+	DeliverCount  int32                         `json:"deliver_count"`
+	RecieveCount  int32                         `json:"recieve_count"`
+	MessageCount  map[string]int                `json:"message_count"`
+	TopicsDeliver map[string] /*topicId*/ int32 `json:"topics_deliver"`
+	TopicsRecieve map[string] /*topicId*/ int32 `json:"topics_recieve"`
+	Groups        map[string][]string           `json:"groups"`
 }
 
 //handler monitor
 func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request) {
 
+	defer func() {
+		if err := recover(); nil != err {
+			//do nothing
+		}
+	}()
+
+	idx := (time.Now().Unix() - 1) % 2
+
 	//network
-	rstat := self.lastNetstat
+	rstat := self.lastNetstat[idx]
 	rstat.Connections = self.clientManager.ConnNum()
 
 	//统计topic的数量消息
 	//kiteq
-	ks := *self.lastKiteStat
+	ks := self.lastKiteStat[idx]
 	ks.Groups = self.clientManager.CloneGroups()
 
 	result := make(map[string]interface{}, 2)
@@ -54,16 +64,13 @@ func (self *KiteQServer) startFlow() {
 
 	go func() {
 		t := time.NewTicker(1 * time.Second)
+		count := 0
 		for !self.stop {
 
 			ns := self.remotingServer.NetworkStat()
-			self.lastNetstat = &ns
 
 			//统计topic的数量消息
-			topics := make(map[string]int32, 20)
-			for topic, f := range self.kc.flowstat.TopicsFlows {
-				topics[topic] = f.Changes()
-			}
+			topicsdeliver, topicsrecieve := self.kc.flowstat.TopicFlowSnapshot()
 
 			//消息堆积数量
 			msgMap := make(map[string]int, 20)
@@ -77,30 +84,40 @@ func (self *KiteQServer) startFlow() {
 					msgMap[t] = 0
 				}
 
-				_, ok = topics[t]
+				_, ok = topicsdeliver[t]
 				if !ok {
-					topics[t] = 0
+					topicsdeliver[t] = 0
+				}
+
+				_, ok = topicsrecieve[t]
+				if !ok {
+					topicsrecieve[t] = 0
 				}
 			}
 
 			//kiteq
-			self.lastKiteStat = &kiteqstat{
-				Goroutine:    int32(runtime.NumGoroutine()),
-				DeliverGo:    self.kc.flowstat.DeliverFlow.Changes(),
-				DeliverCount: self.kc.flowstat.DeliverGo.Count(),
-				MessageCount: msgMap,
-				Topics:       topics}
+			ks := kiteqstat{
+				Goroutine:     int32(runtime.NumGoroutine()),
+				DeliverGo:     self.kc.flowstat.DeliverGo.Count(),
+				DeliverCount:  self.kc.flowstat.DeliverFlow.Changes(),
+				RecieveCount:  self.kc.flowstat.RecieveFlow.Changes(),
+				MessageCount:  msgMap,
+				TopicsDeliver: topicsdeliver,
+				TopicsRecieve: topicsrecieve}
 
 			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
 				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
 
-			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d", line, self.lastKiteStat.DeliverCount,
-				self.lastKiteStat.DeliverGo)
+			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d", line, ks.DeliverCount,
+				ks.DeliverGo)
 			if nil != self.kitedb {
 				line = fmt.Sprintf("%s\nKiteStore:%s", line, self.kitedb.Monitor())
 
 			}
 			log.InfoLog("kite_server", line)
+			self.lastNetstat[count%2] = ns
+			self.lastKiteStat[count%2] = ks
+			count++
 			<-t.C
 		}
 		t.Stop()

@@ -15,14 +15,16 @@ const (
 type DeliverHandler struct {
 	BaseDoubleSidedHandler
 	deliveryRegistry *stat.DeliveryRegistry
+	flowstat         *stat.FlowStat
 }
 
 //------创建deliverpre
-func NewDeliverHandler(name string, deliveryRegistry *stat.DeliveryRegistry) *DeliverHandler {
+func NewDeliverHandler(name string, flowstat *stat.FlowStat, deliveryRegistry *stat.DeliveryRegistry) *DeliverHandler {
 
 	phandler := &DeliverHandler{}
 	phandler.BaseDoubleSidedHandler = NewBaseDoubleSidedHandler(name, phandler)
 	phandler.deliveryRegistry = deliveryRegistry
+	phandler.flowstat = flowstat
 	return phandler
 }
 
@@ -57,6 +59,9 @@ func (self *DeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) e
 	if !succ {
 		return nil
 	}
+
+	//投递消息的统计
+	self.flowstat.IncrTopicDeliverFlow(pevent.topic, int32(len(pevent.deliverGroups)))
 
 	//增加消息投递的次数
 	pevent.deliverCount++

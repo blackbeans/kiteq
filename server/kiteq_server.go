@@ -28,8 +28,8 @@ type KiteQServer struct {
 	kc             KiteQConfig
 	kitedb         store.IKiteStore
 	stop           bool
-	lastNetstat    *turbo.NetworkStat
-	lastKiteStat   *kiteqstat
+	lastNetstat    []turbo.NetworkStat
+	lastKiteStat   []kiteqstat
 }
 
 //握手包
@@ -70,13 +70,13 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
-	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept"))
+	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", kc.flowstat))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.so.topics))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst, kc.flowstat))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", registry))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverHandler("deliver", kc.flowstat, registry))
 	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("deliverResult", handler.NewDeliverResultHandler("deliverResult", kc.so.deliveryTimeout, kitedb, rw, registry))
@@ -92,7 +92,9 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 		recoverManager: recoverManager,
 		kc:             kc,
 		kitedb:         kitedb,
-		stop:           false}
+		stop:           false,
+		lastNetstat:    make([]turbo.NetworkStat, 2),
+		lastKiteStat:   make([]kiteqstat, 2)}
 
 }
 

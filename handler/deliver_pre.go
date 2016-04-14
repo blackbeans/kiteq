@@ -60,7 +60,6 @@ func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent
 		}()
 		//启动投递
 		self.send0(ctx, pevent)
-
 		self.flowstat.DeliverFlow.Incr(1)
 	}()
 
@@ -92,13 +91,6 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 	if !self.checkValid(entity) {
 		self.kitestore.Expired(entity.MessageId)
 		return
-	}
-
-	//统计数据
-	//对该消息类型进行统计
-	flow, ok := self.flowstat.TopicsFlows[pevent.header.GetTopic()]
-	if ok {
-		flow.Incr(1)
 	}
 
 	// log.Debug("DeliverPreHandler|send0|Query|%s", entity.Header)
