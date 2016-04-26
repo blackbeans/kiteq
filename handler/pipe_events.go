@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
+	// log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
-	. "github.com/blackbeans/turbo/pipe"
-
-	// 	log "github.com/blackbeans/log4go"
+	p "github.com/blackbeans/turbo/pipe"
 )
 
 type iauth interface {
-	IForwardEvent
+	p.IForwardEvent
 	getClient() *client.RemotingClient
 }
 
@@ -82,7 +81,7 @@ func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *c
 
 //投递策略
 type persistentEvent struct {
-	IForwardEvent
+	p.IForwardEvent
 	entity       *store.MessageEntity
 	remoteClient *client.RemotingClient
 	opaque       int32
@@ -95,7 +94,7 @@ func newPersistentEvent(entity *store.MessageEntity, remoteClient *client.Remoti
 
 //投递准备事件
 type deliverPreEvent struct {
-	IForwardEvent
+	p.IForwardEvent
 	messageId      string
 	header         *protocol.Header
 	entity         *store.MessageEntity
@@ -112,7 +111,7 @@ func NewDeliverPreEvent(messageId string, header *protocol.Header,
 
 //投递事件
 type deliverEvent struct {
-	IForwardEvent
+	p.IForwardEvent
 	messageId      string
 	topic          string
 	messageType    string
@@ -125,6 +124,7 @@ type deliverEvent struct {
 	deliverLimit   int32
 	deliverCount   int32 //已经投递的次数
 	attemptDeliver chan []string
+	limiters       map[string]*turbo.BurstyLimiter
 }
 
 //创建投递事件
@@ -152,7 +152,7 @@ func (self GroupFuture) String() string {
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
-	IBackwardEvent
+	p.IBackwardEvent
 	futures           map[string]*turbo.Future
 	failGroupFuture   []GroupFuture
 	succGroupFuture   []GroupFuture
@@ -176,11 +176,9 @@ func (self *deliverResultEvent) wait(ch chan bool) bool {
 	//等待回调结果
 	for g, f := range self.futures {
 		resp, err := f.Get(ch)
+
 		if err == turbo.TIMEOUT_ERROR {
 			timeout = true
-			gf := GroupFuture{f, resp, g}
-			gf.Err = err
-			self.failGroupFuture = append(self.failGroupFuture, gf)
 		} else if nil != resp {
 			ack, ok := resp.(*protocol.DeliverAck)
 			if !ok || !ack.GetStatus() {
@@ -188,6 +186,11 @@ func (self *deliverResultEvent) wait(ch chan bool) bool {
 			} else {
 				self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, resp, g})
 			}
+		}
+		if nil != err {
+			gf := GroupFuture{f, resp, g}
+			gf.Err = err
+			self.failGroupFuture = append(self.failGroupFuture, gf)
 		}
 	}
 

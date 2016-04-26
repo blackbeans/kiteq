@@ -1,23 +1,23 @@
 package handler
 
 import (
-	. "github.com/blackbeans/turbo/pipe"
+	p "github.com/blackbeans/turbo/pipe"
 	// 	log "github.com/blackbeans/log4go"
 )
 
 //网络调用的futurehandler
 type RemoteFutureHandler struct {
-	BaseForwardHandler
+	p.BaseForwardHandler
 }
 
 //------创建deliverpre
 func NewRemotingFutureHandler(name string) *RemoteFutureHandler {
 	phandler := &RemoteFutureHandler{}
-	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
+	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	return phandler
 }
 
-func (self *RemoteFutureHandler) TypeAssert(event IEvent) bool {
+func (self *RemoteFutureHandler) TypeAssert(event p.IEvent) bool {
 	re, ok := self.cast(event)
 	if ok {
 		_, ok := re.Event.(*deliverEvent)
@@ -26,15 +26,15 @@ func (self *RemoteFutureHandler) TypeAssert(event IEvent) bool {
 	return ok
 }
 
-func (self *RemoteFutureHandler) cast(event IEvent) (val *RemoteFutureEvent, ok bool) {
-	val, ok = event.(*RemoteFutureEvent)
+func (self *RemoteFutureHandler) cast(event p.IEvent) (val *p.RemoteFutureEvent, ok bool) {
+	val, ok = event.(*p.RemoteFutureEvent)
 	return val, ok
 }
 
-func (self *RemoteFutureHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *RemoteFutureHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 	pevent, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return p.ERROR_INVALID_EVENT_TYPE
 	}
 
 	futures := pevent.Wait()

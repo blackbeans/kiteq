@@ -7,13 +7,13 @@ import (
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	packet "github.com/blackbeans/turbo/packet"
-	. "github.com/blackbeans/turbo/pipe"
+	p "github.com/blackbeans/turbo/pipe"
 	"time"
 )
 
 //----------------持久化的handler
 type DeliverPreHandler struct {
-	BaseForwardHandler
+	p.BaseForwardHandler
 	kitestore      store.IKiteStore
 	exchanger      *binding.BindExchanger
 	maxDeliverNum  chan byte
@@ -26,7 +26,7 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	exchanger *binding.BindExchanger, flowstat *stat.FlowStat,
 	maxDeliverWorker int) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
-	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
+	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
 	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
@@ -34,21 +34,21 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	return phandler
 }
 
-func (self *DeliverPreHandler) TypeAssert(event IEvent) bool {
+func (self *DeliverPreHandler) TypeAssert(event p.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *DeliverPreHandler) cast(event IEvent) (val *deliverPreEvent, ok bool) {
+func (self *DeliverPreHandler) cast(event p.IEvent) (val *deliverPreEvent, ok bool) {
 	val, ok = event.(*deliverPreEvent)
 	return
 }
 
-func (self *DeliverPreHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *DeliverPreHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 
 	pevent, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return p.ERROR_INVALID_EVENT_TYPE
 	}
 
 	self.maxDeliverNum <- 1
@@ -74,7 +74,7 @@ func (self *DeliverPreHandler) checkValid(entity *store.MessageEntity) bool {
 }
 
 //内部处理
-func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *deliverPreEvent) {
+func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deliverPreEvent) {
 	//如果没有entity则直接查询一下db
 	entity := pevent.entity
 	if nil == entity {
@@ -118,7 +118,7 @@ func (self *DeliverPreHandler) send0(ctx *DefaultPipelineContext, pevent *delive
 
 //填充订阅分组
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
-	binds := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
+	binds, limiters := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
 		func(b *binding.Binding) bool {
 			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
 			//过滤掉已经投递成功的分组
@@ -134,10 +134,11 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.
 	groupIds := make([]string, 0, 10)
 	//按groupid归并
 	for _, bind := range binds {
+		//获取group对应的limiter
 		groupIds = append(groupIds, bind.GroupId)
 		// hashGroups[bind.GroupId] = nil
 	}
-
+	pevent.limiters = limiters
 	pevent.deliverGroups = groupIds
 }
 

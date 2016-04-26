@@ -6,7 +6,7 @@ import (
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	. "github.com/blackbeans/turbo/pipe"
+	p "github.com/blackbeans/turbo/pipe"
 	"sort"
 	"time"
 )
@@ -47,7 +47,7 @@ func (self redeliveryWindows) String() string {
 
 //-------投递结果记录的handler
 type DeliverResultHandler struct {
-	BaseForwardHandler
+	p.BaseForwardHandler
 	kitestore        store.IKiteStore
 	rw               redeliveryWindows //多个恢复的windows
 	deliverTimeout   time.Duration
@@ -61,7 +61,7 @@ type DeliverResultHandler struct {
 func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestore store.IKiteStore,
 	rw []RedeliveryWindow, deliveryRegistry *stat.DeliveryRegistry) *DeliverResultHandler {
 	dhandler := &DeliverResultHandler{}
-	dhandler.BaseForwardHandler = NewBaseForwardHandler(name, dhandler)
+	dhandler.BaseForwardHandler = p.NewBaseForwardHandler(name, dhandler)
 	dhandler.kitestore = kitestore
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
@@ -80,21 +80,21 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	return dhandler
 }
 
-func (self *DeliverResultHandler) TypeAssert(event IEvent) bool {
+func (self *DeliverResultHandler) TypeAssert(event p.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *DeliverResultHandler) cast(event IEvent) (val *deliverResultEvent, ok bool) {
+func (self *DeliverResultHandler) cast(event p.IEvent) (val *deliverResultEvent, ok bool) {
 	val, ok = event.(*deliverResultEvent)
 	return
 }
 
-func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 
 	fevent, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return p.ERROR_INVALID_EVENT_TYPE
 	}
 
 	if len(fevent.futures) > 0 {
@@ -109,6 +109,10 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 
 	//增加投递成功的分组
 	if len(fevent.deliverSuccGroups) > 0 {
+		//剔除掉投递成功的分组
+		for _, g := range fevent.deliverSuccGroups {
+			delete(fevent.limiters, g)
+		}
 		fevent.succGroups = append(fevent.succGroups, fevent.deliverSuccGroups...)
 
 	}
@@ -121,7 +125,7 @@ func (self *DeliverResultHandler) Process(ctx *DefaultPipelineContext, event IEv
 	}
 
 	log.InfoLog("kite_handler", "%s|Process|SEND RESULT:\nattemptDeliver:%v\nfly:%v\nmessageId:%s\nTopic:%s\nMessageType:%s\nDeliverCount:%d\n"+
-		"DeliverySUCCGROUPS:%s\nSUCCGROUPS:%s\nFAILGROUPS:%s",
+		"SUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%s",
 		self.GetName(), attemptDeliver, fevent.fly, fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
 		fevent.deliverCount, fevent.succGroups, fevent.succGroupFuture, fevent.failGroupFuture)
 	//都投递成功

@@ -5,38 +5,38 @@ import (
 	log "github.com/blackbeans/log4go"
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
-	. "github.com/blackbeans/turbo/pipe"
+	p "github.com/blackbeans/turbo/pipe"
 )
 
 //----------------鉴权handler
 type ValidateHandler struct {
-	BaseForwardHandler
+	p.BaseForwardHandler
 	clientManager *client.ClientManager
 }
 
 //------创建鉴权handler
 func NewValidateHandler(name string, clientManager *client.ClientManager) *ValidateHandler {
 	ahandler := &ValidateHandler{}
-	ahandler.BaseForwardHandler = NewBaseForwardHandler(name, ahandler)
+	ahandler.BaseForwardHandler = p.NewBaseForwardHandler(name, ahandler)
 	ahandler.clientManager = clientManager
 	return ahandler
 }
 
-func (self *ValidateHandler) TypeAssert(event IEvent) bool {
+func (self *ValidateHandler) TypeAssert(event p.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *ValidateHandler) cast(event IEvent) (val iauth, ok bool) {
+func (self *ValidateHandler) cast(event p.IEvent) (val iauth, ok bool) {
 	val, ok = event.(iauth)
 	return val, ok
 }
 
-func (self *ValidateHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *ValidateHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 
 	aevent, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return p.ERROR_INVALID_EVENT_TYPE
 	}
 
 	remoteClient := aevent.getClient()

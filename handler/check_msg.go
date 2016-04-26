@@ -3,7 +3,7 @@ package handler
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	packet "github.com/blackbeans/turbo/packet"
-	. "github.com/blackbeans/turbo/pipe"
+	p "github.com/blackbeans/turbo/pipe"
 	"regexp"
 	"sort"
 	"time"
@@ -22,34 +22,34 @@ func init() {
 
 //----------------持久化的handler
 type CheckMessageHandler struct {
-	BaseForwardHandler
+	p.BaseForwardHandler
 	topics []string
 }
 
 //------创建persitehandler
 func NewCheckMessageHandler(name string, topics []string) *CheckMessageHandler {
 	phandler := &CheckMessageHandler{}
-	phandler.BaseForwardHandler = NewBaseForwardHandler(name, phandler)
+	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	sort.Strings(topics)
 	phandler.topics = topics
 	return phandler
 }
 
-func (self *CheckMessageHandler) TypeAssert(event IEvent) bool {
+func (self *CheckMessageHandler) TypeAssert(event p.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *CheckMessageHandler) cast(event IEvent) (val *persistentEvent, ok bool) {
+func (self *CheckMessageHandler) cast(event p.IEvent) (val *persistentEvent, ok bool) {
 	val, ok = event.(*persistentEvent)
 	return
 }
 
-func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *CheckMessageHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 
 	pevent, ok := self.cast(event)
 	if !ok {
-		return ERROR_INVALID_EVENT_TYPE
+		return p.ERROR_INVALID_EVENT_TYPE
 	}
 
 	if nil != pevent.entity {
@@ -60,13 +60,13 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 		idx := sort.SearchStrings(self.topics, pevent.entity.Header.GetTopic())
 		if idx == len(self.topics) {
 			//不存在该消息的处理则直接返回存储失败
-			remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+			remoteEvent := p.NewRemotingEvent(storeAck(pevent.opaque,
 				pevent.entity.Header.GetMessageId(), false, "UnSupport Topic Message!"),
 				[]string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
 		} else if !isUUID(pevent.entity.Header.GetMessageId()) {
 			//不存在该消息的处理则直接返回存储失败
-			remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+			remoteEvent := p.NewRemotingEvent(storeAck(pevent.opaque,
 				pevent.entity.Header.GetMessageId(), false, "Invalid MessageId For UUID!"),
 				[]string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
@@ -85,7 +85,7 @@ func (self *CheckMessageHandler) Process(ctx *DefaultPipelineContext, event IEve
 				pevent.entity.ExpiredTime = et
 			} else if h.GetExpiredTime() > 0 && h.GetExpiredTime() <= time.Now().Unix() {
 				//不存在该消息的处理则直接返回存储失败
-				remoteEvent := NewRemotingEvent(storeAck(pevent.opaque,
+				remoteEvent := p.NewRemotingEvent(storeAck(pevent.opaque,
 					pevent.entity.Header.GetMessageId(), false, "Expired Message!"),
 					[]string{pevent.remoteClient.RemoteAddr()})
 				ctx.SendForward(remoteEvent)
