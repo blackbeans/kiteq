@@ -91,7 +91,6 @@ func (self *CheckMessageHandler) Process(ctx *p.DefaultPipelineContext, event p.
 				ctx.SendForward(remoteEvent)
 				return nil
 			}
-
 			//向后发送
 			ctx.SendForward(pevent)
 		}

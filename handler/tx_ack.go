@@ -33,7 +33,7 @@ func (self *TxAckHandler) cast(event p.IEvent) (val *txAckEvent, ok bool) {
 
 func (self *TxAckHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
 
-	// log.DebugLog("kite_handler",  "TxAckHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.DebugLog("kite_handler", "TxAckHandler|Process|%s|%t\n", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {

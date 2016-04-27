@@ -18,7 +18,7 @@
 		db="file:///data/kiteq?cap=10000000&checkSeconds=10"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
-		recoverSeconds=60
+		recoverSeconds=10
 	
 	[clusters.default_dev]
 		env="dev" #env=dev/online
@@ -27,6 +27,6 @@
 		deliveryFirst=false
 		logxml="./log/log_test.xml"
 		db="file://.?cap=10000000&checkSeconds=10"
-		deliverySeconds=5000
+		deliverySeconds=5
 		maxDeliverWorkers=8000
-		recoverSeconds=60000
+		recoverSeconds=10

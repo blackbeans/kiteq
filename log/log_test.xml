@@ -137,5 +137,18 @@
     <property name="maxlines">10M</property>
     <property name="daily">true</property> 
   </filter>
+  
+    <filter enabled="true">
+    <tag>kite_recover</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="filename">./logs/kite_recover.log</property>
+    <property name="format">[%D %T] [%L] %M</property>
+    <property name="rotate">true</property>
+    <property name="maxsize">100M</property>
+    <property name="maxlines">10M</property>
+    <property name="daily">true</property> 
+  </filter>
+
 
 </logging>

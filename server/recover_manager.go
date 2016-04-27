@@ -1,11 +1,13 @@
 package server
 
 import (
+	// "encoding/json"
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
-	packet "github.com/blackbeans/turbo/packet"
+	"github.com/blackbeans/turbo"
+	"github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/handler"
 	"time"
@@ -13,24 +15,28 @@ import (
 
 //-----------recover的handler
 type RecoverManager struct {
-	pipeline       *DefaultPipeline
-	serverName     string
-	isClose        bool
-	kitestore      store.IKiteStore
-	recoverPeriod  time.Duration
-	recoverWorkers chan byte
+	pipeline      *DefaultPipeline
+	serverName    string
+	isClose       bool
+	kitestore     store.IKiteStore
+	recoverPeriod time.Duration
+	recoveLimiter *turbo.BurstyLimiter
+	tw            *turbo.TimeWheel
 }
 
 //------创建persitehandler
-func NewRecoverManager(serverName string, recoverPeriod time.Duration, pipeline *DefaultPipeline, kitestore store.IKiteStore) *RecoverManager {
+func NewRecoverManager(serverName string, recoverPeriod time.Duration,
+	pipeline *DefaultPipeline, kitestore store.IKiteStore, tw *turbo.TimeWheel) *RecoverManager {
 
+	limter, _ := turbo.NewBurstyLimiter(100, 2000)
 	rm := &RecoverManager{
-		serverName:     serverName,
-		kitestore:      kitestore,
-		isClose:        false,
-		pipeline:       pipeline,
-		recoverPeriod:  recoverPeriod,
-		recoverWorkers: make(chan byte, 100)}
+		serverName:    serverName,
+		kitestore:     kitestore,
+		isClose:       false,
+		pipeline:      pipeline,
+		recoverPeriod: recoverPeriod,
+		recoveLimiter: limter,
+		tw:            tw}
 	return rm
 }
 
@@ -40,15 +46,20 @@ func (self *RecoverManager) Start() {
 		go self.startRecoverTask(fmt.Sprintf("%x", i))
 	}
 
-	log.InfoLog("kite_server", "RecoverManager|Start|SUCC....")
+	log.InfoLog("kite_recover", "RecoverManager|Start|SUCC....")
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
+	defer func() {
+
+		log.ErrorLog("kite_recover", "RecoverManager|startRecoverTask|STOPPED|%s|%v", hashKey)
+
+	}()
 	// log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
 	for !self.isClose {
-
 		//开始
-		self.redeliverMsg(hashKey, time.Now())
+		count := self.redeliverMsg(hashKey, time.Now())
+		log.InfoLog("kite_recover", "RecoverManager|endRecoverTask|%s|count:%d....", hashKey, count)
 		time.Sleep(self.recoverPeriod)
 	}
 
@@ -58,42 +69,40 @@ func (self *RecoverManager) Stop() {
 	self.isClose = true
 }
 
-func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) {
+func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 	var hasMore bool = true
-
 	startIdx := 0
 	//开始分页查询未过期的消息实体
 	for !self.isClose && hasMore {
 		more, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
-			now.Unix(), startIdx, 50)
-		// log.Debug("RecoverManager|redeliverMsg|%d|%d\n", now.Unix(), len(entities))
+			now.Unix(), startIdx, 100)
+
 		if len(entities) <= 0 {
 			break
 		}
-
+		// d, _ := json.Marshal(entities[0].Header)
+		// log.InfoLog("kite_recover", "RecoverManager|redeliverMsg|%d|%s", now.Unix(), string(d))
+		id, ch := self.tw.After(1*time.Second, func() {})
+		count := self.recoveLimiter.TryAcquireWithCount(ch, len(entities))
+		self.tw.Remove(id)
 		//开始发起重投
-		for _, entity := range entities {
+		for i, entity := range entities {
 
+			if i >= count {
+				break
+			}
 			//如果为未提交的消息则需要发送一个事务检查的消息
 			if !entity.Commit {
-
-				self.recoverWorkers <- 1
-				go func() {
-					defer func() {
-						<-self.recoverWorkers
-					}()
-					self.txAck(entity)
-				}()
+				self.txAck(entity)
 			} else {
-
 				//发起投递事件
 				self.delivery(entity)
 			}
 		}
-		startIdx += len(entities)
+		startIdx += count
 		hasMore = more
-		time.Sleep(1 * time.Second)
 	}
+	return startIdx
 }
 
 //发起投递事件
