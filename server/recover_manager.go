@@ -72,10 +72,11 @@ func (self *RecoverManager) Stop() {
 func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 	var hasMore bool = true
 	startIdx := 0
+	preTimestamp := time.Now().Unix()
 	//开始分页查询未过期的消息实体
 	for !self.isClose && hasMore {
 		more, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
-			now.Unix(), startIdx, 100)
+			preTimestamp, startIdx, 100)
 
 		if len(entities) <= 0 {
 			break
@@ -98,9 +99,11 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 				//发起投递事件
 				self.delivery(entity)
 			}
+
 		}
 		startIdx += count
 		hasMore = more
+		preTimestamp = entities[count-1].NextDeliverTime
 	}
 	return startIdx
 }

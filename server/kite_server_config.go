@@ -44,31 +44,34 @@ type Option struct {
 //----------------------------------------
 //Cluster配置
 type Cluster struct {
-	Env               string   //当前环境使用的是dev还是online
-	Topics            []string //当前集群所能够处理的topics
-	DlqExecHour       int      //过期消息清理时间点 24小时
-	DeliveryFirst     bool     //投递优先还是存储优先
-	Logxml            string   //日志路径
-	Db                string   //数据文件
-	DeliverySeconds   int64    //投递超时时间 单位为s
-	MaxDeliverWorkers int      //最大执行协程数
-	RecoverSeconds    int64    //recover的周期 单位为s
+	Env                     string   //当前环境使用的是dev还是online
+	Topics                  []string //当前集群所能够处理的topics
+	DlqExecHour             int      //过期消息清理时间点 24小时
+	DeliveryFirst           bool     //投递优先还是存储优先
+	Logxml                  string   //日志路径
+	Db                      string   //数据文件
+	DeliverySeconds         int64    //投递超时时间 单位为s
+	MaxDeliverWorkers       int      //最大执行协程数
+	RecoverSeconds          int64    //recover的周期 单位为s
+	RecievePermitsPerSecond int      //接收消息的最大值  单位s
 }
 
 type ServerOption struct {
-	clusterName       string        //集群名称
-	configPath        string        //配置文件路径
-	zkhosts           string        //zk地址
-	bindHost          string        //绑定的端口和IP
-	pprofPort         int           //pprof的Port
-	topics            []string      //当前集群所能够处理的topics
-	dlqExecHour       int           //过期消息清理时间点 24小时
-	deliveryFirst     bool          //服务端是否投递优先 默认是false，优先存储
-	logxml            string        //日志文件路径
-	db                string        //底层对应的存储是什么
-	deliveryTimeout   time.Duration //投递超时时间
-	maxDeliverWorkers int           //最大执行协程数
-	recoverPeriod     time.Duration //recover的周期
+	clusterName             string        //集群名称
+	configPath              string        //配置文件路径
+	zkhosts                 string        //zk地址
+	bindHost                string        //绑定的端口和IP
+	pprofPort               int           //pprof的Port
+	topics                  []string      //当前集群所能够处理的topics
+	dlqExecHour             int           //过期消息清理时间点 24小时
+	deliveryFirst           bool          //服务端是否投递优先 默认是false，优先存储
+	logxml                  string        //日志文件路径
+	db                      string        //底层对应的存储是什么
+	deliveryTimeout         time.Duration //投递超时时间
+	maxDeliverWorkers       int           //最大执行协程数
+	recoverPeriod           time.Duration //recover的周期
+	recievePermitsPerSecond int           //接收消息的最大值  单位s
+
 }
 
 //only for test
@@ -85,6 +88,7 @@ func MockServerOption() ServerOption {
 	so.deliveryTimeout = 5 * time.Second
 	so.maxDeliverWorkers = 10
 	so.recoverPeriod = 60 * time.Second
+	so.recievePermitsPerSecond = 8000
 	return so
 }
 
@@ -127,7 +131,7 @@ func Parse() ServerOption {
 		so.deliveryTimeout = 5 * time.Second
 		so.maxDeliverWorkers = 8000
 		so.recoverPeriod = 60 * time.Second
-
+		so.recievePermitsPerSecond = 8000
 	}
 
 	//加载log4go的配置
@@ -173,6 +177,7 @@ func loadTomlConf(path, clusterName, bindHost string, pprofPort int, so *ServerO
 	so.deliveryTimeout = time.Duration(cluster.DeliverySeconds * int64(time.Second))
 	so.maxDeliverWorkers = cluster.MaxDeliverWorkers
 	so.recoverPeriod = time.Duration(cluster.RecoverSeconds * int64(time.Second))
+	so.recievePermitsPerSecond = cluster.RecievePermitsPerSecond
 	so.bindHost = bindHost
 	so.pprofPort = pprofPort
 	so.clusterName = clusterName

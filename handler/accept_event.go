@@ -2,10 +2,12 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/pipe"
 	"os"
 	"time"
@@ -17,14 +19,18 @@ type AcceptHandler struct {
 	topics     []string
 	kiteserver string
 	flowstat   *stat.FlowStat
+	limiter    *turbo.BurstyLimiter
+	tw         *turbo.TimeWheel
 }
 
-func NewAcceptHandler(name string, flowstat *stat.FlowStat) *AcceptHandler {
+func NewAcceptHandler(name string, tw *turbo.TimeWheel, limiter *turbo.BurstyLimiter, flowstat *stat.FlowStat) *AcceptHandler {
 	ahandler := &AcceptHandler{}
 	ahandler.BaseForwardHandler = pipe.NewBaseForwardHandler(name, ahandler)
 	hn, _ := os.Hostname()
 	ahandler.kiteserver = hn
 	ahandler.flowstat = flowstat
+	ahandler.limiter = limiter
+	ahandler.tw = tw
 	return ahandler
 }
 
@@ -47,6 +53,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	if !ok {
 		return pipe.ERROR_INVALID_EVENT_TYPE
 	}
+
 	//这里处理一下ae,做一下校验
 	var msg *store.MessageEntity
 	switch ae.msgType {
@@ -68,6 +75,27 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	default:
 		//这只是一个bug不支持的数据类型能给你
 		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t", INVALID_MSG_TYPE_ERROR, ae.msg)
+	}
+
+	succ := func() bool {
+		tid, ch := self.tw.After(1*time.Second, func() {})
+		//check flow
+		succ := self.limiter.TryAcquire(ch)
+		if succ {
+			//申请成功
+			self.tw.Remove(tid)
+		}
+		return succ
+	}()
+
+	//如果申请流量失败则放弃
+	if !succ && nil != msg {
+		remoteEvent := pipe.NewRemotingEvent(storeAck(ae.opaque,
+			msg.Header.GetMessageId(), false,
+			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.remoteClient.LocalAddr())),
+			[]string{ae.remoteClient.RemoteAddr()})
+		ctx.SendForward(remoteEvent)
+		return nil
 	}
 
 	if nil != msg {

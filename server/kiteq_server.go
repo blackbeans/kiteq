@@ -65,15 +65,18 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	rw = append(rw, handler.NewRedeliveryWindow(40, 50, 32*60))
 	rw = append(rw, handler.NewRedeliveryWindow(50, -1, 60*60))
 
+	//创建KiteqServer的流控
+	limiter, _ := turbo.NewBurstyLimiter(kc.so.recievePermitsPerSecond/2, kc.so.recievePermitsPerSecond)
+
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
-	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", kc.flowstat))
+	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", kc.rc.TW, limiter, kc.flowstat))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.so.topics))
-	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst, kc.flowstat))
+	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverQosHandler("deliver", kc.flowstat, registry))

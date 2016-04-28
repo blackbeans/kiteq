@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"fmt"
-	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	p "github.com/blackbeans/turbo/pipe"
@@ -17,18 +16,16 @@ type PersistentHandler struct {
 	p.BaseForwardHandler
 	kitestore      store.IKiteStore
 	deliverTimeout time.Duration
-	flowstat       *stat.FlowStat //当前优化是否开启 true为开启，false为关闭
-	deliveryFirst  bool           //是否优先投递
+	deliveryFirst  bool //是否优先投递
 }
 
 //------创建persitehandler
 func NewPersistentHandler(name string, deliverTimeout time.Duration,
-	kitestore store.IKiteStore, deliveryFirst bool, flowstat *stat.FlowStat) *PersistentHandler {
+	kitestore store.IKiteStore, deliveryFirst bool) *PersistentHandler {
 	phandler := &PersistentHandler{}
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.deliverTimeout = deliverTimeout
-	phandler.flowstat = flowstat
 	phandler.deliveryFirst = deliveryFirst
 	return phandler
 }

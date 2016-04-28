@@ -50,12 +50,20 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 	resp.Write(data)
 }
 
+type BindInfo struct {
+	Topic2Groups    map[string][]string         `json:"topic_2_groups"`
+	Topics2Limiters map[string]map[string][]int `json:"topic_limiters"`
+}
+
 //handler monitor
 func (self *KiteQServer) HandleBindings(resp http.ResponseWriter, req *http.Request) {
 
 	binds := self.exchanger.Topic2Groups()
-	data, _ := json.Marshal(binds)
-
+	limters := self.exchanger.Topic2Limiters()
+	bi := BindInfo{
+		Topic2Groups:    binds,
+		Topics2Limiters: limters}
+	data, _ := json.Marshal(bi)
 	//write monitor
 	resp.Write(data)
 }
