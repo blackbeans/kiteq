@@ -16,6 +16,7 @@ KiteQ ![image](./doc/logo.jpg)
     * 保证可靠异步投递
     * 支持两阶段提交分布式事务
     * 自定义group内的Topic级别的流控措施，保护订阅方安全
+    * kiteserver的流量保护
 
 #### 工程结构
     kiteq/
