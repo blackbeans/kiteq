@@ -76,7 +76,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 	//开始分页查询未过期的消息实体
 	for !self.isClose && hasMore {
 		more, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
-			preTimestamp, startIdx, 100)
+			preTimestamp, startIdx, 200)
 
 		if len(entities) <= 0 {
 			break

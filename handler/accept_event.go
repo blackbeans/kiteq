@@ -20,17 +20,15 @@ type AcceptHandler struct {
 	kiteserver string
 	flowstat   *stat.FlowStat
 	limiter    *turbo.BurstyLimiter
-	tw         *turbo.TimeWheel
 }
 
-func NewAcceptHandler(name string, tw *turbo.TimeWheel, limiter *turbo.BurstyLimiter, flowstat *stat.FlowStat) *AcceptHandler {
+func NewAcceptHandler(name string, limiter *turbo.BurstyLimiter, flowstat *stat.FlowStat) *AcceptHandler {
 	ahandler := &AcceptHandler{}
 	ahandler.BaseForwardHandler = pipe.NewBaseForwardHandler(name, ahandler)
 	hn, _ := os.Hostname()
 	ahandler.kiteserver = hn
 	ahandler.flowstat = flowstat
 	ahandler.limiter = limiter
-	ahandler.tw = tw
 	return ahandler
 }
 
@@ -77,19 +75,8 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
-	succ := func() bool {
-		tid, ch := self.tw.After(1*time.Second, func() {})
-		//check flow
-		succ := self.limiter.TryAcquire(ch)
-		if succ {
-			//申请成功
-			self.tw.Remove(tid)
-		}
-		return succ
-	}()
-
 	//如果申请流量失败则放弃
-	if !succ && nil != msg {
+	if !self.limiter.Acquire() && nil != msg {
 		remoteEvent := pipe.NewRemotingEvent(storeAck(ae.opaque,
 			msg.Header.GetMessageId(), false,
 			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.remoteClient.LocalAddr())),

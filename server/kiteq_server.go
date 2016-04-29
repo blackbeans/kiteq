@@ -30,6 +30,7 @@ type KiteQServer struct {
 	stop           bool
 	lastNetstat    []turbo.NetworkStat
 	lastKiteStat   []kiteqstat
+	limiter        *turbo.BurstyLimiter
 }
 
 //握手包
@@ -73,7 +74,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
-	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", kc.rc.TW, limiter, kc.flowstat))
+	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", limiter, kc.flowstat))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
 	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.so.topics))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst))
@@ -97,7 +98,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 		kitedb:         kitedb,
 		stop:           false,
 		lastNetstat:    make([]turbo.NetworkStat, 2),
-		lastKiteStat:   make([]kiteqstat, 2)}
+		lastKiteStat:   make([]kiteqstat, 2),
+		limiter:        limiter}
 
 }
 

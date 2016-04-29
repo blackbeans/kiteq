@@ -6,6 +6,7 @@ import (
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	"github.com/blackbeans/kiteq-common/store/memory"
+	"github.com/blackbeans/turbo"
 	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/handler"
 	"log"
@@ -63,7 +64,8 @@ func TestRecoverManager(t *testing.T) {
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
-	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb)
+	tw := turbo.NewTimeWheel(100*time.Millisecond, 10, 10)
+	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb, tw)
 	rm.Start()
 	select {
 	case succ := <-ch:

@@ -1,8 +1,8 @@
 package server
 
 import (
+	"github.com/blackbeans/kiteq-client-go/client"
 	"github.com/blackbeans/kiteq-common/binding"
-	"github.com/blackbeans/kiteq-common/client"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
 	turbo "github.com/blackbeans/turbo"

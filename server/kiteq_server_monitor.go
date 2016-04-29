@@ -10,14 +10,15 @@ import (
 )
 
 type kiteqstat struct {
-	Goroutine     int32                         `json:"goroutine"`
-	DeliverGo     int32                         `json:"deliver_go"`
-	DeliverCount  int32                         `json:"deliver_count"`
-	RecieveCount  int32                         `json:"recieve_count"`
-	MessageCount  map[string]int                `json:"message_count"`
-	TopicsDeliver map[string] /*topicId*/ int32 `json:"topics_deliver"`
-	TopicsRecieve map[string] /*topicId*/ int32 `json:"topics_recieve"`
-	Groups        map[string][]string           `json:"groups"`
+	Goroutine        int32                         `json:"goroutine"`
+	DeliverGo        int32                         `json:"deliver_go"`
+	DeliverCount     int32                         `json:"deliver_count"`
+	RecieveCount     int32                         `json:"recieve_count"`
+	MessageCount     map[string]int                `json:"message_count"`
+	TopicsDeliver    map[string] /*topicId*/ int32 `json:"topics_deliver"`
+	TopicsRecieve    map[string] /*topicId*/ int32 `json:"topics_recieve"`
+	Groups           map[string][]string           `json:"groups"`
+	KiteServerLimter []int                         `json:"accpet_limiter"`
 }
 
 //handler monitor
@@ -103,15 +104,17 @@ func (self *KiteQServer) startFlow() {
 				}
 			}
 
+			used, total := self.limiter.LimiterInfo()
 			//kiteq
 			ks := kiteqstat{
-				Goroutine:     int32(runtime.NumGoroutine()),
-				DeliverGo:     self.kc.flowstat.DeliverGo.Count(),
-				DeliverCount:  self.kc.flowstat.DeliverFlow.Changes(),
-				RecieveCount:  self.kc.flowstat.RecieveFlow.Changes(),
-				MessageCount:  msgMap,
-				TopicsDeliver: topicsdeliver,
-				TopicsRecieve: topicsrecieve}
+				Goroutine:        int32(runtime.NumGoroutine()),
+				DeliverGo:        self.kc.flowstat.DeliverGo.Count(),
+				DeliverCount:     self.kc.flowstat.DeliverFlow.Changes(),
+				RecieveCount:     self.kc.flowstat.RecieveFlow.Changes(),
+				MessageCount:     msgMap,
+				TopicsDeliver:    topicsdeliver,
+				TopicsRecieve:    topicsrecieve,
+				KiteServerLimter: []int{used, total}}
 
 			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
 				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())

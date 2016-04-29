@@ -19,7 +19,7 @@
 		deliverySeconds=5
 		maxDeliverWorkers=8000
 		recoverSeconds=10
-		recievePermitsPerSecond=6000
+		recievePermitsPerSecond=10000
 	
 	[clusters.default_dev]
 		env="dev" #env=dev/online
@@ -31,4 +31,4 @@
 		deliverySeconds=5
 		maxDeliverWorkers=8000
 		recoverSeconds=10
-		recievePermitsPerSecond=6000
+		recievePermitsPerSecond=10000
