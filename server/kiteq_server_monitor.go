@@ -18,7 +18,7 @@ type kiteqstat struct {
 	TopicsDeliver    map[string] /*topicId*/ int32 `json:"topics_deliver"`
 	TopicsRecieve    map[string] /*topicId*/ int32 `json:"topics_recieve"`
 	Groups           map[string][]string           `json:"groups"`
-	KiteServerLimter []int                         `json:"accpet_limiter"`
+	KiteServerLimter []int                         `json:"accept_limiter"`
 }
 
 //handler monitor

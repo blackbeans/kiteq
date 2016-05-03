@@ -112,12 +112,8 @@ func NewDeliverPreEvent(messageId string, header *protocol.Header,
 //投递事件
 type deliverEvent struct {
 	p.IForwardEvent
-	messageId      string
-	topic          string
-	messageType    string
-	expiredTime    int64
-	publishtime    int64          //消息发布时间
-	fly            bool           //是否为fly模式的消息
+	header *protocol.Header
+	// fly            bool           //是否为fly模式的消息
 	packet         *packet.Packet //消息包
 	succGroups     []string       //已经投递成功的分组
 	deliverGroups  []string       //需要投递的群组
@@ -128,13 +124,9 @@ type deliverEvent struct {
 }
 
 //创建投递事件
-func newDeliverEvent(messageId string, topic string, messageType string,
-	publishtime int64, attemptDeliver chan []string) *deliverEvent {
+func newDeliverEvent(header *protocol.Header, attemptDeliver chan []string) *deliverEvent {
 	return &deliverEvent{
-		messageId:      messageId,
-		topic:          topic,
-		messageType:    messageType,
-		publishtime:    publishtime,
+		header:         header,
 		attemptDeliver: attemptDeliver}
 }
 
@@ -146,7 +138,7 @@ type GroupFuture struct {
 
 func (self GroupFuture) String() string {
 
-	return fmt.Sprintf("groupId:%s[%s],%s,err:%s", self.groupId, self.TargetHost, self.resp, self.Err)
+	return fmt.Sprintf("[%s@%s,resp:%v,err:%s]", self.TargetHost, self.groupId, self.resp, self.Err)
 }
 
 //统计投递结果的事件，决定不决定重发

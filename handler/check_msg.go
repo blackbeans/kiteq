@@ -73,6 +73,12 @@ func (self *CheckMessageHandler) Process(ctx *p.DefaultPipelineContext, event p.
 		} else {
 			//对头部的数据进行校验设置
 			h := pevent.entity.Header
+
+			//check createTime
+			if h.GetCreateTime() <= 0 {
+				h.CreateTime = protocol.MarshalInt64(time.Now().Unix())
+			}
+
 			if h.GetDeliverLimit() <= 0 || h.GetDeliverLimit() > MAX_DELIVER_LIMIT {
 				h.DeliverLimit = protocol.MarshalInt32(MAX_DELIVER_LIMIT)
 				//config entity value

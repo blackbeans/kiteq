@@ -58,7 +58,7 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 	//尝试注册一下当前的投递事件的消息
 	//如果失败则放弃本次投递
 	//会在 deliverResult里取消该注册事件可以继续投递
-	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
+	succ := self.deliveryRegistry.Registe(pevent.header.GetMessageId(), EXPIRED_SECOND)
 	if !succ {
 		return nil
 	}
@@ -81,7 +81,7 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 	pevent.deliverGroups = groups
 
 	//投递消息的统计
-	self.flowstat.IncrTopicDeliverFlow(pevent.topic, int32(len(groups)))
+	self.flowstat.IncrTopicDeliverFlow(pevent.header.GetTopic(), int32(len(groups)))
 
 	//增加消息投递的次数
 	pevent.deliverCount++

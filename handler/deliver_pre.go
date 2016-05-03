@@ -97,8 +97,7 @@ func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deli
 	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
 
 	//构造deliverEvent
-	deliverEvent := newDeliverEvent(pevent.messageId, pevent.header.GetTopic(),
-		pevent.header.GetMessageType(), entity.PublishTime, pevent.attemptDeliver)
+	deliverEvent := newDeliverEvent(pevent.header, pevent.attemptDeliver)
 
 	//创建不同的packet
 	switch entity.MsgType {
@@ -144,12 +143,7 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.
 
 //填充投递的额外信息
 func (self *DeliverPreHandler) fillDeliverExt(pevent *deliverEvent, entity *store.MessageEntity) {
-	pevent.messageId = entity.Header.GetMessageId()
-	pevent.topic = entity.Header.GetTopic()
-	pevent.messageType = entity.Header.GetMessageType()
-	pevent.expiredTime = entity.Header.GetExpiredTime()
-	pevent.fly = entity.Header.GetFly()
-	pevent.succGroups = entity.SuccGroups
+	pevent.header = entity.Header
 	pevent.deliverLimit = entity.DeliverLimit
 	pevent.deliverCount = entity.DeliverCount
 }
