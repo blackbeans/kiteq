@@ -97,6 +97,15 @@ KiteQ ![image](./doc/logo.jpg)
 ![image](doc/qcode.png)
 
 
+#### contact us 
+
+Mail: blackbeans.zc@gmail.com
+
+QQ: 136448723
+
+
+
+
 
 
 
