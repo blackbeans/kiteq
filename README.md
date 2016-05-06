@@ -94,7 +94,7 @@ KiteQ ![image](./doc/logo.jpg)
 #### Donate
 
 
-![image](doc/qcode.jpg)
+![image](doc/qcode.png)
 
 
 
