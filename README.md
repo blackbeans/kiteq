@@ -91,6 +91,11 @@ KiteQ ![image](./doc/logo.jpg)
 ##### 启动客户端：
 参考：github.com/blackbeans/kiteq-client-go
 
+#### Donate
+
+
+![image](doc/qcode.jpg)
+
 
 
 
