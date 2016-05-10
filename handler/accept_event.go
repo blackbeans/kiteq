@@ -76,7 +76,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	}
 
 	//如果申请流量失败则放弃
-	if !self.limiter.Acquire() && nil != msg {
+	if nil != msg && !self.limiter.Acquire() {
 		remoteEvent := pipe.NewRemotingEvent(storeAck(ae.opaque,
 			msg.Header.GetMessageId(), false,
 			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.remoteClient.LocalAddr())),

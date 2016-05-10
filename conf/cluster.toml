@@ -19,9 +19,9 @@
 		deliverySeconds=5
 		maxDeliverWorkers=8000
 		recoverSeconds=10
-		recievePermitsPerSecond=10000
+		recievePermitsPerSecond=20000
 	
-	[clusters.default_dev]
+	[clusters.file_dev]
 		env="dev" #env=dev/online
 		topics=["trade"]
 		dlqExecHour=2
@@ -31,4 +31,29 @@
 		deliverySeconds=5
 		maxDeliverWorkers=8000
 		recoverSeconds=10
-		recievePermitsPerSecond=10000
+		recievePermitsPerSecond=20000
+		
+	[clusters.mysql_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="mysql://localhost:3306?db=kite&username=root&batchUpdateSize=2000&batchDelSize=10000&flushSeconds=1&maxConn=20"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+		
+	[clusters.memory_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="memory://.?initcap=10000000&maxcap=2000000"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+

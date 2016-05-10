@@ -95,7 +95,7 @@ func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
 			flushPeriod = time.Duration(v * int64(flushPeriod))
 		}
 
-		maxConn := 500
+		maxConn := 20
 		mc, ok := params["maxConn"]
 		if ok {
 			v, e := strconv.ParseInt(mc, 10, 32)
@@ -161,7 +161,7 @@ func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
 		}
 
 		//最大消息容量
-		maxcap := 100
+		maxcap := 100 * 10000
 		d, ok := params["cap"]
 		if ok {
 			v, e := strconv.ParseInt(d, 10, 32)

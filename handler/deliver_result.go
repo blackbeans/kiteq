@@ -141,7 +141,7 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 	if len(fevent.deliverFailGroups) <= 0 {
 		if !fevent.header.GetFly() && !attemptDeliver {
 			//async batch remove
-			self.kitestore.AsyncDelete(fevent.header.GetMessageId())
+			self.kitestore.AsyncDelete(fevent.header.GetTopic(), fevent.header.GetMessageId())
 		}
 	} else {
 		//重投策略

@@ -44,7 +44,7 @@ func (self *TxAckHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent)
 	//提交或者回滚
 	if pevent.txPacket.GetStatus() == int32(protocol.TX_COMMIT) {
 
-		succ := self.kitestore.Commit(h.GetMessageId())
+		succ := self.kitestore.Commit(h.GetTopic(), h.GetMessageId())
 
 		if succ {
 			//发起投递事件
@@ -58,7 +58,7 @@ func (self *TxAckHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent)
 		}
 
 	} else if pevent.txPacket.GetStatus() == int32(protocol.TX_ROLLBACK) {
-		succ := self.kitestore.Rollback(h.GetMessageId())
+		succ := self.kitestore.Rollback(h.GetTopic(), h.GetMessageId())
 		if !succ {
 			log.Warn("TxAckHandler|%s|Process|Rollback|FAIL|%s|%s|%s\n", self.GetName(), h.GetMessageId(), pevent.txPacket.GetFeedback(), succ)
 		}

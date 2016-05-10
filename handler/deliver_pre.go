@@ -14,23 +14,25 @@ import (
 //----------------持久化的handler
 type DeliverPreHandler struct {
 	p.BaseForwardHandler
-	kitestore      store.IKiteStore
-	exchanger      *binding.BindExchanger
-	maxDeliverNum  chan byte
-	deliverTimeout time.Duration
-	flowstat       *stat.FlowStat
+	kitestore        store.IKiteStore
+	exchanger        *binding.BindExchanger
+	maxDeliverNum    chan byte
+	deliverTimeout   time.Duration
+	flowstat         *stat.FlowStat
+	deliveryRegistry *stat.DeliveryRegistry
 }
 
 //------创建deliverpre
 func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	exchanger *binding.BindExchanger, flowstat *stat.FlowStat,
-	maxDeliverWorker int) *DeliverPreHandler {
+	maxDeliverWorker int, deliveryRegistry *stat.DeliveryRegistry) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
 	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
 	phandler.flowstat = flowstat
+	phandler.deliveryRegistry = deliveryRegistry
 	return phandler
 }
 
@@ -49,6 +51,14 @@ func (self *DeliverPreHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 	pevent, ok := self.cast(event)
 	if !ok {
 		return p.ERROR_INVALID_EVENT_TYPE
+	}
+
+	//尝试注册一下当前的投递事件的消息
+	//如果失败则放弃本次投递
+	//会在 deliverResult里取消该注册事件可以继续投递
+	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
+	if !succ {
+		return nil
 	}
 
 	self.maxDeliverNum <- 1
@@ -75,13 +85,14 @@ func (self *DeliverPreHandler) checkValid(entity *store.MessageEntity) bool {
 
 //内部处理
 func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deliverPreEvent) {
+
 	//如果没有entity则直接查询一下db
 	entity := pevent.entity
 	if nil == entity {
 		//查询消息
-		entity = self.kitestore.Query(pevent.messageId)
+		entity = self.kitestore.Query(pevent.header.GetTopic(), pevent.messageId)
 		if nil == entity {
-			self.kitestore.Expired(pevent.messageId)
+			self.kitestore.Expired(pevent.header.GetTopic(), pevent.messageId)
 			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
 			return
 		}
@@ -89,7 +100,7 @@ func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deli
 
 	//check entity need to deliver
 	if !self.checkValid(entity) {
-		self.kitestore.Expired(entity.MessageId)
+		self.kitestore.Expired(pevent.header.GetTopic(), entity.MessageId)
 		return
 	}
 

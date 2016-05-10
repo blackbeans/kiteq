@@ -16,18 +16,15 @@ const (
 //----------------投递的handler
 type DeliverQosHandler struct {
 	p.BaseForwardHandler
-	flowstat         *stat.FlowStat
-	deliveryRegistry *stat.DeliveryRegistry
+	flowstat *stat.FlowStat
 }
 
 //------创建deliver
-func NewDeliverQosHandler(name string, flowstat *stat.FlowStat,
-	deliveryRegistry *stat.DeliveryRegistry) *DeliverQosHandler {
+func NewDeliverQosHandler(name string, flowstat *stat.FlowStat) *DeliverQosHandler {
 
 	phandler := &DeliverQosHandler{}
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	phandler.flowstat = flowstat
-	phandler.deliveryRegistry = deliveryRegistry
 	return phandler
 }
 
@@ -52,14 +49,6 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 		//直接显示投递成功
 		resultEvent := newDeliverResultEvent(pevent, nil)
 		ctx.SendForward(resultEvent)
-		return nil
-	}
-
-	//尝试注册一下当前的投递事件的消息
-	//如果失败则放弃本次投递
-	//会在 deliverResult里取消该注册事件可以继续投递
-	succ := self.deliveryRegistry.Registe(pevent.header.GetMessageId(), EXPIRED_SECOND)
-	if !succ {
 		return nil
 	}
 
