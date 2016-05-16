@@ -19,5 +19,5 @@ func TestParse(t *testing.T) {
 	kc := NewKiteQConfig(MockServerOption(), rc)
 	kiteqName, _ := os.Hostname()
 	store := parseDB(kc, kiteqName)
-	store.Delete("123456")
+	store.Delete("", "123456")
 }

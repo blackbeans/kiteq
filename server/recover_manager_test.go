@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/blackbeans/kiteq-common/binding"
+	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
@@ -60,8 +60,9 @@ func TestRecoverManager(t *testing.T) {
 	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger("localhost:2181", "127.0.0.1:13800")
-	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100))
+	exchanger := exchange.NewBindExchanger("zk://localhost:2181", "127.0.0.1:13800")
+	deliveryRegistry := stat.NewDeliveryRegistry(10)
+	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100, deliveryRegistry))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
 	tw := turbo.NewTimeWheel(100*time.Millisecond, 10, 10)

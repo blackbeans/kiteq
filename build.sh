@@ -10,7 +10,9 @@ go get github.com/blackbeans/turbo
 go get github.com/naoina/toml
 go get github.com/blackbeans/kiteq-common/stat
 go get github.com/blackbeans/kiteq-common/protocol
-go get github.com/blackbeans/kiteq-common/binding
+go get github.com/blackbeans/kiteq-common/registry
+go get github.com/blackbeans/kiteq-common/registry/bind
+go get github.com/blackbeans/kiteq-common/exchange
 go get github.com/blackbeans/kiteq-common/store
 go get github.com/blackbeans/kiteq-common/store/mysql
 go get github.com/blackbeans/kiteq-common/store/file

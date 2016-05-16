@@ -2,8 +2,9 @@ package handler
 
 import (
 	// log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/kiteq-common/binding"
+	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq-common/registry/bind"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	packet "github.com/blackbeans/turbo/packet"
@@ -15,7 +16,7 @@ import (
 type DeliverPreHandler struct {
 	p.BaseForwardHandler
 	kitestore        store.IKiteStore
-	exchanger        *binding.BindExchanger
+	exchanger        *exchange.BindExchanger
 	maxDeliverNum    chan byte
 	deliverTimeout   time.Duration
 	flowstat         *stat.FlowStat
@@ -24,7 +25,7 @@ type DeliverPreHandler struct {
 
 //------创建deliverpre
 func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
-	exchanger *binding.BindExchanger, flowstat *stat.FlowStat,
+	exchanger *exchange.BindExchanger, flowstat *stat.FlowStat,
 	maxDeliverWorker int, deliveryRegistry *stat.DeliveryRegistry) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
@@ -129,7 +130,7 @@ func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deli
 //填充订阅分组
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
 	binds, limiters := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
-		func(b *binding.Binding) bool {
+		func(b *bind.Binding) bool {
 			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
 			//过滤掉已经投递成功的分组
 			for _, sg := range entity.SuccGroups {

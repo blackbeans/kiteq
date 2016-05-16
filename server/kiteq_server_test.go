@@ -2,8 +2,8 @@ package server
 
 import (
 	"github.com/blackbeans/kiteq-client-go/client"
-	"github.com/blackbeans/kiteq-common/binding"
 	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq-common/registry/bind"
 	"github.com/blackbeans/kiteq-common/store"
 	turbo "github.com/blackbeans/turbo"
 	"github.com/golang/protobuf/proto"
@@ -67,10 +67,10 @@ func BenchmarkRemotingServer(t *testing.B) {
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 
-	kiteClient = client.NewKiteQClient("localhost:2181", "s-trade-a", "123456", &defualtListener{})
+	kiteClient = client.NewKiteQClient("zk://localhost:2181", "s-trade-a", "123456", &defualtListener{})
 	kiteClient.SetTopics([]string{"trade"})
-	kiteClient.SetBindings([]*binding.Binding{
-		binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
+	kiteClient.SetBindings([]*bind.Binding{
+		bind.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 	})
 	kiteClient.Start()
 
@@ -116,10 +116,10 @@ func TestRemotingServer(t *testing.T) {
 	kiteQServer.Start()
 	log.Println("KiteQServer START....")
 
-	kiteClient = client.NewKiteQClient("localhost:2181", "s-trade-a", "123456", &defualtListener{})
+	kiteClient = client.NewKiteQClient("zk://localhost:2181", "s-trade-a", "123456", &defualtListener{})
 	kiteClient.SetTopics([]string{"trade"})
-	kiteClient.SetBindings([]*binding.Binding{
-		binding.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
+	kiteClient.SetBindings([]*bind.Binding{
+		bind.Bind_Direct("s-trade-a", "trade", "pay-succ", 1000, true),
 	})
 	kiteClient.Start()
 

@@ -1,7 +1,7 @@
 package server
 
 import (
-	"github.com/blackbeans/kiteq-common/binding"
+	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
@@ -21,7 +21,7 @@ import (
 type KiteQServer struct {
 	reconnManager  *client.ReconnectManager
 	clientManager  *client.ClientManager
-	exchanger      *binding.BindExchanger
+	exchanger      *exchange.BindExchanger
 	remotingServer *server.RemotingServer
 	pipeline       *pipe.DefaultPipeline
 	recoverManager *RecoverManager
@@ -51,7 +51,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	clientManager := client.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := binding.NewBindExchanger(kc.so.zkhosts, kc.so.bindHost)
+	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
 	registry := stat.NewDeliveryRegistry(10 * 10000)
@@ -183,8 +183,7 @@ func (self *KiteQServer) startCheckConf() {
 		t := time.NewTicker(1 * time.Minute)
 		for !self.stop {
 			so := ServerOption{}
-			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName,
-				self.kc.so.bindHost, self.kc.so.pprofPort, &so)
+			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.pprofPort, &so)
 			if nil != err {
 				log.ErrorLog("kite_server", "KiteQServer|startCheckConf|FAIL|%s", err)
 			}
