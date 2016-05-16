@@ -36,9 +36,8 @@ type HostPort struct {
 
 //配置信息
 type Option struct {
-	BindAddress string              //绑定的地址端口
-	Registry    map[string]HostPort //registry的配置
-	Clusters    map[string]Cluster  //各集群的配置
+	Registry map[string]HostPort //registry的配置
+	Clusters map[string]Cluster  //各集群的配置
 }
 
 //----------------------------------------
@@ -154,7 +153,7 @@ func loadTomlConf(path, clusterName, bindAddr string, pprofPort int, so *ServerO
 	so.maxDeliverWorkers = cluster.MaxDeliverWorkers
 	so.recoverPeriod = time.Duration(cluster.RecoverSeconds * int64(time.Second))
 	so.recievePermitsPerSecond = cluster.RecievePermitsPerSecond
-	so.bindHost = option.BindAddress
+	so.bindHost = bindAddr
 	so.pprofPort = pprofPort
 	so.clusterName = clusterName
 	so.configPath = path
