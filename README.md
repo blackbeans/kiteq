@@ -104,23 +104,12 @@ KiteQ ![image](./doc/logo.jpg)
     2.安装装Zookeeper:省略
     3.启动KiteQ:
     
-        toml配置启动（推荐）
+        toml配置启动
             sh kiteq.sh 
             
             kiteq.sh里面对应的配置：
             ./kiteq -clusterName=集群名称 -configPath=配置文件路径
             文件样例见[conf/cluster.toml]       
-        
-        命令参数：
-            ./kiteq -bind=172.30.3.124:13800 -pport=13801 -db="memory://initcap=10000&maxcap=20000" -topics=trade,feed -zkhost=localhost:2181
-            -bind  //绑定本地IP:Port
-            -pport //pprof的Http端口
-            -db //存储的协议地址  mock:// 启动mock模式 mysql:// mmap:// 
-            -topics //本机可以处理的topics列表逗号分隔
-            -zkhost //zk的地址
-            -logxml=./log.xml //log4go的配置
-            -deliveryFirst=false //是否投递优先
-
 
 
 ##### 启动客户端：
