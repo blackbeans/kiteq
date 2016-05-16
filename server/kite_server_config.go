@@ -8,10 +8,7 @@ import (
 	"github.com/blackbeans/turbo"
 	"github.com/naoina/toml"
 	"io/ioutil"
-	"net"
 	"os"
-	"regexp"
-	"strings"
 	"time"
 )
 
@@ -98,6 +95,7 @@ func MockServerOption() ServerOption {
 func Parse() ServerOption {
 	//两种方式都支持
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
+	bindAddr := flag.String("bind", "localhost:13800", "-bind=localhost:13800")
 	clusterName := flag.String("clusterName", "default_dev", "-clusterName=default_dev")
 	configPath := flag.String("configPath", "", "-configPath=conf/cluster.toml kiteq配置的toml文件")
 	flag.Parse()
@@ -106,7 +104,7 @@ func Parse() ServerOption {
 	//判断当前采用配置文件加载
 	if nil != configPath && len(*configPath) > 0 {
 		//解析
-		err := loadTomlConf(*configPath, *clusterName, *pprofPort, &so)
+		err := loadTomlConf(*configPath, *clusterName, *bindAddr, *pprofPort, &so)
 		if nil != err {
 			panic("loadTomlConf|FAIL|" + err.Error())
 		}
@@ -117,7 +115,7 @@ func Parse() ServerOption {
 	return so
 }
 
-func loadTomlConf(path, clusterName string, pprofPort int, so *ServerOption) error {
+func loadTomlConf(path, clusterName, bindAddr string, pprofPort int, so *ServerOption) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -143,38 +141,6 @@ func loadTomlConf(path, clusterName string, pprofPort int, so *ServerOption) err
 	registry, exist := option.Registry[cluster.Env]
 	if !exist {
 		return errors.New("no zk  for " + clusterName + ":" + cluster.Env)
-	}
-
-	//------------寻找匹配的网卡IP段，进行匹配
-	split := strings.Split(option.BindAddress, ":")
-	regx := split[0]
-
-	addrs, err := net.InterfaceAddrs()
-	if nil != err {
-		panic(err)
-	} else {
-		hasMatched := false
-		//如果没有IP匹配表达式则用默认的
-		if len(regx) <= 0 {
-			option.BindAddress = "0.0.0.0:" + split[1]
-		} else {
-			for _, addr := range addrs {
-				if ip, ok := addr.(*net.IPNet); ok && !ip.IP.IsLoopback() {
-					if nil != ip.IP.To4() {
-						match, _ := regexp.MatchString(regx, ip.IP.To4().String())
-						if match {
-							option.BindAddress = ip.IP.To4().String() + ":" + split[1]
-							hasMatched = true
-							break
-						}
-					}
-				}
-			}
-		}
-		//没有匹配的IP直接用0.0.0.0的IP绑定
-		if !hasMatched {
-			option.BindAddress = "0.0.0.0:" + split[1]
-		}
 	}
 
 	//解析

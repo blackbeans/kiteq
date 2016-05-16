@@ -1,9 +1,7 @@
 # This is a TOML document.
 
 
-bindAddress="^10\\.83\\.\\d+\\.\\d+$:13000"
-
-#zookeeper的管理
+#registry的管理
 [registry]
 	[registry.dev]
 		hosts="zk://localhost:2181"

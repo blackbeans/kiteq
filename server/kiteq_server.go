@@ -183,7 +183,7 @@ func (self *KiteQServer) startCheckConf() {
 		t := time.NewTicker(1 * time.Minute)
 		for !self.stop {
 			so := ServerOption{}
-			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.pprofPort, &so)
+			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.bindHost, self.kc.so.pprofPort, &so)
 			if nil != err {
 				log.ErrorLog("kite_server", "KiteQServer|startCheckConf|FAIL|%s", err)
 			}
