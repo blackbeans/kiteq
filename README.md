@@ -54,21 +54,27 @@ KiteQ ![image](./doc/logo.jpg)
     
   KiteQ：
   
-    1.1 KiteQ启动会推送本机可以支持的接收和投递的Topic到注册中心(zk/etcd) /kiteq/server节点，同时监听是否订阅本机支持Topic的订阅分组订阅关系变化
-    1.2 在订阅关系发生变化时，注册中心通过watch机制通知KiteQ更新本地的订阅关系，并可以提供对新增订阅分组的消息投递工作
+        1.1 KiteQ启动会推送本机可以支持的接收和投递的Topic到注册中心(zk/etcd) /kiteq/server节点，同时监听是否订阅本机支持Topic的订阅分组订阅关系变化
+
+        1.2 在订阅关系发生变化时，注册中心通过watch机制通知KiteQ更新本地的订阅关系，并可以提供对新增订阅分组的消息投递工作
     
  Producer：
  
-    2.1 Producer启动后将本应用需要发送的消息的Topic列表推送到注册中心 /kiteq/pub节点(这部分只是用来集中化管理publish的分组)
-    2.2 通过配置的消息Topic列表获取注册中心对应KiteQ节点的IP:Port，并增加watch观测KiteQ节点的变化，做本地KiteQ地址列表的变化
-    3.1 通过获取的IP:Port在本地发起TCP长连接，并保持固定周期的心跳
-    3.2 KiteQ对长连接验证授权完成后，返回连接建立成功，此后即可发布对应的消息了。
+        2.1 Producer启动后将本应用需要发送的消息的Topic列表推送到注册中心 /kiteq/pub节点(这部分只是用来集中化管理publish的分组)
+    
+        2.2 通过配置的消息Topic列表获取注册中心对应KiteQ节点的IP:Port，并增加watch观测KiteQ节点的变化，做本地KiteQ地址列表的变化
+    
+        3.1 通过获取的IP:Port在本地发起TCP长连接，并保持固定周期的心跳
+    
+        3.2 KiteQ对长连接验证授权完成后，返回连接建立成功，此后即可发布对应的消息了。
     
  Consumer:
  
-    2.1 Consumer启动后会将本分组所订阅的订阅关系Binding推送到注册中心/kiteq/sub节点。
-    2.2 通过本地订阅关系订阅的Topic列表获取注册中心对应KiteQ节点的IP:Port，并增加watch观测KiteQ节点的变化，做本地KiteQ地址列表的变化
-    3.1、3.2 与Producer一致，在3.2完成后，KiteQ会在有对应消息来到时，推送给本分组内的随机一台Consumer
+        2.1 Consumer启动后会将本分组所订阅的订阅关系Binding推送到注册中心/kiteq/sub节点。
+        
+        2.2 通过本地订阅关系订阅的Topic列表获取注册中心对应KiteQ节点的IP:Port，并增加watch观测KiteQ节点的变化，做本地KiteQ地址列表的变化
+        
+        3.1、3.2 与Producer一致，在3.2完成后，KiteQ会在有对应消息来到时，推送给本分组内的随机一台Consumer
    
     - 注：
         发布订阅者没有绝对的角色区分。同一个分组既可以作为发布者也可以作为消息的订阅方。
