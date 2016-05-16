@@ -80,7 +80,7 @@ KiteQ ![image](./doc/logo.jpg)
    
  KiteQ-OPS:
     
-    基于注册中心以及KiteQ暴露的Http接口提供系统的数据，并以图表方式呈现KiteQ当前状态
+        基于注册中心以及KiteQ暴露的Http接口提供系统的数据，并以图表方式呈现KiteQ当前状态
    
     - 注：
         发布订阅者没有绝对的角色区分。同一个分组既可以作为发布者也可以作为消息的订阅方。
@@ -124,7 +124,7 @@ KiteQ ![image](./doc/logo.jpg)
 
 
 ##### 启动客户端：
-参考：github.com/blackbeans/kiteq-client-go
+    参考：github.com/blackbeans/kiteq-client-go
 
 #### Donate
 
