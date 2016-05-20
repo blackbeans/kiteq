@@ -10,7 +10,7 @@ KiteQ ![image](./doc/logo.jpg)
     C++: https://github.com/quguangjie/kiteq-client-cpp
 
 #### 简介
-    * 基于zk维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
+    * 基于zk/etcd维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
     * 基于与topic以及第二级messageType订阅消息
     * 基于mysql、文件存储方式多重持久层消息存储
     * 保证可靠异步投递
@@ -101,7 +101,7 @@ KiteQ ![image](./doc/logo.jpg)
 #####  QuickStart
 
     1.编译：sh build.sh 
-    2.安装装Zookeeper:省略
+    2.安装装Zookeeper:省略(或者安装etcd)
     3.启动KiteQ:
     
         toml配置启动
@@ -109,8 +109,12 @@ KiteQ ![image](./doc/logo.jpg)
             
             kiteq.sh里面对应的配置：
             ./kiteq -clusterName=集群名称 -configPath=配置文件路径
-            文件样例见[conf/cluster.toml]       
-
+            文件样例见[conf/cluster.toml]   
+         
+      - KiteQ的Registry
+      
+        etcd:  配置 etcd://http://localhost:2379,http://localhost:2379
+        zk:    配置 zk://localhost:2181,localhost:2181
 
 ##### 启动客户端：
     参考：github.com/blackbeans/kiteq-client-go
