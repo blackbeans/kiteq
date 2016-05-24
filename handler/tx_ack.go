@@ -60,7 +60,8 @@ func (self *TxAckHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent)
 	} else if pevent.txPacket.GetStatus() == int32(protocol.TX_ROLLBACK) {
 		succ := self.kitestore.Rollback(h.GetTopic(), h.GetMessageId())
 		if !succ {
-			log.Warn("TxAckHandler|%s|Process|Rollback|FAIL|%s|%s|%s\n", self.GetName(), h.GetMessageId(), pevent.txPacket.GetFeedback(), succ)
+			log.WarnLog("kite_handler", "TxAckHandler|%s|Process|Rollback|FAIL|%s|%s|%s",
+				self.GetName(), h.GetMessageId(), pevent.txPacket.GetFeedback(), succ)
 		}
 
 	} else {

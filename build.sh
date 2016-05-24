@@ -41,8 +41,3 @@ go build  -a -o ./$PROJ $PROJ.go
 
 tar -zcvf kiteq.tar.gz $PROJ log/log.xml conf/*.toml
 
-
-
-
-
-
