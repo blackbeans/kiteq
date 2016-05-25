@@ -1,0 +1,78 @@
+package protocol;
+
+//心跳请求包
+message HeartBeat{
+    required int64 version  = 1;
+}
+
+//连接的Meta数据包
+message ConnMeta{
+    required string groupId = 1; //当前客户端连接所属分组名称
+    required string secretKey  = 2; //当前连接的授权key
+}
+
+//握手确认数据包
+message ConnAuthAck{
+    required bool status = 1 [default = true];//状态
+    required string feedback =2;//返回原因
+}
+
+//消息确认接收数据包
+message MessageStoreAck{
+    required string messageId = 1;
+    required bool status = 2 [default = true];//状态
+    required string feedback =3;//返回原因
+}
+
+
+//消息接收packet
+message DeliverAck{
+    required string messageId =1;//消息id
+    required string topic = 2;
+    required string messageType = 3;
+    required string groupId = 4; //消息处理  
+    required bool status =  5 [default = true];//处理状态
+    optional string feedback = 6;//处理状态
+}
+
+//事务确认数据包
+message TxACKPacket{    
+     required Header header  = 1; //消息头部
+     required int32 status = 2 [default = 0]; //事务状态 0; //未知  1;  //已提交 2; //回滚 
+     required string feedback = 3; //回馈
+}
+
+
+message Entry {
+    required string key  = 1;
+    required string value  = 2;
+}
+
+
+message Header{
+    required string messageId = 1;
+    required string topic = 2; //topic类型
+    required string messageType = 3; //消息类型
+    required int64  expiredTime =4 [default = -1]; //消息过期时间 -1 为不过期
+    required int32  deliverLimit = 5 [default = 100]; //投递次数限制，默认100次，但是随着投递的时间会慢慢衰减
+    required string groupId = 6; // 消息发送来源
+    required bool commit = 7; //本消息是否提交
+    required bool fly = 8 [default = false];//消息是否为fly模式   true 为 不存储直接投递 false为存储并投递
+    repeated Entry properties =9; //用户自定义的消息属性其实就是Map
+    optional int64 createTime  = 10; //消息生成时间
+}
+
+//byte类消息
+message BytesMessage{
+    required Header  header= 1;
+    required  bytes body = 2;    
+}
+
+
+//string类型的message
+message StringMessage{
+    required Header header = 1;
+    required string body = 2;
+}
+
+

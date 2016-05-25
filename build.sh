@@ -1,23 +1,23 @@
 #!/bin/bash
 
-go get github.com/golang/groupcache/lru
-go get github.com/golang/protobuf/{proto,protoc-gen-go}
-go get github.com/blackbeans/go-uuid
-go get github.com/go-sql-driver/mysql
-go get github.com/blackbeans/log4go
-go get github.com/blackbeans/go-zookeeper/zk
-go get github.com/blackbeans/turbo
-go get github.com/naoina/toml
-go get github.com/blackbeans/kiteq-common/stat
-go get github.com/blackbeans/kiteq-common/protocol
-go get github.com/blackbeans/kiteq-common/registry
-go get github.com/blackbeans/kiteq-common/registry/bind
-go get github.com/blackbeans/kiteq-common/exchange
-go get github.com/blackbeans/kiteq-common/store
-go get github.com/blackbeans/kiteq-common/store/mysql
-go get github.com/blackbeans/kiteq-common/store/file
-go get github.com/blackbeans/kiteq-common/store/memory
-
+#go get github.com/golang/groupcache/lru
+#go get github.com/golang/protobuf/{proto,protoc-gen-go}
+#go get github.com/blackbeans/go-uuid
+#go get github.com/go-sql-driver/mysql
+#go get github.com/blackbeans/log4go
+#go get github.com/blackbeans/go-zookeeper/zk
+#go get github.com/blackbeans/turbo
+#go get github.com/naoina/toml
+#go get github.com/blackbeans/kiteq-common/stat
+#go get github.com/blackbeans/kiteq-common/protocol
+#go get github.com/blackbeans/kiteq-common/registry
+#go get github.com/blackbeans/kiteq-common/registry/bind
+#go get github.com/blackbeans/kiteq-common/exchange
+#go get github.com/blackbeans/kiteq-common/store
+#go get github.com/blackbeans/kiteq-common/store/mysql
+#go get github.com/blackbeans/kiteq-common/store/file
+#go get github.com/blackbeans/kiteq-common/store/memory
+#
 
 #protoc --go_out=. ./protocol/*.proto
 go build  kiteq/handler
