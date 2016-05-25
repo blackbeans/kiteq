@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 #go get github.com/golang/groupcache/lru
 #go get github.com/golang/protobuf/{proto,protoc-gen-go}
 #go get github.com/blackbeans/go-uuid
