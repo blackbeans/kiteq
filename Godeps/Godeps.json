@@ -106,7 +106,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "e51d002c610dbe8c136679a67a6ded5df4d49b5c"
+			"Rev": "9e6977f30c91c78396e719e164e57f9287fff42c"
 		},
 		{
 			"ImportPath": "github.com/naoina/go-stringutil",
@@ -129,7 +129,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "0c607074acd38c5f23d1344dfe74c977464d1257"
+			"Rev": "7553b97266dcbbf78298bd1a2b12d9c9aaae5f40"
 		}
 	]
 }
