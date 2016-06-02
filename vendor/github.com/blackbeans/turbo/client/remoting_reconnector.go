@@ -103,6 +103,8 @@ func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 			//继续提交重试任务,如果成功那么就不用再重建
 			timer.Reset(connTime)
 		} else {
+			self.lock.Lock()
+			defer self.lock.Unlock()
 			_, ok := self.timers[addr]
 			if ok {
 				delete(self.timers, addr)
