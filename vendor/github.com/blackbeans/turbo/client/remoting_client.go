@@ -90,6 +90,8 @@ func (self *RemotingClient) reconnect() (bool, error) {
 	self.conn = conn
 	//创建session
 	self.remoteSession = session.NewSession(self.conn, self.rc, self.codecFunc())
+	//create an new channel
+	self.AttachChannel = make(chan interface{}, 100)
 
 	//再次启动remoteClient
 	self.Start()

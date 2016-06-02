@@ -1,7 +1,7 @@
 {
 	"ImportPath": "kiteq",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v70",
+	"GodepVersion": "v73",
 	"Deps": [
 		{
 			"ImportPath": "github.com/blackbeans/go-uuid",
@@ -54,51 +54,51 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/client",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/codec",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/packet",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/pipe",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/server",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/session",
-			"Rev": "4d7614cbb224cb426cc052c5585db26d5b461139"
+			"Rev": "2a741ac9689dbdae71cfd80bf43db4cd531c58be"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v3.0.0-beta.0-204-g84ded59",
-			"Rev": "84ded59f08b51bb6596aef6048aa69226c90c883"
+			"Comment": "v3.0.0-beta.0-304-g29d2caf",
+			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v3.0.0-beta.0-204-g84ded59",
-			"Rev": "84ded59f08b51bb6596aef6048aa69226c90c883"
+			"Comment": "v3.0.0-beta.0-304-g29d2caf",
+			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v3.0.0-beta.0-204-g84ded59",
-			"Rev": "84ded59f08b51bb6596aef6048aa69226c90c883"
+			"Comment": "v3.0.0-beta.0-304-g29d2caf",
+			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
-			"Comment": "v1.2-194-g7ebe0a5",
-			"Rev": "7ebe0a500653eeb1859664bed5e48dec1e164e73"
+			"Comment": "v1.2-196-g3654d25",
+			"Rev": "3654d25ec346ee8ce71a68431025458d52a38ac0"
 		},
 		{
 			"ImportPath": "github.com/golang/groupcache/lru",
@@ -106,7 +106,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "9e6977f30c91c78396e719e164e57f9287fff42c"
+			"Rev": "3b06fc7a4cad73efce5fe6217ab6c33e7231ab4a"
 		},
 		{
 			"ImportPath": "github.com/naoina/go-stringutil",
@@ -125,11 +125,11 @@
 		},
 		{
 			"ImportPath": "github.com/ugorji/go/codec",
-			"Rev": "a396ed22fc049df733440d90efe17475e3929ccb"
+			"Rev": "b94837a2404ab90efe9289e77a70694c355739cb"
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "7553b97266dcbbf78298bd1a2b12d9c9aaae5f40"
+			"Rev": "c4c3ea71919de159c9e246d7be66deb7f0a39a58"
 		}
 	]
 }

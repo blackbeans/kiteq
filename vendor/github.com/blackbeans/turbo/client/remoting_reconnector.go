@@ -83,6 +83,8 @@ func (self *ReconnectManager) startReconTask(task *reconnectTask) {
 		log.Info("ReconnectManager|START RECONNECT|%s|retryCount:%d\n", addr, task.retryCount)
 		succ, err := task.reconnect(self.handshake)
 		if nil != err || !succ {
+			self.lock.Lock()
+			defer self.lock.Unlock()
 			timer := self.timers[addr]
 
 			//如果当前重试次数大于最大重试次数则放弃

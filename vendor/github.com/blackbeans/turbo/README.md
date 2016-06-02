@@ -1,5 +1,5 @@
 ##### turbo
-turbo is a lightweight  remoting framework 
+turbo is a lightweight  network framework for golang
  
 ##### Install
 
