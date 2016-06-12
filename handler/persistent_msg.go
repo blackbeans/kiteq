@@ -75,10 +75,10 @@ func (self *PersistentHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 
 //发送非flymessage
 func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, pevent *persistentEvent) {
-	saveSucc := true
+	saveSucc := false
 
 	// log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
-
+	var storeCostMs int64
 	//提交并且开启优化
 	if self.deliveryFirst &&
 		pevent.entity.Header.GetCommit() {
@@ -97,7 +97,14 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, p
 			}
 
 			//写入到持久化存储里面
+			now := time.Now().UnixNano()
+			//写入到持久化存储里面,再投递
 			saveSucc = self.kitestore.Save(pevent.entity)
+			storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
+			if storeCostMs >= 100 {
+				log.WarnLog("kite_handler", "PersistentHandler|Save Too Long|cost:%d ms", storeCostMs)
+			}
+
 			//再投递
 			self.send(ctx, pevent, nil)
 		} else {
@@ -105,10 +112,14 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, p
 		}
 
 	} else {
-		// now := time.Now().UnixNano()
+		now := time.Now().UnixNano()
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)
-		// log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|cost:%d", time.Now().UnixNano()-now)
+		storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
+		if storeCostMs >= 100 {
+			log.WarnLog("kite_handler", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
+		}
+
 		if saveSucc && pevent.entity.Commit {
 			self.send(ctx, pevent, nil)
 		}
@@ -117,7 +128,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, p
 
 	//发送存储结果ack
 	remoteEvent := p.NewRemotingEvent(storeAck(pevent.opaque,
-		pevent.entity.Header.GetMessageId(), saveSucc, fmt.Sprintf("Store Result %t", saveSucc)),
+		pevent.entity.Header.GetMessageId(), saveSucc, fmt.Sprintf("Store Result %t Cost:%d", saveSucc, storeCostMs)),
 		[]string{pevent.remoteClient.RemoteAddr()})
 	ctx.SendForward(remoteEvent)
 
