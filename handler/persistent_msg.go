@@ -101,8 +101,8 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, p
 			//写入到持久化存储里面,再投递
 			saveSucc = self.kitestore.Save(pevent.entity)
 			storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
-			if storeCostMs >= 100 {
-				log.WarnLog("kite_handler", "PersistentHandler|Save Too Long|cost:%d ms", storeCostMs)
+			if storeCostMs >= 200 {
+				log.WarnLog("kite_store", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
 			}
 
 			//再投递
@@ -116,8 +116,8 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *p.DefaultPipelineContext, p
 		//写入到持久化存储里面,再投递
 		saveSucc = self.kitestore.Save(pevent.entity)
 		storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
-		if storeCostMs >= 100 {
-			log.WarnLog("kite_handler", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
+		if storeCostMs >= 200 {
+			log.WarnLog("kite_store", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
 		}
 
 		if saveSucc && pevent.entity.Commit {
