@@ -42,7 +42,7 @@ type KiteFileStore struct {
 	running bool
 }
 
-func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFileStore {
+func NewKiteFileStore(dir string, batchFlush int, maxcap int, checkPeriod time.Duration) *KiteFileStore {
 
 	datalink := make([]*list.List, 0, CONCURRENT_LEVEL)
 	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)
@@ -65,7 +65,7 @@ func NewKiteFileStore(dir string, maxcap int, checkPeriod time.Duration) *KiteFi
 		delChan:  delChan}
 
 	kms.snapshot =
-		NewMessageStore(dir+"/snapshot/", 300, checkPeriod, func(ol *oplog) {
+		NewMessageStore(dir+"/snapshot/", batchFlush, checkPeriod, func(ol *oplog) {
 			kms.replay(ol)
 		})
 	return kms
@@ -177,7 +177,7 @@ func (self *KiteFileStore) Length() map[string]int {
 }
 
 func (self *KiteFileStore) Monitor() string {
-	return fmt.Sprintf("\nmessage-length:%d\n", self.Length())
+	return fmt.Sprintf("\nmessage-length:%v\t writeChannel:%d \n", self.Length(), len(self.snapshot.writeChannel))
 }
 
 func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }

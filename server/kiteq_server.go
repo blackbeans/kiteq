@@ -4,6 +4,7 @@ import (
 	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
+	"github.com/blackbeans/kiteq-common/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/client"
@@ -41,7 +42,9 @@ func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool,
 func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 	kiteqName, _ := os.Hostname()
-	kitedb := parseDB(kc, kiteqName)
+
+	kitedb := parser.ParseDB(kc.so.db, kiteqName)
+	kc.flowstat.Kitestore = kitedb
 	kitedb.Start()
 
 	//重连管理器

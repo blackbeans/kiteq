@@ -1,4 +1,4 @@
-package server
+package parser
 
 import (
 	"github.com/blackbeans/kiteq-common/store"
@@ -15,11 +15,9 @@ import (
 //  mock    mock://
 //  memory  memory://initcap=1000&maxcap=2000
 //  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1
-//  file    file:///path?cap=10000000&checkSeconds=60
+//  file    file:///path?cap=10000000&checkSeconds=60&flushBatchSize=1000
 
-func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
-	db := kc.so.db
-
+func ParseDB(db string, serverName string) store.IKiteStore {
 	var kitedb store.IKiteStore
 	if strings.HasPrefix(db, "mock://") {
 		kitedb = &store.MockKiteStore{}
@@ -173,20 +171,30 @@ func parseDB(kc KiteQConfig, serverName string) store.IKiteStore {
 
 		//检查文件过期时间
 		checkPeriod := 1 * time.Second
-		fp, ok := params["checkSeconds"]
+		cs, ok := params["checkSeconds"]
 		if ok {
-			v, e := strconv.ParseInt(fp, 10, 32)
+			v, e := strconv.ParseInt(cs, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
 			}
 			checkPeriod = time.Duration(v * int64(checkPeriod))
 		}
 
-		kitedb = smf.NewKiteFileStore(mp[0], maxcap, checkPeriod)
+		//批量flush的大小
+		fbsize := 1000
+		fbs, ok := params["flushBatchSize"]
+		if ok {
+			v, e := strconv.ParseInt(fbs, 10, 32)
+			if nil != e {
+				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
+			}
+			fbsize = int(v)
+		}
+
+		kitedb = smf.NewKiteFileStore(mp[0], fbsize, maxcap, checkPeriod)
 		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", mp[0], maxcap, int(checkPeriod.Seconds()))
 	} else {
 		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
-	kc.flowstat.Kitestore = kitedb
 	return kitedb
 }
