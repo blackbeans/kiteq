@@ -13,43 +13,43 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "9bf538228762b11705ae5663c0694dec3a28bb29"
+			"Rev": "3216c2a6343f8552014baaa9fd8851bb4c330e64"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",

@@ -112,7 +112,7 @@ func (self *MessageStore) evict() {
 		}
 
 		if len(remove) > 0 {
-			self.remove(remove)
+			go self.remove(remove)
 		}
 		remove = remove[:0]
 	}
@@ -506,7 +506,7 @@ func (self *MessageStore) sync() {
 	chunks := make(Chunks, 0, self.batchSize)
 
 	currBytes := 0
-	ticker := time.NewTicker(5 * time.Millisecond)
+	ticker := time.NewTicker(1 * time.Second)
 	var curr *Segment
 	for self.running {
 		var cmd *command
