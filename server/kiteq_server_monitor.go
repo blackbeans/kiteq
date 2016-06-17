@@ -82,9 +82,12 @@ func (self *KiteQServer) startFlow() {
 			topicsdeliver, topicsrecieve := self.kc.flowstat.TopicFlowSnapshot()
 
 			//消息堆积数量
-			msgMap := make(map[string]int, 20)
+			var msgMap map[string]int
 			if nil != self.kitedb {
 				msgMap = self.kitedb.Length()
+				if nil == msgMap {
+					msgMap = make(map[string]int, 20)
+				}
 			}
 
 			for _, t := range self.kc.so.topics {

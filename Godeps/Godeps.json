@@ -1,7 +1,7 @@
 {
 	"ImportPath": "kiteq",
 	"GoVersion": "go1.6",
-	"GodepVersion": "v73",
+	"GodepVersion": "v74",
 	"Deps": [
 		{
 			"ImportPath": "github.com/blackbeans/go-uuid",
@@ -86,23 +86,23 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-510-g2d08e09",
+			"Rev": "2d08e093c101d77c4d1c0f0ce2bf35701e8a2e37"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-510-g2d08e09",
+			"Rev": "2d08e093c101d77c4d1c0f0ce2bf35701e8a2e37"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-510-g2d08e09",
+			"Rev": "2d08e093c101d77c4d1c0f0ce2bf35701e8a2e37"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
-			"Comment": "v1.2-196-g3654d25",
-			"Rev": "3654d25ec346ee8ce71a68431025458d52a38ac0"
+			"Comment": "v1.2-194-g7ebe0a5",
+			"Rev": "7ebe0a500653eeb1859664bed5e48dec1e164e73"
 		},
 		{
 			"ImportPath": "github.com/golang/groupcache/lru",
@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "3b06fc7a4cad73efce5fe6217ab6c33e7231ab4a"
+			"Rev": "0c1f6d65b5a189c2250d10e71a5506f06f9fa0a0"
 		},
 		{
 			"ImportPath": "github.com/naoina/go-stringutil",
@@ -133,7 +133,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/context",
-			"Rev": "c4c3ea71919de159c9e246d7be66deb7f0a39a58"
+			"Rev": "76e74a336561c500a376b406eb649727eeb3477f"
 		}
 	]
 }
