@@ -101,8 +101,9 @@ func NewFileLogWriter(fname string, rotate bool, daily bool) *FileLogWriter {
 							return
 						}
 					}
-				} else if !w.daily && ((w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
-					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize)) {
+				}
+				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
+					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) {
 					if err := w.intRotate(); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
@@ -153,7 +154,8 @@ func (w *FileLogWriter) intRotate() error {
 						t := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
 						fname = w.filename + fmt.Sprintf(".%s.%03d", t, num)
 					} else {
-						fname = w.filename + fmt.Sprintf(".%03d", num)
+						t := time.Now().Format("2006-01-02")
+						fname = w.filename + fmt.Sprintf(".%s.%03d", t, num)
 					}
 				} else {
 					fname = w.filename + fmt.Sprintf(".%03d", num)
