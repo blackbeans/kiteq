@@ -92,6 +92,15 @@ func NewFileLogWriter(fname string, rotate bool, daily bool) *FileLogWriter {
 				if !ok {
 					return
 				}
+
+				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
+					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) {
+					if err := w.intRotate(); err != nil {
+						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+						return
+					}
+				}
+
 				now := time.Now()
 				//如果是开启了并且按天滚动，并且已经换了一天需要重建
 				if w.daily {
@@ -100,13 +109,6 @@ func NewFileLogWriter(fname string, rotate bool, daily bool) *FileLogWriter {
 							fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 							return
 						}
-					}
-				}
-				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
-					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) {
-					if err := w.intRotate(); err != nil {
-						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-						return
 					}
 				}
 

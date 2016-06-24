@@ -53,8 +53,8 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
-			"Comment": "go.weekly.2012-02-22-36-g6750adc",
-			"Rev": "6750adc8d66802f754173680d8fa66aaf13eb4f1"
+			"Comment": "go.weekly.2012-02-22-37-gc4c6801",
+			"Rev": "c4c6801b024dc5dde10832735571729d571d08fa"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
