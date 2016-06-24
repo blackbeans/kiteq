@@ -151,7 +151,9 @@ func (w *FileLogWriter) intRotate() error {
 				if w.daily {
 					if time.Now().Day() != w.daily_opendate {
 						t := time.Now().Add(-24 * time.Hour).Format("2006-01-02")
-						fname = w.filename + fmt.Sprintf(".%s.%3d", t, num)
+						fname = w.filename + fmt.Sprintf(".%s.%03d", t, num)
+					} else {
+						fname = w.filename + fmt.Sprintf(".%03d", num)
 					}
 				} else {
 					fname = w.filename + fmt.Sprintf(".%03d", num)
