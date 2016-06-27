@@ -2,12 +2,12 @@ package packet
 
 //请求的packet
 type Packet struct {
-	Header *PacketHeader
+	Header PacketHeader
 	Data   []byte
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
-	h := &PacketHeader{Opaque: -1, CmdType: cmdtype, BodyLen: int32(len(data))}
+	h := PacketHeader{Opaque: -1, CmdType: cmdtype, BodyLen: int32(len(data))}
 	return &Packet{Header: h,
 		Data: data}
 }

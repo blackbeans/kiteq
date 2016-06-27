@@ -14,7 +14,7 @@ type PacketHeader struct {
 	BodyLen   int32 //body的长度
 }
 
-func MarshalHeader(header *PacketHeader, bodyLen int32) *bytes.Buffer {
+func MarshalHeader(header PacketHeader, bodyLen int32) *bytes.Buffer {
 	b := make([]byte, 0, 4+PACKET_HEAD_LEN+bodyLen)
 	buff := bytes.NewBuffer(b)
 	//写入包头长度
@@ -28,31 +28,31 @@ func MarshalHeader(header *PacketHeader, bodyLen int32) *bytes.Buffer {
 	return buff
 }
 
-func UnmarshalHeader(r *bytes.Reader) (*PacketHeader, error) {
-	header := &PacketHeader{}
+func UnmarshalHeader(r *bytes.Reader) (PacketHeader, error) {
+	header := PacketHeader{}
 	err := Read(r, binary.BigEndian, &(header.Opaque))
 	if nil != err {
-		return nil, err
+		return header, err
 	}
 
 	err = Read(r, binary.BigEndian, &(header.CmdType))
 	if nil != err {
-		return nil, err
+		return header, err
 	}
 
 	err = Read(r, binary.BigEndian, &(header.Version))
 	if nil != err {
-		return nil, err
+		return header, err
 	}
 
 	err = Read(r, binary.BigEndian, &(header.Extension))
 	if nil != err {
-		return nil, err
+		return header, err
 	}
 
 	err = Read(r, binary.BigEndian, &(header.BodyLen))
 	if nil != err {
-		return nil, err
+		return header, err
 	}
 
 	return header, nil

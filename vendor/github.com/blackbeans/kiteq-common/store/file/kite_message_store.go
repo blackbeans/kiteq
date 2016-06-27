@@ -107,7 +107,7 @@ func (self *MessageStore) evict() {
 		}()
 
 		if len(stat) > 0 {
-			log.InfoLog("kite_store", "---------------MessageStore-Stat--------------\n"+
+			log.InfoLog("kite_store", "\n---------------MessageStore-Stat--------------\n"+
 				"|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", stat)
 		}
 
