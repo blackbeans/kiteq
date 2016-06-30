@@ -188,7 +188,6 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 	clients := make(map[string][]*RemotingClient, 10)
 	var closedClients []*RemotingClient
 	self.lock.RLock()
-	defer self.lock.RUnlock()
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
 			continue
@@ -215,6 +214,7 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 		}
 		clients[gid] = gclient
 	}
+	self.lock.RUnlock()
 
 	//删除掉关掉的clients
 	if nil != closedClients && len(closedClients) > 0 {
