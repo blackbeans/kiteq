@@ -187,6 +187,8 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string, rc *RemotingClient) bool) map[string][]*RemotingClient {
 	clients := make(map[string][]*RemotingClient, 10)
 	var closedClients []*RemotingClient
+	self.lock.RLock()
+	defer self.lock.RUnlock()
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
 			continue
@@ -197,7 +199,6 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 			gclient = make([]*RemotingClient, 0, 10)
 		}
 
-		self.lock.RLock()
 		for _, c := range self.groupClients[gid] {
 
 			if c.IsClosed() {
@@ -212,8 +213,6 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 				gclient = append(gclient, c)
 			}
 		}
-		self.lock.RUnlock()
-
 		clients[gid] = gclient
 	}
 

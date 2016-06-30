@@ -58,46 +58,46 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/client",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/codec",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/packet",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/pipe",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/server",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/session",
-			"Rev": "f96017bd73697e25959594aa7a5d32ae6b50575a"
+			"Rev": "d01ab7d00ae456cbc078df68b0334114b9e15070"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-713-g0e137e2",
+			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-713-g0e137e2",
+			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v3.0.0-beta.0-304-g29d2caf",
-			"Rev": "29d2caf14afb3adbaead69c78c6657c92890ed79"
+			"Comment": "v3.0.0-beta.0-713-g0e137e2",
+			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "3b06fc7a4cad73efce5fe6217ab6c33e7231ab4a"
+			"Rev": "3852dcfda249c2097355a6aabb199a28d97b30df"
 		},
 		{
 			"ImportPath": "github.com/naoina/go-stringutil",
