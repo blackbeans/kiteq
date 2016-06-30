@@ -154,22 +154,23 @@ func (self *ClientManager) removeClient(hostport string) {
 
 func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
 
-	if self.reconnectManager.allowReconnect {
-		self.lock.Lock()
-		defer self.lock.Unlock()
-		ga, ok := self.groupAuth[c.RemoteAddr()]
-		if ok {
-			//如果重连则提交重连任务
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	ga, ok := self.groupAuth[c.RemoteAddr()]
+	//如果重连则提交重连任务,并且该分组存在该机器则重连
+	if ok && self.reconnectManager.allowReconnect {
 
-			self.reconnectManager.submit(c, ga, func(addr string) {
-				//重连任务失败完成后的hook,直接移除该机器
-				self.DeleteClients(addr)
-			})
-		} else {
-			//不需要重连的直接删除掉连接
-			self.removeClient(c.RemoteAddr())
-		}
+		self.reconnectManager.submit(c, ga, func(addr string) {
+			//重连任务失败完成后的hook,直接移除该机器
+			self.DeleteClients(addr)
+		})
+		return
+
 	}
+
+	//不需要重连的直接删除掉连接,或者分组不存在则直接删除
+	self.removeClient(c.RemoteAddr())
+
 }
 
 //查找remotingclient
