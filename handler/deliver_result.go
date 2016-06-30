@@ -98,13 +98,8 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 	}
 
 	if len(fevent.futures) > 0 {
-		tid, ch := self.tw.After(self.deliverTimeout, func() {})
-		func() {
-			defer self.tw.Remove(tid)
-			//等待回调结果
-			fevent.wait(ch)
-		}()
-
+		//等待回调结果
+		fevent.wait(self.deliverTimeout)
 	}
 
 	//增加投递成功的分组

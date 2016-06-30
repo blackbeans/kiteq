@@ -9,6 +9,7 @@ import (
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
 	p "github.com/blackbeans/turbo/pipe"
+	"time"
 )
 
 type iauth interface {
@@ -163,14 +164,15 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]*turbo
 }
 
 //等待响应
-func (self *deliverResultEvent) wait(ch chan bool) bool {
-	timeout := false
+func (self *deliverResultEvent) wait(timeout time.Duration) bool {
+	istimeout := false
+	timeoutch := time.After(timeout)
 	//等待回调结果
 	for g, f := range self.futures {
-		resp, err := f.Get(ch)
+		resp, err := f.Get(timeoutch)
 
 		if err == turbo.TIMEOUT_ERROR {
-			timeout = true
+			istimeout = true
 		} else if nil != resp {
 			ack, ok := resp.(*protocol.DeliverAck)
 			if !ok || !ack.GetStatus() {
@@ -197,5 +199,5 @@ func (self *deliverResultEvent) wait(ch chan bool) bool {
 		sg = append(sg, g.groupId)
 	}
 	self.deliverSuccGroups = sg
-	return timeout
+	return istimeout
 }

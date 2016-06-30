@@ -50,28 +50,21 @@ func (self Future) SetResponse(resp interface{}) {
 
 }
 
-func (self Future) Get(timeout chan bool) (interface{}, error) {
+func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
 	//强制设置
 	if nil != self.Err {
 		return nil, self.Err
 	}
 
 	select {
-	case resp := <-timeout:
-
-		//如果是空的则已经超时，使用非阻塞方式直接获取当前结果
-		if !resp {
-			select {
-			case resp := <-self.response:
-				return resp, nil
-			default:
-				//如果是已经超时了但是当前还是没有响应也认为超时
-				return nil, TIMEOUT_ERROR
-			}
+	case <-timeout:
+		select {
+		case resp := <-self.response:
+			return resp, nil
+		default:
+			//如果是已经超时了但是当前还是没有响应也认为超时
+			return nil, TIMEOUT_ERROR
 		}
-
-		//如果是因为本次超时引起的则直接返回超时
-		return nil, TIMEOUT_ERROR
 
 	case resp := <-self.response:
 		e, ok := resp.(error)

@@ -196,16 +196,11 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	self.rc.RequestHolder.Attach(opaque, future)
 	err := self.remoteSession.Write(pp)
 	// //同步写出
-	// future, err := self.Write(p)
 	if nil != err {
 		return nil, err
 	}
-
-	tid, ch := self.rc.TW.After(timeout, func() {
-	})
-
-	resp, err := future.Get(ch)
-	self.rc.TW.Remove(tid)
+	tchan := time.After(timeout)
+	resp, err := future.Get(tchan)
 	return resp, err
 
 }
