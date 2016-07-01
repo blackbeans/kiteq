@@ -166,10 +166,17 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]*turbo
 //等待响应
 func (self *deliverResultEvent) wait(timeout time.Duration) bool {
 	istimeout := false
-	timeoutch := time.After(timeout)
+	latch := make(chan time.Time, 1)
+	t := time.AfterFunc(timeout, func() {
+		close(latch)
+	})
+
+	defer t.Stop()
+	tch := (<-chan time.Time)(latch)
+
 	//等待回调结果
 	for g, f := range self.futures {
-		resp, err := f.Get(timeoutch)
+		resp, err := f.Get(tch)
 
 		if err == turbo.TIMEOUT_ERROR {
 			istimeout = true
