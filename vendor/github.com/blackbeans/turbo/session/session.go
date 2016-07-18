@@ -76,7 +76,7 @@ func (self *Session) ReadPacket() {
 			buffer, err := self.frameCodec.Read(self.br)
 			if nil != err {
 				self.Close()
-				log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+				//log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 				return
 			} else {
 				// log.Debug("Session|ReadPacket|%s|SUCC|%d", self.remoteAddr, buffer.Len())

@@ -21,22 +21,20 @@ type RecoverManager struct {
 	kitestore     store.IKiteStore
 	recoverPeriod time.Duration
 	recoveLimiter *turbo.BurstyLimiter
-	tw            *turbo.TimeWheel
 }
 
 //------创建persitehandler
 func NewRecoverManager(serverName string, recoverPeriod time.Duration,
 	pipeline *DefaultPipeline, kitestore store.IKiteStore, tw *turbo.TimeWheel) *RecoverManager {
 
-	limter, _ := turbo.NewBurstyLimiter(100, 2000)
+	limter, _ := turbo.NewBurstyLimiter(2000, 2000)
 	rm := &RecoverManager{
 		serverName:    serverName,
 		kitestore:     kitestore,
 		isClose:       false,
 		pipeline:      pipeline,
 		recoverPeriod: recoverPeriod,
-		recoveLimiter: limter,
-		tw:            tw}
+		recoveLimiter: limter}
 	return rm
 }
 
@@ -83,27 +81,22 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 		}
 		// d, _ := json.Marshal(entities[0].Header)
 		// log.InfoLog("kite_recover", "RecoverManager|redeliverMsg|%d|%s", now.Unix(), string(d))
-		id, ch := self.tw.After(1*time.Second, func() {})
-		count := self.recoveLimiter.TryAcquireWithCount(ch, len(entities))
-		self.tw.Remove(id)
-		//开始发起重投
-		for i, entity := range entities {
-
-			if i >= count {
-				break
+		succ := self.recoveLimiter.AcquireCount(len(entities))
+		if succ {
+			//开始发起重投
+			for _, entity := range entities {
+				//如果为未提交的消息则需要发送一个事务检查的消息
+				if !entity.Commit {
+					self.txAck(entity)
+				} else {
+					//发起投递事件
+					self.delivery(entity)
+				}
 			}
-			//如果为未提交的消息则需要发送一个事务检查的消息
-			if !entity.Commit {
-				self.txAck(entity)
-			} else {
-				//发起投递事件
-				self.delivery(entity)
-			}
-
 		}
-		startIdx += count
+		startIdx += len(entities)
 		hasMore = more
-		preTimestamp = entities[count-1].NextDeliverTime
+		preTimestamp = entities[len(entities)-1].NextDeliverTime
 	}
 	return startIdx
 }

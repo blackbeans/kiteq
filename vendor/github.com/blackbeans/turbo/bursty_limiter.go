@@ -1,142 +1,56 @@
 package turbo
 
 import (
-	"errors"
-	"fmt"
+	"golang.org/x/time/rate"
+	"sync/atomic"
 	"time"
 )
 
 type BurstyLimiter struct {
-	permitsPerSecond int
-	limiter          chan time.Time
-	ticker           *time.Ticker
+	rateLimiter   *rate.Limiter
+	allowCount    int64
+	preAllowCount int64
 }
 
 func NewBurstyLimiter(initPermits int, permitsPerSecond int) (*BurstyLimiter, error) {
 
-	if initPermits < 0 || (permitsPerSecond < initPermits) {
-		return nil,
-			errors.New(fmt.Sprintf("BurstyLimiter initPermits[%d]<=permitsPerSecond[%d]", initPermits, permitsPerSecond))
-	}
-	pertick := int64(1*time.Second) / int64(permitsPerSecond)
-	if pertick <= 0 {
-		return nil,
-			errors.New(fmt.Sprintf("BurstyLimiter int64(1*time.Second)< permitsPerSecond[%d]", permitsPerSecond))
-	}
+	limiter := rate.NewLimiter(rate.Limit(permitsPerSecond), initPermits)
 
-	tick := time.NewTicker(time.Duration(pertick))
-	ch := make(chan time.Time, permitsPerSecond)
-	for i := 0; i < initPermits; i++ {
-		ch <- time.Now()
-	}
-	//insert token
-	go func() {
-		last := time.Now().UnixNano()
-		unit := int64(1 * time.Second)
-		for t := range tick.C {
-			//calculate delay nano
-			cost := (t.UnixNano() - last) % unit
-			last = t.UnixNano()
-			//calculate delay flow count
-			delayCount := int(cost / pertick)
-			for ; delayCount > 0; delayCount-- {
-				ch <- t
-			}
-		}
-	}()
-
-	return &BurstyLimiter{permitsPerSecond: permitsPerSecond, ticker: tick, limiter: ch}, nil
-}
-
-// Ticker (%d) [1s/permitsPerSecond] Must be greater than tw.tickPeriod
-func NewBurstyLimiterWithTikcer(initPermits int, permitsPerSecond int, tw *TimeWheel) (*BurstyLimiter, error) {
-
-	pertick := int64(1*time.Second) / int64(permitsPerSecond)
-
-	if pertick < int64(tw.tickPeriod) {
-		// return nil, errors.New(fmt.Sprintf("Ticker (%d) [1s/permitsPerSecond] Must be greater than %d ", pertick, tw.tickPeriod))
-		pertick = int64(tw.tickPeriod)
-	}
-
-	ch := make(chan time.Time, permitsPerSecond)
-	for i := 0; i < initPermits; i++ {
-		ch <- time.Now()
-	}
-
-	//insert token
-	go func() {
-
-		last := time.Now().UnixNano()
-		unit := int64(1 * time.Second)
-		for {
-			//registry
-			_, timeout := tw.After(time.Duration(pertick), func() {})
-			<-timeout
-			t := time.Now()
-			//calculate delay nano
-			cost := (t.UnixNano() - last) % unit
-			last = t.UnixNano()
-			//calculate delay flow count
-			delayCount := int(cost / pertick)
-			for ; delayCount > 0; delayCount-- {
-				ch <- t
-			}
-
-		}
-	}()
-
-	return &BurstyLimiter{permitsPerSecond: permitsPerSecond, limiter: ch}, nil
+	return &BurstyLimiter{rateLimiter: limiter}, nil
 }
 
 func (self *BurstyLimiter) PermitsPerSecond() int {
-	return self.permitsPerSecond
+	return int(self.rateLimiter.Limit())
 }
 
 //try acquire token
-func (self *BurstyLimiter) TryAcquire(timeout chan bool) bool {
-	select {
-	case <-self.limiter:
-		return true
-	case <-timeout:
-		return false
+func (self *BurstyLimiter) AcquireCount(count int) bool {
+	succ := self.rateLimiter.AllowN(time.Now(), count)
+	if succ {
+		atomic.AddInt64(&self.allowCount, int64(count))
 	}
-	return false
-}
-
-//try acquire token
-func (self *BurstyLimiter) TryAcquireWithCount(timeout chan bool, count int) int {
-	i := 0
-	for ; i < count; i++ {
-		select {
-		case <-self.limiter:
-		case <-timeout:
-			return i
-		}
-	}
-
-	return count
+	return succ
 }
 
 //acquire token
 func (self *BurstyLimiter) Acquire() bool {
-	if len(self.limiter) > 0 {
-		select {
-		case <-self.limiter:
-			return true
-		}
-	} else {
-		return false
+	succ := self.rateLimiter.Allow()
+	if succ {
+		atomic.AddInt64(&self.allowCount, 1)
 	}
+	return succ
 }
 
 //return 1 : acquired
 //return 2 : total
 func (self *BurstyLimiter) LimiterInfo() (int, int) {
-	return self.permitsPerSecond - len(self.limiter), self.permitsPerSecond
+	tmp := atomic.LoadInt64(&self.allowCount)
+	change := int(tmp - self.preAllowCount)
+	self.preAllowCount = tmp
+
+	return change, int(self.rateLimiter.Limit())
 }
 
 func (self *BurstyLimiter) Destroy() {
-	if nil != self.ticker {
-		self.ticker.Stop()
-	}
+
 }

@@ -13,43 +13,43 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "a30635cf42748fcfa3f1a01f1208dc61969c3b59"
+			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
@@ -58,46 +58,46 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/client",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/codec",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/packet",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/pipe",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/server",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/session",
-			"Rev": "2ffd4b6795c56ffa1033f5cca142a0e48c61b282"
+			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v3.0.0-beta.0-713-g0e137e2",
-			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
+			"Comment": "v3.0.0-beta.0-890-g336e4f2",
+			"Rev": "336e4f2f28799d901bd76f58372dc274fd45d777"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v3.0.0-beta.0-713-g0e137e2",
-			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
+			"Comment": "v3.0.0-beta.0-890-g336e4f2",
+			"Rev": "336e4f2f28799d901bd76f58372dc274fd45d777"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v3.0.0-beta.0-713-g0e137e2",
-			"Rev": "0e137e21bcfedad5e482f60605e7dd017cc399fc"
+			"Comment": "v3.0.0-beta.0-890-g336e4f2",
+			"Rev": "336e4f2f28799d901bd76f58372dc274fd45d777"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
@@ -134,6 +134,10 @@
 		{
 			"ImportPath": "golang.org/x/net/context",
 			"Rev": "c4c3ea71919de159c9e246d7be66deb7f0a39a58"
+		},
+		{
+			"ImportPath": "golang.org/x/time/rate",
+			"Rev": "a4bde12657593d5e90d0533a3e4fd95e635124cb"
 		}
 	]
 }
