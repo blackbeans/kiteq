@@ -17,6 +17,7 @@ KiteQ ![image](./doc/logo.jpg)
     * 支持两阶段提交分布式事务
     * 自定义group内的Topic级别的流控措施，保护订阅方安全
     * kiteserver的流量保护
+    * 客户端连接上报系统预热时间，根据预热时间逐步放量推送消息
 
 #### 工程结构
     kiteq/
