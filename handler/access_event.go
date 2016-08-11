@@ -43,11 +43,14 @@ func (self *AccessHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent
 
 	//做权限校验.............
 	if false {
-		log.WarnLog("kite_handler", "accessEvent|Process|INVALID AUTH|%s|%s\n", aevent.groupId, aevent.secretKey)
+		log.WarnLog("kite_handler", "accessEvent|Process|INVALID AUTH|%s\n", aevent.connMeta)
 	}
 
 	// 权限验证通过 保存到clientmanager
-	self.clientManager.Auth(client.NewGroupAuth(aevent.groupId, aevent.secretKey), aevent.remoteClient)
+	auth := client.NewGroupAuth(aevent.connMeta.GetGroupId(), aevent.connMeta.GetSecretKey())
+	//填写warmingup的时间
+	auth.WarmingupSec = int(aevent.connMeta.GetWarmingupSec())
+	self.clientManager.Auth(auth, aevent.remoteClient)
 
 	// log.InfoLog("kite_handler", "accessEvent|Process|NEW CONNECTION|AUTH SUCC|%s|%s|%s\n", aevent.groupId, aevent.secretKey, aevent.remoteClient.RemoteAddr())
 

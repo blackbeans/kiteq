@@ -65,8 +65,7 @@ func (self *PacketHandler) handlePacket(pevent *p.PacketEvent) (p.IEvent, error)
 		var connMeta protocol.ConnMeta
 		err = protocol.UnmarshalPbMessage(packet.Data, &connMeta)
 		if nil == err {
-			meta := &connMeta
-			event = newAccessEvent(meta.GetGroupId(), meta.GetSecretKey(), pevent.RemoteClient, packet.Header.Opaque)
+			event = newAccessEvent(connMeta, pevent.RemoteClient, packet.Header.Opaque)
 		}
 
 	//心跳

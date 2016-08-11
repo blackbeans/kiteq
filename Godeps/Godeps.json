@@ -13,43 +13,43 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "70f5b6b5da52837d6f7e31d850847f0ff4827064"
+			"Rev": "0ede0c4087765e3b6ae51891758ac6e7fe28112e"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
@@ -58,31 +58,31 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/client",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/codec",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/packet",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/pipe",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/server",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/session",
-			"Rev": "52d77b55e771bf0c091bc5092da3cd5134b2ba9e"
+			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
@@ -110,7 +110,7 @@
 		},
 		{
 			"ImportPath": "github.com/golang/protobuf/proto",
-			"Rev": "3852dcfda249c2097355a6aabb199a28d97b30df"
+			"Rev": "2c1988e8c18d14b142c0b472624f71647cf39adb"
 		},
 		{
 			"ImportPath": "github.com/naoina/go-stringutil",

@@ -23,6 +23,7 @@ type RemotingClient struct {
 	codecFunc        func() codec.ICodec
 	rc               *turbo.RemotingConfig
 	AttachChannel    chan interface{} //用于处理统一个连接上返回信息
+	AuthSecond       int64            //授权成功时间
 }
 
 func NewRemotingClient(conn *net.TCPConn, codecFunc func() codec.ICodec,

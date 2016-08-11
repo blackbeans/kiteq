@@ -19,8 +19,7 @@ type iauth interface {
 
 type accessEvent struct {
 	iauth
-	groupId      string
-	secretKey    string
+	connMeta     protocol.ConnMeta
 	opaque       int32
 	remoteClient *client.RemotingClient
 }
@@ -29,10 +28,9 @@ func (self *accessEvent) getClient() *client.RemotingClient {
 	return self.remoteClient
 }
 
-func newAccessEvent(groupId, secretKey string, remoteClient *client.RemotingClient, opaque int32) *accessEvent {
+func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *client.RemotingClient, opaque int32) *accessEvent {
 	access := &accessEvent{
-		groupId:      groupId,
-		secretKey:    secretKey,
+		connMeta:     connMeta,
 		opaque:       opaque,
 		remoteClient: remoteClient}
 	return access

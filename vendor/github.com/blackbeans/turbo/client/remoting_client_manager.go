@@ -2,6 +2,7 @@ package client
 
 import (
 	log "github.com/blackbeans/log4go"
+	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -10,11 +11,11 @@ import (
 //群组授权信息
 type GroupAuth struct {
 	GroupId, SecretKey string
-	authtime           int64
+	WarmingupSec       int //该分组的预热时间
 }
 
 func NewGroupAuth(groupId, secretKey string) *GroupAuth {
-	return &GroupAuth{SecretKey: secretKey, GroupId: groupId, authtime: time.Now().Unix()}
+	return &GroupAuth{SecretKey: secretKey, GroupId: groupId}
 }
 
 //远程client管理器
@@ -81,6 +82,8 @@ func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) b
 		cs = make([]*RemotingClient, 0, 50)
 	}
 	//创建remotingClient
+	//增加授权时间的秒数
+	remoteClient.AuthSecond = time.Now().Unix()
 	self.groupClients[auth.GroupId] = append(cs, remoteClient)
 	self.allClients[remoteClient.RemoteAddr()] = remoteClient
 	self.groupAuth[remoteClient.RemoteAddr()] = auth
@@ -212,6 +215,19 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 			}
 			//如果当前client处于非关闭状态并且没有过滤则入选
 			if !filter(gid, c) {
+
+				//判断是否在预热周期内，预热周期内需要逐步放量
+				auth, ok := self.groupAuth[c.remoteAddr]
+				if ok && auth.WarmingupSec > 0 {
+
+					//如果当前时间和授权时间差与warmingup需要的时间几率按照100%计算的比例
+					//小于等于随机100出来的数据那么久可以选取
+					rate := int((time.Now().Unix() - c.AuthSecond) * 100 / int64(auth.WarmingupSec))
+					if rate < 100 && rand.Intn(100) > rate {
+						continue
+					}
+				}
+
 				gclient = append(gclient, c)
 			}
 		}

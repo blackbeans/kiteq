@@ -23,11 +23,19 @@ It has these top-level messages:
 package protocol
 
 import proto "github.com/golang/protobuf/proto"
+import fmt "fmt"
 import math "math"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
+var _ = fmt.Errorf
 var _ = math.Inf
+
+// This is a compile-time assertion to ensure that this generated file
+// is compatible with the proto package it is being compiled against.
+// A compilation error at this line likely means your copy of the
+// proto package needs to be updated.
+const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // 心跳请求包
 type HeartBeat struct {
@@ -35,9 +43,10 @@ type HeartBeat struct {
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *HeartBeat) Reset()         { *m = HeartBeat{} }
-func (m *HeartBeat) String() string { return proto.CompactTextString(m) }
-func (*HeartBeat) ProtoMessage()    {}
+func (m *HeartBeat) Reset()                    { *m = HeartBeat{} }
+func (m *HeartBeat) String() string            { return proto.CompactTextString(m) }
+func (*HeartBeat) ProtoMessage()               {}
+func (*HeartBeat) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 func (m *HeartBeat) GetVersion() int64 {
 	if m != nil && m.Version != nil {
@@ -50,12 +59,16 @@ func (m *HeartBeat) GetVersion() int64 {
 type ConnMeta struct {
 	GroupId          *string `protobuf:"bytes,1,req,name=groupId" json:"groupId,omitempty"`
 	SecretKey        *string `protobuf:"bytes,2,req,name=secretKey" json:"secretKey,omitempty"`
+	WarmingupSec     *int32  `protobuf:"varint,3,opt,name=warmingupSec,def=0" json:"warmingupSec,omitempty"`
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *ConnMeta) Reset()         { *m = ConnMeta{} }
-func (m *ConnMeta) String() string { return proto.CompactTextString(m) }
-func (*ConnMeta) ProtoMessage()    {}
+func (m *ConnMeta) Reset()                    { *m = ConnMeta{} }
+func (m *ConnMeta) String() string            { return proto.CompactTextString(m) }
+func (*ConnMeta) ProtoMessage()               {}
+func (*ConnMeta) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+const Default_ConnMeta_WarmingupSec int32 = 0
 
 func (m *ConnMeta) GetGroupId() string {
 	if m != nil && m.GroupId != nil {
@@ -71,6 +84,13 @@ func (m *ConnMeta) GetSecretKey() string {
 	return ""
 }
 
+func (m *ConnMeta) GetWarmingupSec() int32 {
+	if m != nil && m.WarmingupSec != nil {
+		return *m.WarmingupSec
+	}
+	return Default_ConnMeta_WarmingupSec
+}
+
 // 握手确认数据包
 type ConnAuthAck struct {
 	Status           *bool   `protobuf:"varint,1,req,name=status,def=1" json:"status,omitempty"`
@@ -78,9 +98,10 @@ type ConnAuthAck struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *ConnAuthAck) Reset()         { *m = ConnAuthAck{} }
-func (m *ConnAuthAck) String() string { return proto.CompactTextString(m) }
-func (*ConnAuthAck) ProtoMessage()    {}
+func (m *ConnAuthAck) Reset()                    { *m = ConnAuthAck{} }
+func (m *ConnAuthAck) String() string            { return proto.CompactTextString(m) }
+func (*ConnAuthAck) ProtoMessage()               {}
+func (*ConnAuthAck) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 const Default_ConnAuthAck_Status bool = true
 
@@ -106,9 +127,10 @@ type MessageStoreAck struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *MessageStoreAck) Reset()         { *m = MessageStoreAck{} }
-func (m *MessageStoreAck) String() string { return proto.CompactTextString(m) }
-func (*MessageStoreAck) ProtoMessage()    {}
+func (m *MessageStoreAck) Reset()                    { *m = MessageStoreAck{} }
+func (m *MessageStoreAck) String() string            { return proto.CompactTextString(m) }
+func (*MessageStoreAck) ProtoMessage()               {}
+func (*MessageStoreAck) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 const Default_MessageStoreAck_Status bool = true
 
@@ -144,9 +166,10 @@ type DeliverAck struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *DeliverAck) Reset()         { *m = DeliverAck{} }
-func (m *DeliverAck) String() string { return proto.CompactTextString(m) }
-func (*DeliverAck) ProtoMessage()    {}
+func (m *DeliverAck) Reset()                    { *m = DeliverAck{} }
+func (m *DeliverAck) String() string            { return proto.CompactTextString(m) }
+func (*DeliverAck) ProtoMessage()               {}
+func (*DeliverAck) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 const Default_DeliverAck_Status bool = true
 
@@ -200,9 +223,10 @@ type TxACKPacket struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *TxACKPacket) Reset()         { *m = TxACKPacket{} }
-func (m *TxACKPacket) String() string { return proto.CompactTextString(m) }
-func (*TxACKPacket) ProtoMessage()    {}
+func (m *TxACKPacket) Reset()                    { *m = TxACKPacket{} }
+func (m *TxACKPacket) String() string            { return proto.CompactTextString(m) }
+func (*TxACKPacket) ProtoMessage()               {}
+func (*TxACKPacket) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 const Default_TxACKPacket_Status int32 = 0
 
@@ -233,9 +257,10 @@ type Entry struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *Entry) Reset()         { *m = Entry{} }
-func (m *Entry) String() string { return proto.CompactTextString(m) }
-func (*Entry) ProtoMessage()    {}
+func (m *Entry) Reset()                    { *m = Entry{} }
+func (m *Entry) String() string            { return proto.CompactTextString(m) }
+func (*Entry) ProtoMessage()               {}
+func (*Entry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *Entry) GetKey() string {
 	if m != nil && m.Key != nil {
@@ -265,9 +290,10 @@ type Header struct {
 	XXX_unrecognized []byte   `json:"-"`
 }
 
-func (m *Header) Reset()         { *m = Header{} }
-func (m *Header) String() string { return proto.CompactTextString(m) }
-func (*Header) ProtoMessage()    {}
+func (m *Header) Reset()                    { *m = Header{} }
+func (m *Header) String() string            { return proto.CompactTextString(m) }
+func (*Header) ProtoMessage()               {}
+func (*Header) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 const Default_Header_ExpiredTime int64 = -1
 const Default_Header_DeliverLimit int32 = 100
@@ -350,9 +376,10 @@ type BytesMessage struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *BytesMessage) Reset()         { *m = BytesMessage{} }
-func (m *BytesMessage) String() string { return proto.CompactTextString(m) }
-func (*BytesMessage) ProtoMessage()    {}
+func (m *BytesMessage) Reset()                    { *m = BytesMessage{} }
+func (m *BytesMessage) String() string            { return proto.CompactTextString(m) }
+func (*BytesMessage) ProtoMessage()               {}
+func (*BytesMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 func (m *BytesMessage) GetHeader() *Header {
 	if m != nil {
@@ -375,9 +402,10 @@ type StringMessage struct {
 	XXX_unrecognized []byte  `json:"-"`
 }
 
-func (m *StringMessage) Reset()         { *m = StringMessage{} }
-func (m *StringMessage) String() string { return proto.CompactTextString(m) }
-func (*StringMessage) ProtoMessage()    {}
+func (m *StringMessage) Reset()                    { *m = StringMessage{} }
+func (m *StringMessage) String() string            { return proto.CompactTextString(m) }
+func (*StringMessage) ProtoMessage()               {}
+func (*StringMessage) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *StringMessage) GetHeader() *Header {
 	if m != nil {
@@ -394,4 +422,49 @@ func (m *StringMessage) GetBody() string {
 }
 
 func init() {
+	proto.RegisterType((*HeartBeat)(nil), "protocol.HeartBeat")
+	proto.RegisterType((*ConnMeta)(nil), "protocol.ConnMeta")
+	proto.RegisterType((*ConnAuthAck)(nil), "protocol.ConnAuthAck")
+	proto.RegisterType((*MessageStoreAck)(nil), "protocol.MessageStoreAck")
+	proto.RegisterType((*DeliverAck)(nil), "protocol.DeliverAck")
+	proto.RegisterType((*TxACKPacket)(nil), "protocol.TxACKPacket")
+	proto.RegisterType((*Entry)(nil), "protocol.Entry")
+	proto.RegisterType((*Header)(nil), "protocol.Header")
+	proto.RegisterType((*BytesMessage)(nil), "protocol.BytesMessage")
+	proto.RegisterType((*StringMessage)(nil), "protocol.StringMessage")
+}
+
+func init() { proto.RegisterFile("kite_remoting.proto", fileDescriptor0) }
+
+var fileDescriptor0 = []byte{
+	// 458 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x92, 0xc1, 0x6a, 0xdb, 0x40,
+	0x10, 0x86, 0xb1, 0x65, 0x29, 0xd2, 0x48, 0xa9, 0xd3, 0x4d, 0x21, 0x2a, 0xf4, 0x60, 0x94, 0x4b,
+	0x2e, 0x35, 0x4e, 0xa1, 0x17, 0x1f, 0x5a, 0x9c, 0xb4, 0x34, 0x25, 0x09, 0x14, 0xec, 0x7b, 0xd9,
+	0x48, 0x63, 0x67, 0xb1, 0xa4, 0x15, 0xbb, 0xa3, 0x34, 0x82, 0xbe, 0x6c, 0xdf, 0xa4, 0xab, 0x95,
+	0xeb, 0x98, 0x52, 0x43, 0xc9, 0x49, 0x30, 0xbb, 0xfa, 0x66, 0xfe, 0x6f, 0x07, 0x8e, 0xd7, 0x82,
+	0xf0, 0xbb, 0xc2, 0x42, 0x92, 0x28, 0x57, 0xe3, 0x4a, 0x49, 0x92, 0xcc, 0xb7, 0x9f, 0x54, 0xe6,
+	0xc9, 0x1b, 0x08, 0xae, 0x90, 0x2b, 0xba, 0x40, 0x4e, 0x6c, 0x08, 0x07, 0x0f, 0xa8, 0xb4, 0x90,
+	0x65, 0xdc, 0x1b, 0xf5, 0xcf, 0x9c, 0xe4, 0x0b, 0xf8, 0x97, 0xb2, 0x2c, 0x6f, 0x91, 0x78, 0x7b,
+	0xb8, 0x52, 0xb2, 0xae, 0xbe, 0x66, 0xf6, 0x30, 0x60, 0x2f, 0x21, 0xd0, 0x98, 0x2a, 0xa4, 0x6b,
+	0x6c, 0xe2, 0xbe, 0x2d, 0x9d, 0x40, 0xf4, 0x83, 0xab, 0xc2, 0x34, 0xaa, 0xab, 0x39, 0xa6, 0xb1,
+	0x33, 0xea, 0x9d, 0xb9, 0xd3, 0xde, 0x24, 0x79, 0x0f, 0x61, 0x0b, 0x9a, 0xd5, 0x74, 0x3f, 0x4b,
+	0xd7, 0xec, 0x15, 0x78, 0x9a, 0x38, 0xd5, 0xda, 0xa2, 0xfc, 0xe9, 0x80, 0x54, 0x8d, 0xec, 0x08,
+	0xfc, 0x25, 0x62, 0x76, 0xc7, 0xd3, 0x75, 0xc7, 0x4b, 0x6e, 0x60, 0x78, 0x8b, 0x5a, 0xf3, 0x15,
+	0xce, 0x49, 0x2a, 0x6c, 0x7f, 0x35, 0x5d, 0x8b, 0xae, 0xb4, 0x1d, 0xe4, 0x89, 0xd6, 0xdf, 0x43,
+	0x73, 0x2c, 0xed, 0x27, 0xc0, 0x27, 0xcc, 0x85, 0x89, 0xb8, 0x07, 0x74, 0x08, 0x2e, 0xc9, 0x4a,
+	0xa4, 0x9b, 0x34, 0xc7, 0x10, 0x6e, 0x6e, 0x2c, 0x9a, 0x0a, 0x3b, 0xc8, 0xae, 0x86, 0xc1, 0x5f,
+	0xdd, 0xdd, 0x3d, 0xdd, 0x3d, 0x63, 0x21, 0x48, 0x16, 0x10, 0x2e, 0x1e, 0x67, 0x97, 0xd7, 0xdf,
+	0x4c, 0x09, 0x89, 0x8d, 0xc0, 0xbb, 0x47, 0x9e, 0xa1, 0xb2, 0xbd, 0xc3, 0x77, 0x47, 0xe3, 0x3f,
+	0x6f, 0x32, 0xbe, 0xb2, 0x75, 0x33, 0xe0, 0x6e, 0xac, 0x56, 0xe3, 0x3f, 0x32, 0x9d, 0x82, 0xfb,
+	0xb9, 0x24, 0xd5, 0xb0, 0x10, 0x9c, 0xb5, 0x79, 0x87, 0x6d, 0x90, 0x07, 0x9e, 0xd7, 0xb8, 0xd1,
+	0xf8, 0xab, 0x07, 0xde, 0x16, 0xfa, 0xac, 0xd4, 0x27, 0x10, 0xe2, 0x63, 0x25, 0x14, 0x66, 0x0b,
+	0x51, 0xa0, 0x4d, 0xee, 0x4c, 0xfb, 0x6f, 0xcf, 0xd9, 0x6b, 0x88, 0xb2, 0xce, 0xe9, 0x8d, 0x28,
+	0x04, 0x59, 0x07, 0xee, 0xd4, 0x39, 0x9f, 0x4c, 0x76, 0x4d, 0x79, 0x16, 0xf2, 0x02, 0xbc, 0x54,
+	0x16, 0xed, 0xad, 0x83, 0xd6, 0x14, 0x63, 0xe0, 0x2c, 0xf3, 0x26, 0xf6, 0xad, 0x36, 0x77, 0xc9,
+	0x73, 0x8d, 0xec, 0x14, 0xc0, 0x78, 0xa8, 0x50, 0x91, 0x40, 0x1d, 0x07, 0x23, 0xc7, 0xa8, 0x19,
+	0x3e, 0xa9, 0xe9, 0xb2, 0x32, 0x00, 0xb3, 0x77, 0x9c, 0xd0, 0x0e, 0x03, 0x46, 0xaf, 0x93, 0x7c,
+	0x80, 0xe8, 0xa2, 0x21, 0xd4, 0x9b, 0x7d, 0xf9, 0x0f, 0xbf, 0x11, 0x0c, 0xee, 0x64, 0xd6, 0xad,
+	0x6e, 0x94, 0x7c, 0x84, 0xc3, 0x39, 0x29, 0xb3, 0xb9, 0xcf, 0x03, 0x04, 0xbf, 0x03, 0x00, 0x00,
+	0xff, 0xff, 0x03, 0xc5, 0xdb, 0xbd, 0x69, 0x03, 0x00, 0x00,
 }

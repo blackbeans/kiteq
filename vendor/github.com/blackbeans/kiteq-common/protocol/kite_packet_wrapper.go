@@ -101,11 +101,12 @@ func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 	return nil
 }
 
-func MarshalConnMeta(groupId, secretKey string) []byte {
+func MarshalConnMeta(groupId, secretKey string, warmingupSec int32) []byte {
 
 	data, _ := MarshalPbMessage(&ConnMeta{
-		GroupId:   proto.String(groupId),
-		SecretKey: proto.String(secretKey)})
+		GroupId:      proto.String(groupId),
+		SecretKey:    proto.String(secretKey),
+		WarmingupSec: proto.Int32(warmingupSec)})
 	return data
 }
 
