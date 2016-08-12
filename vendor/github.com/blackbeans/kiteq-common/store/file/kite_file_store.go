@@ -74,29 +74,28 @@ func NewKiteFileStore(dir string, batchFlush int, maxcap int, checkPeriod time.D
 //重放当前data的操作日志还原消息状态
 func (self *KiteFileStore) replay(ol *oplog) {
 
-	var body opBody
-
-	err := json.Unmarshal(ol.Body, &body)
-	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|replay|FAIL|%s|%s", err, ol.Body)
-		return
-	}
-
-	ob := &body
-	ob.Id = ol.ChunkId
-
-	l, link, tol, _ := self.hash(ob.MessageId)
+	messageId := ol.LogicId
+	l, link, tol, _ := self.hash(messageId)
 	// log.Debug("KiteFileStore|replay|%s|%s", ob, ol.Op)
 	//如果是更新或者创建，则直接反序列化
 	if ol.Op == OP_U || ol.Op == OP_C {
+		var body opBody
+		err := json.Unmarshal(ol.Body, &body)
+		if nil != err {
+			log.ErrorLog("kite_store", "KiteFileStore|replay|FAIL|%s|%v", err, ol)
+			return
+		}
+
+		ob := &body
+		ob.Id = ol.ChunkId
 		l.Lock()
 		//直接覆盖
-		e, ok := tol[ob.MessageId]
+		e, ok := tol[messageId]
 		if ok {
 			e.Value = ob
 		} else {
 			e = link.PushFront(ob)
-			tol[ob.MessageId] = e
+			tol[messageId] = e
 		}
 		link.MoveToFront(e)
 
@@ -105,14 +104,14 @@ func (self *KiteFileStore) replay(ol *oplog) {
 	} else if ol.Op == OP_D || ol.Op == OP_E {
 		//如果为删除操作直接删除已经保存的op_log
 		l.Lock()
-		e, ok := tol[ob.MessageId]
+		e, ok := tol[messageId]
 		if ok {
-			delete(tol, ob.MessageId)
+			delete(tol, messageId)
 			link.Remove(e)
 		}
 		l.Unlock()
 	} else {
-		log.ErrorLog("kite_store", "KiteFileStore|replay|INVALID|%s|%s", ob, ol.Op)
+		log.ErrorLog("kite_store", "KiteFileStore|replay|INVALID|%s|%s", ol.Body, ol.Op)
 	}
 
 }
@@ -249,7 +248,7 @@ func (self *KiteFileStore) Query(topic, messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		// log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
+		log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
 		return nil
 	}
 
@@ -567,7 +566,6 @@ func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, ne
 		ob := e.Value.(*opBody)
 		//wait save done
 		self.waitSaveDone(ob)
-
 		if ob.Id < 0 {
 			if nil == del {
 				del = make([][]string, 0, limit)

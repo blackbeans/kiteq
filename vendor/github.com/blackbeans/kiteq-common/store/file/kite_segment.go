@@ -325,7 +325,7 @@ func (self *Segment) recover(do func(ol *oplog)) {
 	self.slog.Replay(func(ol *oplog) {
 		switch ol.Op {
 		//create
-		case OP_C:
+		case OP_C, OP_U:
 			c := self.Get(ol.ChunkId)
 			if nil != c &&
 				c.flag != EXPIRED && c.flag != DELETE {
@@ -334,8 +334,6 @@ func (self *Segment) recover(do func(ol *oplog)) {
 		case OP_E:
 			//expired
 			self.Expired(ol.ChunkId)
-		case OP_U:
-			//ignore
 		case OP_D:
 			self.Delete(ol.ChunkId)
 		}
