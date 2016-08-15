@@ -101,24 +101,37 @@ KiteQ ![image](./doc/logo.jpg)
 
 #####  QuickStart
 
-    1.编译：sh build.sh 
-    2.安装装Zookeeper:省略(或者安装etcd)
-    3.启动KiteQ:
-    
-        toml配置启动
-            sh kiteq.sh 
-            
-            kiteq.sh里面对应的配置：
-            ./kiteq -clusterName=集群名称 -configPath=配置文件路径
-            文件样例见[conf/cluster.toml]   
-         
-      - KiteQ的Registry
-      
-        etcd:  配置 etcd://http://localhost:2379,http://localhost:2379
-        zk:    配置 zk://localhost:2181,localhost:2181
+    1. Download the latest release version from release[https://github.com/blackbeans/kiteq/releases]
 
-##### 启动客户端：
-    参考：github.com/blackbeans/kiteq-client-go
+    2. Install the latest release version Zookeeper from http://www.apache.org/dyn/closer.cgi/zookeeper/
+
+    3. Start Zookeeper $ZOOKEEPER_HOME/bin/zkServer.sh start (Dev Enviroment Using Single Node)
+
+    4. Extract KiteQ-xxx-xxxx.tar.gz to your deploy path
+
+    5. Run sh kiteq.sh 
+
+    Amazing KiteServer Cluster has been start ...
+
+
+ * Note :
+    
+        KiteQ's Config is conf/cluster.toml
+            
+        you can use 'kiteq -clusterName=${cluster_name} -configPath=${toml_path}'
+         
+      - Registry Of KiteQ
+
+        zk:    zk://localhost:2181,localhost:2181 (stable)
+
+        etcd:  etcd://http://localhost:2379,http://localhost:2379 (unstable)
+
+##### Client Supported：
+
+    Go : github.com/blackbeans/kiteq-client-go
+
+    Java : github.com/blackbeans/kiteq-client-java
+
 
 #### Donate
 
