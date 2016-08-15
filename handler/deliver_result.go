@@ -5,7 +5,6 @@ import (
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/turbo"
 	p "github.com/blackbeans/turbo/pipe"
 	"sort"
 	"time"
@@ -53,7 +52,6 @@ type DeliverResultHandler struct {
 	deliverTimeout   time.Duration
 	updateChan       chan store.MessageEntity
 	deleteChan       chan string
-	tw               *turbo.TimeWheel
 	deliveryRegistry *stat.DeliveryRegistry
 }
 
@@ -66,14 +64,6 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
 	dhandler.deliveryRegistry = deliveryRegistry
-	dhandler.tw = turbo.NewTimeWheel(time.Duration(int64(deliverTimeout)/10), 10, 5)
-
-	go func() {
-		for {
-			time.Sleep(1 * time.Second)
-			log.Info(dhandler.tw.Monitor())
-		}
-	}()
 	//排好序
 	sort.Sort(dhandler.rw)
 	log.InfoLog("kite_handler", "RedeliveryWindows|%s\n ", dhandler.rw)
