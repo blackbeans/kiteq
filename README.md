@@ -114,13 +114,15 @@ KiteQ ![image](./doc/logo.jpg)
     Amazing KiteServer Cluster has been start ...
 
 
- * Note :
+*** Note :
     
         KiteQ's Config is conf/cluster.toml
             
-        you can use 'kiteq -clusterName=${cluster_name} -configPath=${toml_path}'
+        You can use command 'sh kiteq -clusterName=${cluster_name} -configPath=${toml_path}'
+        
+        Recommend Using supervisor to manager kiteq .
          
-      - Registry Of KiteQ
+*** Registry Of KiteQ :
 
         zk:    zk://localhost:2181,localhost:2181 (stable)
 
