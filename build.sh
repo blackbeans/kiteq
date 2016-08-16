@@ -37,7 +37,7 @@ echo "------------ compoments  installing is finished!-------------"
 
 PROJ=`pwd | awk -F'/' '{print $(NF)}'`
 #VERSION=$1
-go build  -o ./$PROJ-$VERSION $PROJ.go
+go build  -o ./$PROJ $PROJ.go
 
 
 #CGO_ENABLED=0 GOOS=linux GOARCH=386 go build  -a -o ./$PROJ $PROJ.go

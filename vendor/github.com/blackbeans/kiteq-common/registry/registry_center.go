@@ -45,14 +45,12 @@ func NewRegistryCenter(uri string) *RegistryCenter {
 		panic("Unsupport Registry [" + uri + "]")
 	}
 
+	//start registry
+	registry.Start()
+
 	center := &RegistryCenter{registry: registry}
-	center.Start()
 	return center
 
-}
-
-func (self *RegistryCenter) Start() {
-	self.registry.Start()
 }
 
 //如果返回false则已经存在

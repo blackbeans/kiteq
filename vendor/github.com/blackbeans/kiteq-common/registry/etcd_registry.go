@@ -60,7 +60,6 @@ func (self *EtcdRegistry) Start() {
 	if nil != err {
 		log.ErrorLog("kiteq_registry", "QClientWorker|Start|FAIL|%s|%s", KITEQ_SUB, err)
 	}
-
 	go self.heartbeat()
 	go self.checkAlive()
 

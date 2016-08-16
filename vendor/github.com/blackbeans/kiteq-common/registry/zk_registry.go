@@ -19,8 +19,6 @@ type ZKManager struct {
 
 func NewZKManager(zkhosts string) *ZKManager {
 	zkmanager := &ZKManager{zkhosts: zkhosts, wathcers: make(map[string]IWatcher, 10)}
-	zkmanager.Start()
-
 	return zkmanager
 }
 
