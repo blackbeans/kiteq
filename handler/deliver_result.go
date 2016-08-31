@@ -89,7 +89,7 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 
 	if len(fevent.futures) > 0 {
 		//等待回调结果
-		fevent.wait(self.deliverTimeout)
+		fevent.wait(self.deliverTimeout, fevent.deliverEvent.groupBinds)
 	}
 
 	//增加投递成功的分组

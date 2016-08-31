@@ -143,12 +143,18 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.
 
 	//合并本次需要投递的分组
 	groupIds := make([]string, 0, 10)
+	groupBinds := make(map[string]bind.Binding, 10)
 	//按groupid归并
 	for _, bind := range binds {
 		//获取group对应的limiter
 		groupIds = append(groupIds, bind.GroupId)
-		// hashGroups[bind.GroupId] = nil
+
+		_, ok := groupBinds[bind.GroupId]
+		if !ok {
+			groupBinds[bind.GroupId] = *bind
+		}
 	}
+	pevent.groupBinds = groupBinds
 	pevent.limiters = limiters
 	pevent.deliverGroups = groupIds
 }

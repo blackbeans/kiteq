@@ -5,6 +5,7 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
 	// log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/kiteq-common/registry/bind"
 	"github.com/blackbeans/turbo"
 	client "github.com/blackbeans/turbo/client"
 	packet "github.com/blackbeans/turbo/packet"
@@ -120,6 +121,7 @@ type deliverEvent struct {
 	deliverCount   int32 //已经投递的次数
 	attemptDeliver chan []string
 	limiters       map[string]*turbo.BurstyLimiter
+	groupBinds     map[string]bind.Binding //本次投递的订阅关系
 }
 
 //创建投递事件
@@ -162,7 +164,7 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]*turbo
 }
 
 //等待响应
-func (self *deliverResultEvent) wait(timeout time.Duration) bool {
+func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[string]bind.Binding) bool {
 	istimeout := false
 	latch := make(chan time.Time, 1)
 	t := time.AfterFunc(timeout, func() {
@@ -186,10 +188,24 @@ func (self *deliverResultEvent) wait(timeout time.Duration) bool {
 				self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, resp, g})
 			}
 		}
+
 		if nil != err {
-			gf := GroupFuture{f, resp, g}
-			gf.Err = err
-			self.failGroupFuture = append(self.failGroupFuture, gf)
+			//如果没有存在存活机器并且当前分组的订阅关系
+			//是一个非持久订阅那么就认为成功的
+			if err == turbo.ERROR_NO_HOSTS {
+				b, ok := groupBinds[g]
+				if ok && !b.Persistent {
+					f.Err = fmt.Errorf("All Clients Offline ! Bind[%v]", b)
+					self.succGroupFuture = append(self.succGroupFuture, GroupFuture{f, resp, g})
+					continue
+				}
+			}
+			//投递失败的情况
+			{
+				gf := GroupFuture{f, resp, g}
+				gf.Err = err
+				self.failGroupFuture = append(self.failGroupFuture, gf)
+			}
 		}
 	}
 
