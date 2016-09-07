@@ -58,31 +58,31 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/client",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/codec",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/packet",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/pipe",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/server",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo/session",
-			"Rev": "15bcd182ebdbc958f31262361fb8e1434741ffbd"
+			"Rev": "01bb8f48fb8c4dcebcdc46015ae5b35bf44376ac"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",

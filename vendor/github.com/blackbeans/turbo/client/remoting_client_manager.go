@@ -150,6 +150,14 @@ func (self *ClientManager) removeClient(hostport string) {
 			c.Shutdown()
 			delete(self.allClients, hostport)
 		}
+
+		//判断groupClient中是否还存在连接，不存在则直接移除该分组
+		gc, ok = self.groupClients[ga.GroupId]
+		if ok && len(gc) <= 0 {
+			//移除group2Clients
+			delete(self.groupClients, ga.GroupId)
+			log.Info("ClientManager|removeClient|EmptyGroup|%s...\n", ga.GroupId)
+		}
 	}
 
 	log.Info("ClientManager|removeClient|%s...\n", hostport)
