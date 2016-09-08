@@ -50,6 +50,12 @@ KiteQ ![image](./doc/logo.jpg)
         Regx(正则式订阅):  Topic级别下，对MessageType进行正则匹配方式订阅消息
         Fanout(广播式订阅): Topic级别下，订阅所有的MessageType的消息
 
+##### 持久订阅和非持久订阅
+
+        持久订阅 ： 分组集群内的机器哪怕是全部离线，消息也不会丢弃，上线后KiteQ推送
+
+        非持久订阅： 分组集群内的机器全部离线，消息不会保留，直接丢弃
+
 #### 架构图
   ![image](./doc/kiteq_arch.png)
   
