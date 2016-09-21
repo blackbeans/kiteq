@@ -21,5 +21,7 @@ func main() {
 
 	}
 
+	time.Sleep(5 * time.Minute)
+
 	fmt.Printf("----------end|%d\n", count)
 }

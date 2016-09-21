@@ -292,6 +292,15 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		return false
 	} else {
 
+		lock.RLock()
+		//push
+		_, ok := ol[entity.MessageId]
+		if ok {
+			//duplicate messageId
+			return false
+		}
+		lock.RUnlock()
+
 		//value
 		data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
 		buff := make([]byte, len(data)+1)
@@ -562,6 +571,7 @@ func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, ne
 	lock, link, _, _ := self.hash(hashKey)
 	lock.RLock()
 	i := 0
+
 	for e := link.Front(); nil != e; e = e.Next() {
 		ob := e.Value.(*opBody)
 		//wait save done
@@ -596,9 +606,10 @@ func (self *KiteFileStore) PageQueryEntity(hashKey string, kiteServer string, ne
 			if len(pe) > limit {
 				break
 			}
+		} else {
+
 		}
 	}
-
 	lock.RUnlock()
 
 	//remove save failmessage

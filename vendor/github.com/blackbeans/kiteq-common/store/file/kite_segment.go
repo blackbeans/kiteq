@@ -219,6 +219,7 @@ func (self *Segment) stat() (total, normal, del, expired int32) {
 			switch c.flag {
 			case NORMAL:
 				normal++
+				// log.ErrorLog("kite_store", "%d|%d|%d", c.id, c.flag, len(self.chunks))
 			//create
 			case DELETE:
 				del++
@@ -323,6 +324,7 @@ func (self *Segment) recover(do func(ol *oplog)) {
 
 	//replay
 	self.slog.Replay(func(ol *oplog) {
+
 		switch ol.Op {
 		//create
 		case OP_C, OP_U:

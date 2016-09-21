@@ -259,7 +259,7 @@ func (self *MessageStore) recoverSnapshot() {
 				removes = append(removes, s)
 				removeCount++
 			}
-			//last segments
+			//last segments && total >0
 			if i == len(self.segments)-1 {
 				if nil != err {
 					panic("MessageStore|Load Last Segment|FAIL|" + err.Error())
@@ -271,7 +271,7 @@ func (self *MessageStore) recoverSnapshot() {
 				}
 
 				if self.chunkId <= 0 {
-					self.chunkId = s.sid
+					self.chunkId = s.sid - 1
 				}
 			}
 
