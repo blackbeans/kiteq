@@ -259,7 +259,7 @@ func (self *MessageStore) recoverSnapshot() {
 				removes = append(removes, s)
 				removeCount++
 			}
-			//last segments && total >0
+			//last segments
 			if i == len(self.segments)-1 {
 				if nil != err {
 					panic("MessageStore|Load Last Segment|FAIL|" + err.Error())

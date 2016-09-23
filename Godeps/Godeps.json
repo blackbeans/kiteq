@@ -1,7 +1,7 @@
 {
 	"ImportPath": "kiteq",
-	"GoVersion": "go1.6",
-	"GodepVersion": "v73",
+	"GoVersion": "go1.7",
+	"GodepVersion": "v74",
 	"Deps": [
 		{
 			"ImportPath": "github.com/blackbeans/go-uuid",
@@ -13,43 +13,43 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "2afedcddcce42545477f1221df56773a38347501"
+			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
