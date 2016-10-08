@@ -5,6 +5,7 @@ import (
 	//	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	p "github.com/blackbeans/turbo/pipe"
+	"sort"
 	"time"
 )
 
@@ -54,8 +55,17 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 
 	groups := make([]string, 0, 10)
 	overflow := make(map[string]*turbo.Future, 2)
+	//sort deliver groups
+	sort.Strings(pevent.deliverGroups)
 	//check flows
 	for g, limiter := range pevent.limiters {
+		//matches valid limiter
+		idx := sort.SearchStrings(pevent.deliverGroups, g)
+		if idx >= len(pevent.deliverGroups) {
+			//not find
+			continue
+		}
+
 		succ := limiter.Acquire()
 		if succ {
 			//allow deliver
