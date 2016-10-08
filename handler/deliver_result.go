@@ -113,7 +113,7 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 		"messageId:%s\nTopic:%s\nMessageType:%s\npublishGroupId:%s\nDeliverCount:%d\n"+
 		"createTime:%d\nproperties:%v\n"+
 		"attemptDeliver:%v\nfly:%v\n"+
-		"SUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
+		"DeliverGroups:%v\nSUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
 		self.GetName(),
 		fevent.header.GetMessageId(), fevent.header.GetTopic(),
 		fevent.header.GetMessageType(), fevent.header.GetGroupId(),
@@ -121,6 +121,7 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 		fevent.header.GetCreateTime(),
 		fevent.header.GetProperties(),
 		attemptDeliver, fevent.header.GetFly(),
+		fevent.deliverGroups,
 		fevent.succGroups, fevent.succGroupFuture, fevent.failGroupFuture)
 	//都投递成功
 	if len(fevent.deliverFailGroups) <= 0 {
