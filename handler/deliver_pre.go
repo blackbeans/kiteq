@@ -164,4 +164,5 @@ func (self *DeliverPreHandler) fillDeliverExt(pevent *deliverEvent, entity *stor
 	pevent.header = entity.Header
 	pevent.deliverLimit = entity.DeliverLimit
 	pevent.deliverCount = entity.DeliverCount
+	pevent.succGroups = entity.SuccGroups
 }

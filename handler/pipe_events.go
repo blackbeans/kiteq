@@ -112,6 +112,7 @@ func NewDeliverPreEvent(messageId string, header *protocol.Header,
 //投递事件
 type deliverEvent struct {
 	p.IForwardEvent
+	p.IBackwardEvent
 	header *protocol.Header
 	// fly            bool           //是否为fly模式的消息
 	packet         *packet.Packet //消息包
@@ -138,8 +139,11 @@ type GroupFuture struct {
 }
 
 func (self GroupFuture) String() string {
-
-	return fmt.Sprintf("[%s@%s,resp:%v,err:%s]", self.TargetHost, self.groupId, self.resp, self.Err)
+	ack, ok := self.resp.(*protocol.DeliverAck)
+	if ok {
+		return fmt.Sprintf("[%s@%s,resp:(status:%v,feedback:%s),err:%v]", self.TargetHost, self.groupId, ack.GetStatus(), ack.GetFeedback(), self.Err)
+	}
+	return fmt.Sprintf("[%s@%s,resp:%v,err:%v]", self.TargetHost, self.groupId, self.resp, self.Err)
 }
 
 //统计投递结果的事件，决定不决定重发

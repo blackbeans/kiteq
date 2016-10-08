@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/blackbeans/kiteq-common/stat"
-	//	log "github.com/blackbeans/log4go"
+	// log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	p "github.com/blackbeans/turbo/pipe"
 	"sort"
@@ -16,7 +16,7 @@ const (
 
 //----------------投递的handler
 type DeliverQosHandler struct {
-	p.BaseForwardHandler
+	p.BaseDoubleSidedHandler
 	flowstat *stat.FlowStat
 }
 
@@ -24,7 +24,7 @@ type DeliverQosHandler struct {
 func NewDeliverQosHandler(name string, flowstat *stat.FlowStat) *DeliverQosHandler {
 
 	phandler := &DeliverQosHandler{}
-	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
+	phandler.BaseDoubleSidedHandler = p.NewBaseDoubleSidedHandler(name, phandler)
 	phandler.flowstat = flowstat
 	return phandler
 }
@@ -84,6 +84,7 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 
 	//增加消息投递的次数
 	pevent.deliverCount++
+
 	//创建投递事件
 	revent := p.NewRemotingEvent(pevent.packet, nil, groups...)
 	revent.AttachEvent(pevent)

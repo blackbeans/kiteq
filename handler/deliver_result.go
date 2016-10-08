@@ -110,9 +110,10 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 	}
 
 	log.InfoLog("kite_handler", "%s|Process|SEND RESULT:\n"+
-		"messageId:%s\nTopic:%s\nMessageType:%s\npublishGroupId:%s\nDeliverCount:%d\n"+
-		"createTime:%d\nproperties:%v\n"+
-		"attemptDeliver:%v\nfly:%v\n"+
+		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d\n"+
+		"CreateTime:%d\nproperties:%v\n"+
+		"AttemptDeliver:%v\nFly:%v\n"+
+		"NextDeliverTime:%d\n"+
 		"DeliverGroups:%v\nSUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
 		self.GetName(),
 		fevent.header.GetMessageId(), fevent.header.GetTopic(),
@@ -121,6 +122,7 @@ func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p
 		fevent.header.GetCreateTime(),
 		fevent.header.GetProperties(),
 		attemptDeliver, fevent.header.GetFly(),
+		self.nextDeliveryTime(fevent.deliverCount),
 		fevent.deliverGroups,
 		fevent.succGroups, fevent.succGroupFuture, fevent.failGroupFuture)
 	//都投递成功
