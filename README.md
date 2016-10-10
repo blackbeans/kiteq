@@ -3,12 +3,6 @@ KiteQ ![image](./doc/logo.jpg)
 
 基于go+protobuff实现的多种持久化方案的mq框架
 
-#### Client For KiteQ
-    Go:    https://github.com/blackbeans/kiteq-client-go
-    Java : https://github.com/blackbeans/kiteq-client-java
-    PHP:   https://github.com/blackbeans/kiteq-client-php
-    C++: https://github.com/quguangjie/kiteq-client-cpp
-
 #### 简介
     * 基于zk/etcd维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
     * 基于与topic以及第二级messageType订阅消息
@@ -18,6 +12,7 @@ KiteQ ![image](./doc/logo.jpg)
     * 自定义group内的Topic级别的流控措施，保护订阅方安全
     * kiteserver的流量保护
     * 客户端连接上报系统预热时间，根据预热时间逐步放量推送消息
+    * Client Supported：Java、Go、CPP、PHP
 
 #### 工程结构
     kiteq/
@@ -55,6 +50,15 @@ KiteQ ![image](./doc/logo.jpg)
         持久订阅 ： 分组集群内的机器哪怕是全部离线，消息也不会丢弃，上线后KiteQ推送
 
         非持久订阅： 分组集群内的机器全部离线，消息不会保留，直接丢弃
+
+#### 模块图
+  ![image](./doc/kiteq_dep.png)
+
+  - 描述：
+
+    [KiteQ-Common](https://github.com/blackbeans/kiteq-common)  提供了对存储、网络传输协议、zk管理
+
+    [KiteQ-OPS](https://github.com/blackbeans/kiteq-ops) 提供了KiteQ集群图形化监控
 
 #### 架构图
   ![image](./doc/kiteq_arch.png)
@@ -136,10 +140,13 @@ KiteQ ![image](./doc/logo.jpg)
 
 ##### Client Supported：
 
-    Go : github.com/blackbeans/kiteq-client-go
+    [Go-Client](https://github.com/blackbeans/kiteq-client-go)
 
-    Java : github.com/blackbeans/kiteq-client-java
+    [Java-Client](https://github.com/blackbeans/kiteq-client-java)
 
+    [PHP-Client](https://github.com/blackbeans/kiteq-client-php)
+
+    [CPP-Client](https://github.com/quguangjie/kiteq-client-cpp)
 
 #### Donate
 
