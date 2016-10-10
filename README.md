@@ -60,6 +60,8 @@ KiteQ ![image](./doc/logo.jpg)
 
     [KiteQ-OPS](https://github.com/blackbeans/kiteq-ops) 提供了KiteQ集群图形化监控
 
+    [Turbo](https://github.com/blackbeans/turbo) 提供通用网络层的封装
+
 #### 架构图
   ![image](./doc/kiteq_arch.png)
   
