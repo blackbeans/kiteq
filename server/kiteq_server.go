@@ -61,13 +61,13 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
-	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 10))
-	rw = append(rw, handler.NewRedeliveryWindow(4, 10, 30))
-	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 2*30))
-	rw = append(rw, handler.NewRedeliveryWindow(20, 30, 4*60))
-	rw = append(rw, handler.NewRedeliveryWindow(30, 40, 8*60))
-	rw = append(rw, handler.NewRedeliveryWindow(40, 50, 16*60))
-	rw = append(rw, handler.NewRedeliveryWindow(50, -1, 32*60))
+	rw = append(rw, handler.NewRedeliveryWindow(0, 3, 0))
+	rw = append(rw, handler.NewRedeliveryWindow(4, 10, 5))
+	rw = append(rw, handler.NewRedeliveryWindow(10, 20, 10))
+	rw = append(rw, handler.NewRedeliveryWindow(20, 30, 2*10))
+	rw = append(rw, handler.NewRedeliveryWindow(30, 40, 4*10))
+	rw = append(rw, handler.NewRedeliveryWindow(40, 50, 8*10))
+	rw = append(rw, handler.NewRedeliveryWindow(50, -1, 16*10))
 
 	//创建KiteqServer的流控
 	limiter, _ := turbo.NewBurstyLimiter(kc.so.recievePermitsPerSecond/2, kc.so.recievePermitsPerSecond)

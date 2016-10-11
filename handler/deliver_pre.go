@@ -9,6 +9,7 @@ import (
 	"github.com/blackbeans/kiteq-common/store"
 	packet "github.com/blackbeans/turbo/packet"
 	p "github.com/blackbeans/turbo/pipe"
+	"sync/atomic"
 	"time"
 )
 
@@ -17,7 +18,8 @@ type DeliverPreHandler struct {
 	p.BaseForwardHandler
 	kitestore        store.IKiteStore
 	exchanger        *exchange.BindExchanger
-	maxDeliverNum    chan byte
+	maxDeliverNum    int32
+	conditions       int32
 	deliverTimeout   time.Duration
 	flowstat         *stat.FlowStat
 	deliveryRegistry *stat.DeliveryRegistry
@@ -31,9 +33,11 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
-	phandler.maxDeliverNum = make(chan byte, maxDeliverWorker)
+	phandler.maxDeliverNum = (int32)(maxDeliverWorker)
+	phandler.conditions = 0
 	phandler.flowstat = flowstat
 	phandler.deliveryRegistry = deliveryRegistry
+
 	return phandler
 }
 
@@ -62,17 +66,30 @@ func (self *DeliverPreHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 		return nil
 	}
 
-	self.maxDeliverNum <- 1
-	self.flowstat.DeliverGo.Incr(1)
-	go func() {
-		defer func() {
-			<-self.maxDeliverNum
-			self.flowstat.DeliverGo.Incr(-1)
-		}()
-		//启动投递
-		self.send0(ctx, pevent)
-		self.flowstat.DeliverFlow.Incr(1)
-	}()
+	/**
+	 * 尝试三次进行spinlock
+	 **/
+	for i := 0; i < 3; i++ {
+		old := atomic.LoadInt32(&self.conditions)
+		if (old + 1) > self.maxDeliverNum {
+			continue
+		}
+		if atomic.CompareAndSwapInt32(&self.conditions, old, old+1) {
+			self.flowstat.DeliverGo.Incr(1)
+			go func() {
+				defer func() {
+					atomic.AddInt32(&self.conditions, -1)
+					self.flowstat.DeliverGo.Incr(-1)
+				}()
+				//启动投递
+				self.send0(ctx, pevent)
+				self.flowstat.DeliverFlow.Incr(1)
+			}()
+			break
+		} else {
+
+		}
+	}
 
 	return nil
 }

@@ -32,7 +32,7 @@
 		db="file://.?cap=10000000&checkSeconds=10"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
-		recoverSeconds=10
+		recoverSeconds=1
 		recievePermitsPerSecond=20000
 		
 	[clusters.mysql_dev]
