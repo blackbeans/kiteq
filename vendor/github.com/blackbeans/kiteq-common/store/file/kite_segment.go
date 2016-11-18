@@ -345,9 +345,14 @@ func (self *Segment) recover(do func(ol *oplog)) {
 
 //delete chunk
 func (self *Segment) Delete(cid int64) bool {
-	idx := sort.Search(len(self.chunks), func(i int) bool {
-		return self.chunks[i].id >= cid
-	})
+	// idx := sort.Search(len(self.chunks), func(i int) bool {
+	// 	return self.chunks[i].id >= cid
+	// })
+
+	idx := int(cid - self.sid)
+	if idx < 0 {
+		return false
+	}
 
 	if idx < len(self.chunks) {
 		//mark delete
@@ -366,9 +371,15 @@ func (self *Segment) Delete(cid int64) bool {
 //expired data
 func (self *Segment) Expired(cid int64) bool {
 
-	idx := sort.Search(len(self.chunks), func(i int) bool {
-		return self.chunks[i].id >= cid
-	})
+	// idx := sort.Search(len(self.chunks), func(i int) bool {
+	// 	return self.chunks[i].id >= cid
+	// })
+
+	idx := int(cid - self.sid)
+	if idx < 0 {
+		return false
+	}
+
 	// log.Debug("Segment|Expired|chunkid:%d|%s\n", cid, idx)
 	if idx < len(self.chunks) {
 		//mark delete
@@ -394,9 +405,13 @@ func (self *Segment) Truncate() {
 //get chunk by chunkid
 func (self *Segment) Get(cid int64) *Chunk {
 
-	idx := sort.Search(len(self.chunks), func(i int) bool {
-		return self.chunks[i].id >= cid
-	})
+	// idx := sort.Search(len(self.chunks), func(i int) bool {
+	// 	return self.chunks[i].id >= cid
+	// })
+	idx := int(cid - self.sid)
+	if idx < 0 {
+		return nil
+	}
 
 	//not exsit
 	if idx >= len(self.chunks) {

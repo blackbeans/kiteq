@@ -13,48 +13,48 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "39ecdb211f73c8c3ae4bf5bd845ceb05bc261deb"
+			"Rev": "b44d3ae54fc11f4511404e89345da8fdc2c59971"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
-			"Comment": "go.weekly.2012-02-22-37-gc4c6801",
-			"Rev": "c4c6801b024dc5dde10832735571729d571d08fa"
+			"Comment": "go.weekly.2012-02-22-38-gbfe8bc4",
+			"Rev": "bfe8bc4f9c44d57ef14e44deed4796838fc36876"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/turbo",

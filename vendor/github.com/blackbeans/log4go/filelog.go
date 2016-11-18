@@ -5,6 +5,7 @@ package log4go
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -68,10 +69,40 @@ func NewFileLogWriter(fname string, rotate bool, daily bool) *FileLogWriter {
 		daily:          daily}
 
 	// open the file for the first time
-	if err := w.intRotate(); err != nil {
-		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
-		return nil
+	// if err := w.intRotate(); err != nil {
+	// 	fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
+	// 	return nil
+	// }
+
+	fpath := fname[:strings.LastIndex(fname, "/")]
+
+	//check path
+	_, err := os.Lstat(fpath)
+	if nil != err {
+		os.MkdirAll(fpath, os.ModePerm)
 	}
+
+	// Open the log file
+	fd, err := os.OpenFile(fname, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	w.file = fd
+
+	now := time.Now()
+
+	// Set the daily open date to the current date
+	w.daily_opendate = now.Day()
+
+	fi, err := fd.Stat()
+	if nil == err && nil != fi {
+		w.maxsize_cursize = int(fi.Size())
+		now = fi.ModTime()
+	}
+	// initialize rotation values
+	w.maxlines_curlines = 0
+
+	fmt.Fprint(w.file, FormatLogRecord(w.header, &LogRecord{Created: now}))
 
 	go func() {
 		defer func() {
@@ -194,7 +225,6 @@ func (w *FileLogWriter) intRotate() error {
 	// initialize rotation values
 	w.maxlines_curlines = 0
 	w.maxsize_cursize = 0
-
 	return nil
 }
 

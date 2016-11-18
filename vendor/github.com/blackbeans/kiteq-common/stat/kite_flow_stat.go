@@ -21,7 +21,7 @@ type FlowStat struct {
 	stop        bool
 }
 
-func NewFlowStat(name string) *FlowStat {
+func NewFlowStat() *FlowStat {
 
 	f := &FlowStat{
 		DeliverFlow: &turbo.Flow{},
