@@ -1,12 +1,15 @@
 package handler
 
 import (
-	"github.com/blackbeans/kiteq-common/protocol"
-	packet "github.com/blackbeans/turbo/packet"
-	p "github.com/blackbeans/turbo/pipe"
 	"regexp"
 	"sort"
 	"time"
+
+	"sync"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	packet "github.com/blackbeans/turbo/packet"
+	p "github.com/blackbeans/turbo/pipe"
 )
 
 const (
@@ -23,14 +26,27 @@ func init() {
 //----------------持久化的handler
 type CheckMessageHandler struct {
 	p.BaseForwardHandler
-	topics []string
+	topicNotify chan []string
+	topics      []string
+	sync.RWMutex
 }
 
 //------创建persitehandler
-func NewCheckMessageHandler(name string, topics []string) *CheckMessageHandler {
+func NewCheckMessageHandler(name string, topicNotify chan []string) *CheckMessageHandler {
 	phandler := &CheckMessageHandler{}
 	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
-	sort.Strings(topics)
+	phandler.topicNotify = topicNotify
+	topics := <-topicNotify
+	go func() {
+		for {
+			tmp := <-phandler.topicNotify
+			func() {
+				phandler.Lock()
+				defer phandler.Unlock()
+				phandler.topics = tmp
+			}()
+		}
+	}()
 	phandler.topics = topics
 	return phandler
 }
@@ -54,11 +70,14 @@ func (self *CheckMessageHandler) Process(ctx *p.DefaultPipelineContext, event p.
 
 	if nil != pevent.entity {
 
-		//增加接受消息的统计
-
 		//先判断是否是可以处理的topic的消息
-		idx := sort.SearchStrings(self.topics, pevent.entity.Header.GetTopic())
-		if idx == len(self.topics) {
+		self.RLock()
+
+		validTopic := sort.SearchStrings(self.topics, pevent.entity.Header.GetTopic()) == len(self.topics)
+
+		self.RUnlock()
+
+		if validTopic {
 			//不存在该消息的处理则直接返回存储失败
 			remoteEvent := p.NewRemotingEvent(storeAck(pevent.opaque,
 				pevent.entity.Header.GetMessageId(), false, "UnSupport Topic Message!"),

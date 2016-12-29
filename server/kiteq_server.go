@@ -1,6 +1,13 @@
 package server
 
 import (
+	"kiteq/handler"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
@@ -11,12 +18,6 @@ import (
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/pipe"
 	"github.com/blackbeans/turbo/server"
-	"kiteq/handler"
-	"net"
-	"net/http"
-	"os"
-	"strconv"
-	"time"
 )
 
 type KiteQServer struct {
@@ -32,6 +33,7 @@ type KiteQServer struct {
 	lastNetstat    []turbo.NetworkStat
 	lastKiteStat   []kiteqstat
 	limiter        *turbo.BurstyLimiter
+	topicNotify    chan []string
 }
 
 //握手包
@@ -72,6 +74,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	//创建KiteqServer的流控
 	limiter, _ := turbo.NewBurstyLimiter(kc.so.recievePermitsPerSecond/2, kc.so.recievePermitsPerSecond)
 
+	topicNotify := make(chan []string, 10)
+	topicNotify <- kc.so.topics
 	//初始化pipeline
 	pipeline := pipe.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
@@ -79,7 +83,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
 	pipeline.RegisteHandler("accept", handler.NewAcceptHandler("accept", limiter, kc.flowstat))
 	pipeline.RegisteHandler("heartbeat", handler.NewHeartbeatHandler("heartbeat"))
-	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", kc.so.topics))
+	pipeline.RegisteHandler("check_message", handler.NewCheckMessageHandler("check_message", topicNotify))
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers, registry))
@@ -102,7 +106,8 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 		stop:           false,
 		lastNetstat:    make([]turbo.NetworkStat, 2),
 		lastKiteStat:   make([]kiteqstat, 2),
-		limiter:        limiter}
+		limiter:        limiter,
+		topicNotify:    topicNotify}
 
 }
 
@@ -202,6 +207,8 @@ func (self *KiteQServer) startCheckConf() {
 				}
 				//重置数据
 				self.kc.so = so
+				//下发变化的数据
+				self.topicNotify <- so.topics
 			}
 
 			<-t.C
