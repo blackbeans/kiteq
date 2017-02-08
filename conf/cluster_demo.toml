@@ -1,0 +1,61 @@
+# This is a TOML document.
+
+
+#registry的管理
+[registry]
+	[registry.dev]
+		hosts="zk://localhost:2181"
+		#hosts="etcd://http://localhost:2379"
+	[registry.online]
+		hosts="zk://vm-bibi-zk-mq001.vm:2181,vm-bibi-zk-mq002.vm:2181,vm-bibi-zk-mq003.vm:2181" 
+
+#kiteq的服务器
+[clusters]
+	[clusters.default]
+		env="online" #env=dev/online
+		topics=["relation","message","profile"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="/home/deploy/kiteq/log/log.xml"
+		db="file:///data/kiteq?cap=10000000&checkSeconds=10"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+	
+	[clusters.file_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="file://./demo?cap=10000000&checkSeconds=10"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+		
+	[clusters.mysql_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="mysql://localhost:3306?db=kite&username=root&batchUpdateSize=2000&batchDelSize=10000&flushSeconds=1&maxConn=20"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+		
+	[clusters.memory_dev]
+		env="dev" #env=dev/online
+		topics=["trade"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./log/log_test.xml"
+		db="memory://.?initcap=10000000&maxcap=2000000"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
+

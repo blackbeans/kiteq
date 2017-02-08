@@ -97,11 +97,11 @@ func NewRemotingConfig(name string,
 
 	//定义holder
 	holders := make([]map[int32]*Future, 0, CONCURRENT_LEVEL)
-	locks := make([]chan bool, 0, CONCURRENT_LEVEL)
+	locks := make([]chan *interface{}, 0, CONCURRENT_LEVEL)
 	for i := 0; i < CONCURRENT_LEVEL; i++ {
 		splitMap := make(map[int32]*Future, maxOpaque/CONCURRENT_LEVEL)
 		holders = append(holders, splitMap)
-		locks = append(locks, make(chan bool, 1))
+		locks = append(locks, make(chan *interface{}, 1))
 	}
 	rh := &ReqHolder{
 		opaque:    0,
@@ -126,7 +126,7 @@ func NewRemotingConfig(name string,
 type ReqHolder struct {
 	maxOpaque int
 	opaque    uint32
-	locks     []chan bool
+	locks     []chan *interface{}
 	holders   []map[int32]*Future
 }
 
@@ -138,7 +138,7 @@ func (self *ReqHolder) CurrentOpaque() int32 {
 func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 
 	l, m := self.locker(opaque)
-	l <- true
+	l <- nil
 	defer func() { <-l }()
 
 	future, ok := m[opaque]
@@ -151,11 +151,11 @@ func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 
 func (self *ReqHolder) Attach(opaque int32, future *Future) {
 	l, m := self.locker(opaque)
-	l <- true
+	l <- nil
 	defer func() { <-l }()
 	m[opaque] = future
 }
 
-func (self *ReqHolder) locker(id int32) (chan bool, map[int32]*Future) {
+func (self *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
 	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
 }
