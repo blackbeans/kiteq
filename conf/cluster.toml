@@ -25,7 +25,7 @@
 	
 	[clusters.file_dev]
 		env="dev" #env=dev/online
-		topics=["auth","user-relation","user-profile"]
+		topics=["auth","user-relation","user-profile","trade"]
 		dlqExecHour=2
 		deliveryFirst=false
 		logxml="./log/log_test.xml"
