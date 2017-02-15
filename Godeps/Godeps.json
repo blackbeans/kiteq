@@ -13,43 +13,43 @@
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/exchange",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/protocol",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/registry/bind",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/stat",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/file",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/memory",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/mysql",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/kiteq-common/store/parser",
-			"Rev": "4492e7a0794ffb05b2fbed72bb9e87a6aa36a95c"
+			"Rev": "bb5503f21e9777625bc4b3d4dfad57dd553719dd"
 		},
 		{
 			"ImportPath": "github.com/blackbeans/log4go",
@@ -86,23 +86,23 @@
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/client",
-			"Comment": "v3.1.0-rc.1-150-g86a4384",
-			"Rev": "86a43849fb7eb72da1dd5ceb2175031ac89963dd"
+			"Comment": "v3.1.0-rc.1-50-g5d60482",
+			"Rev": "5d60482357904a8273a53b001e37f949f208463a"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/pathutil",
-			"Comment": "v3.1.0-rc.1-150-g86a4384",
-			"Rev": "86a43849fb7eb72da1dd5ceb2175031ac89963dd"
+			"Comment": "v3.1.0-rc.1-50-g5d60482",
+			"Rev": "5d60482357904a8273a53b001e37f949f208463a"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/pkg/types",
-			"Comment": "v3.1.0-rc.1-150-g86a4384",
-			"Rev": "86a43849fb7eb72da1dd5ceb2175031ac89963dd"
+			"Comment": "v3.1.0-rc.1-50-g5d60482",
+			"Rev": "5d60482357904a8273a53b001e37f949f208463a"
 		},
 		{
 			"ImportPath": "github.com/go-sql-driver/mysql",
-			"Comment": "v1.3",
-			"Rev": "a0583e0143b1624142adab07e0e97fe106d99561"
+			"Comment": "v1.3-2-g2e00b5c",
+			"Rev": "2e00b5cd70399450106cec6431c2e2ce3cae5034"
 		},
 		{
 			"ImportPath": "github.com/golang/groupcache/lru",
