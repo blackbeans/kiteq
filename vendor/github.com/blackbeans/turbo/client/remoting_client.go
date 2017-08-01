@@ -3,13 +3,14 @@ package client
 import (
 	"errors"
 	"fmt"
+	"net"
+	"time"
+
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/codec"
 	"github.com/blackbeans/turbo/packet"
 	"github.com/blackbeans/turbo/session"
-	"net"
-	"time"
 )
 
 //网络层的client
@@ -193,6 +194,7 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 
 	pp := &p
 	opaque := self.fillOpaque(pp)
+
 	future := turbo.NewFuture(opaque, self.localAddr)
 	self.rc.RequestHolder.Attach(opaque, future)
 	err := self.remoteSession.Write(pp)
@@ -200,6 +202,7 @@ func (self *RemotingClient) WriteAndGet(p packet.Packet,
 	if nil != err {
 		return nil, err
 	}
+
 	tchan := time.After(timeout)
 	resp, err := future.Get(tchan)
 	return resp, err

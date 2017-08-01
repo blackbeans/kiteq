@@ -1,0 +1,205 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
+			"path": "github.com/blackbeans/go-uuid",
+			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
+			"revisionTime": "2016-05-24T09:24:44Z"
+		},
+		{
+			"checksumSHA1": "yJ6+pLllOibGZCIU0wSGdoU1fV0=",
+			"path": "github.com/blackbeans/go-zookeeper/zk",
+			"revision": "e9ca0f2da2a7e4b72457d5a0df3f941caf92954e",
+			"revisionTime": "2016-03-15T04:18:20Z"
+		},
+		{
+			"checksumSHA1": "GBYMu0awIKRS8hHuRz1pfgmpWVQ=",
+			"path": "github.com/blackbeans/kiteq-client-go/client",
+			"revision": "d0af0800381dfd28ceb0fd459457efe906deabd8",
+			"revisionTime": "2017-07-03T09:23:11Z"
+		},
+		{
+			"checksumSHA1": "M389o28biSXw32l14Tu2TWaVPpo=",
+			"path": "github.com/blackbeans/kiteq-common/exchange",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "kqzDDIUKjL4b9XTzh4mI9CT4U5c=",
+			"path": "github.com/blackbeans/kiteq-common/protocol",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "ZF9uPhQL44IcE6U9o6HC9vl/H9E=",
+			"path": "github.com/blackbeans/kiteq-common/registry",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "YZZbtcuns6dMZCJ6hkzEImv1Mi4=",
+			"path": "github.com/blackbeans/kiteq-common/registry/bind",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "MaYnsbzjanjUOleAk2/D3m9Juj0=",
+			"path": "github.com/blackbeans/kiteq-common/stat",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "A7pqP79HsEp0rS+g+lwWETHZ6Ms=",
+			"path": "github.com/blackbeans/kiteq-common/store",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "lzP5M0xMVBRDgSVNSQ01zOyBSms=",
+			"path": "github.com/blackbeans/kiteq-common/store/file",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "6Ae1j6ppod2gNvSDrWjc+W4mCMk=",
+			"path": "github.com/blackbeans/kiteq-common/store/memory",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "xyxZT7JSCHPaXu0BQigbQoobwzE=",
+			"path": "github.com/blackbeans/kiteq-common/store/mysql",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "EYwRN4wf0CsmIe00PMJlJrZMYao=",
+			"path": "github.com/blackbeans/kiteq-common/store/parser",
+			"revision": "bb5503f21e9777625bc4b3d4dfad57dd553719dd",
+			"revisionTime": "2017-02-08T13:50:13Z"
+		},
+		{
+			"checksumSHA1": "Zqi56gWHqXhmVr335Rhndl4zooE=",
+			"path": "github.com/blackbeans/log4go",
+			"revision": "bfe8bc4f9c44d57ef14e44deed4796838fc36876",
+			"revisionTime": "2016-11-11T07:32:44Z"
+		},
+		{
+			"checksumSHA1": "ZCZ52irJTGg1Khk4VAvzSiaquwg=",
+			"path": "github.com/blackbeans/turbo",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "QZgub3iSDRDOy4S/AMoMOyJRUys=",
+			"path": "github.com/blackbeans/turbo/client",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "wKpooOEL3tVBqSsB7IFiH2f35Qk=",
+			"path": "github.com/blackbeans/turbo/codec",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "ZF6dx24BCUXbuWVn6r4NBECKdiE=",
+			"path": "github.com/blackbeans/turbo/packet",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "inBP0jLpQoj+2KLN3mzFnYT6k7s=",
+			"path": "github.com/blackbeans/turbo/pipe",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "BKP+Zr2GOqCH2VAJsDTTeQBer58=",
+			"path": "github.com/blackbeans/turbo/server",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "xLl2o4+x0bcY+llkiQ9plJrcodU=",
+			"path": "github.com/blackbeans/turbo/session",
+			"revision": "becedde537219c30ee9e4e45b46e1863b3cc621d",
+			"revisionTime": "2017-08-01T07:38:40Z"
+		},
+		{
+			"checksumSHA1": "fD5l709voaF+GGsD1Vtk+G+1RPY=",
+			"path": "github.com/coreos/etcd/client",
+			"revision": "5d60482357904a8273a53b001e37f949f208463a",
+			"revisionTime": "2016-12-01T03:49:55Z"
+		},
+		{
+			"checksumSHA1": "mKIXx1kDwmVmdIpZ3pJtRBuUKso=",
+			"path": "github.com/coreos/etcd/pkg/pathutil",
+			"revision": "5d60482357904a8273a53b001e37f949f208463a",
+			"revisionTime": "2016-12-01T03:49:55Z"
+		},
+		{
+			"checksumSHA1": "gx1gJIMU6T0UNQ0bPZ/drQ8cpCI=",
+			"path": "github.com/coreos/etcd/pkg/types",
+			"revision": "5d60482357904a8273a53b001e37f949f208463a",
+			"revisionTime": "2016-12-01T03:49:55Z"
+		},
+		{
+			"checksumSHA1": "VCKsz7001qwfA2bHLo/AOn0xos0=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "bf7f34fef176d890dfcc6e94319ac747291bc09a",
+			"revisionTime": "2017-07-03T06:14:36Z"
+		},
+		{
+			"checksumSHA1": "Bra/9XucW0ivjIalL27XqSw2dTk=",
+			"path": "github.com/golang/groupcache/lru",
+			"revision": "a6b377e3400b08991b80d6805d627f347f983866",
+			"revisionTime": "2016-08-03T20:04:08Z"
+		},
+		{
+			"checksumSHA1": "kBeNcaKk56FguvPSUCEaH6AxpRc=",
+			"path": "github.com/golang/protobuf/proto",
+			"revision": "8ee79997227bf9b34611aee7946ae64735e6fd93",
+			"revisionTime": "2016-11-17T03:31:26Z"
+		},
+		{
+			"checksumSHA1": "A6nZdZ1/lTOVINhIndyw2ZWN9JU=",
+			"path": "github.com/naoina/go-stringutil",
+			"revision": "6b638e95a32d0c1131db0e7fe83775cbea4a0d0b",
+			"revisionTime": "2015-11-18T23:44:43Z"
+		},
+		{
+			"checksumSHA1": "MUYxtCY95dt/b/5cmzP0x1b9d/E=",
+			"path": "github.com/naoina/toml",
+			"revision": "751171607256bb66e64c9f0220c00662420c38e9",
+			"revisionTime": "2015-07-27T12:48:37Z"
+		},
+		{
+			"checksumSHA1": "6Sd81okp0F1ByCD/xCP9L1+v4Xs=",
+			"path": "github.com/naoina/toml/ast",
+			"revision": "751171607256bb66e64c9f0220c00662420c38e9",
+			"revisionTime": "2015-07-27T12:48:37Z"
+		},
+		{
+			"checksumSHA1": "+ajZXCpD7wIHE4F9jD8/tO+shBo=",
+			"path": "github.com/ugorji/go/codec",
+			"revision": "9c7f9b7a2bc3a520f7c7b30b34b7f85f47fe27b6",
+			"revisionTime": "2016-11-30T06:17:42Z"
+		},
+		{
+			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
+			"path": "golang.org/x/net/context",
+			"revision": "f2499483f923065a842d38eb4c7f1927e6fc6e6d",
+			"revisionTime": "2017-01-14T04:22:49Z"
+		},
+		{
+			"checksumSHA1": "eFQDEix/mGnhwnFu/Hq63zMfrX8=",
+			"path": "golang.org/x/time/rate",
+			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
+			"revisionTime": "2016-10-28T04:02:39Z"
+		}
+	],
+	"rootPath": "kiteq"
+}

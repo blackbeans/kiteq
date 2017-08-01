@@ -2,16 +2,18 @@ package session
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
-	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/codec"
-	"github.com/blackbeans/turbo/packet"
 	"io"
 	"math"
 	"net"
 	"time"
+
+	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
+	"github.com/blackbeans/turbo/codec"
+	"github.com/blackbeans/turbo/packet"
 )
 
 type Session struct {
@@ -67,37 +69,81 @@ func (self *Session) ReadPacket() {
 	//缓存本次包的数据
 	for !self.isClose {
 
-		func() {
+		err := func() error {
 			defer func() {
 				if err := recover(); nil != err {
-					log.Error("Session|ReadPacket|%s|recover|FAIL|%s", self.remoteAddr, err)
+					log.Error("Session|Read|%s|recover|FAIL|%s", self.remoteAddr, err)
 				}
 			}()
-			buffer, err := self.frameCodec.Read(self.br)
+
+			//按照标准的turbo packet读取packet头部
+			buff, err := self.read0(self.br, packet.PACKET_HEAD_LEN)
+			if nil != err {
+				return err
+			}
+
+			br := bytes.NewReader(buff)
+			head, err := packet.UnmarshalHeader(br)
 			if nil != err {
 				self.Close()
-				//log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
-				return
-			} else {
-				// log.Debug("Session|ReadPacket|%s|SUCC|%d", self.remoteAddr, buffer.Len())
+				log.Error("Session|UnmarshalHeader|%s|FAIL|CLOSE SESSION|%s|%v", self.remoteAddr, err)
+				return err
 			}
-			bl := buffer.Len()
-			p, err := self.frameCodec.UnmarshalPacket(buffer)
+
+			if head.BodyLen > packet.MAX_PACKET_BYTES {
+				log.Error("Session|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%s|%v", self.remoteAddr, head.BodyLen)
+				return err
+			}
+
+			//读取body
+			body, err := self.read0(self.br, int(head.BodyLen))
 			if nil != err {
-				self.Close()
-				log.Error("Session|ReadPacket|MarshalPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
-				return
+				log.Error("Session|ReadBody|%s|FAIL|CLOSE SESSION|%s|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
+				return err
 			}
-			// fmt.Println("ReadPacket|" + self.RemotingAddr() + "\t" + string(p.Data))
+
+			p := packet.Packet{Header: head, Data: body}
+			packetWithPayLoad, err := self.frameCodec.UnmarshalPacket(p)
+
+			if nil != err {
+				log.Error("Session|UnmarshalPacket|%s|FAIL|CLOSE SESSION|%s|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
+				return nil
+			}
 			//写入缓冲
-			self.ReadChannel <- p
-			//重置buffer
+			self.ReadChannel <- packetWithPayLoad
 			if nil != self.rc.FlowStat {
 				self.rc.FlowStat.ReadFlow.Incr(1)
-				self.rc.FlowStat.ReadBytesFlow.Incr(int32(bl))
+				self.rc.FlowStat.ReadBytesFlow.Incr(packet.PACKET_HEAD_LEN + head.BodyLen)
 			}
+			return nil
 		}()
+		if nil != err {
+			break
+		}
 	}
+}
+
+//分段读取
+func (self *Session) read0(br *bufio.Reader, len int) ([]byte, error) {
+	//按照标准的turbo packet读取packet头部
+	buff := make([]byte, len)
+	idx := 0
+	for {
+		l, err := br.Read(buff[idx:])
+		if nil != err {
+			self.Close()
+			log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+			return nil, err
+		}
+		if l != cap(buff) {
+			idx += l
+		} else {
+			//read full
+			break
+		}
+	}
+	return buff, nil
+
 }
 
 //写出数据
@@ -123,8 +169,8 @@ func (self *Session) Write(p *packet.Packet) error {
 func (self *Session) write0(tlv []*packet.Packet) {
 	batch := make([]byte, 0, len(tlv)*128)
 	for _, t := range tlv {
-		p := self.frameCodec.MarshalPacket(t)
-		if nil == p || len(p) <= 0 {
+		p, err := self.frameCodec.MarshalPacket(*t)
+		if nil != err || nil == p || len(p) <= 0 {
 			log.Error("Session|write0|MarshalPacket|FAIL|EMPTY PACKET|%s", t)
 			//如果是同步写出
 			continue
@@ -164,7 +210,7 @@ func (self *Session) write0(tlv []*packet.Packet) {
 	// //flush
 	self.bw.Flush()
 	if nil != self.rc.FlowStat {
-		self.rc.FlowStat.WriteFlow.Incr(1)
+		self.rc.FlowStat.WriteFlow.Incr(int32(len(tlv)))
 		self.rc.FlowStat.WriteBytesFlow.Incr(int32(len(batch)))
 	}
 
@@ -223,7 +269,7 @@ func (self *Session) Close() error {
 		close(self.WriteChannel)
 		close(self.ReadChannel)
 		self.rc.FlowStat.Connections.Incr(-1)
-		log.Debug("Sessio`n|Close|%s...", self.remoteAddr)
+		log.Debug("Session|Close|%s...", self.remoteAddr)
 	}
 
 	return nil

@@ -2,8 +2,9 @@ package packet
 
 //请求的packet
 type Packet struct {
-	Header PacketHeader
-	Data   []byte
+	Header  PacketHeader
+	Data    []byte
+	PayLoad interface{}
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
