@@ -86,27 +86,26 @@ func (self *Session) ReadPacket() {
 			head, err := packet.UnmarshalHeader(br)
 			if nil != err {
 				self.Close()
-				log.Error("Session|UnmarshalHeader|%s|FAIL|CLOSE SESSION|%s|%v", self.remoteAddr, err)
+				log.Error("Session|UnmarshalHeader|%s|FAIL|CLOSE SESSION|%v", self.remoteAddr, err)
 				return err
 			}
 
 			if head.BodyLen > packet.MAX_PACKET_BYTES {
-				log.Error("Session|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%s|%v", self.remoteAddr, head.BodyLen)
+				log.Error("Session|UnmarshalHeader|%s|Too Large Packet|CLOSE SESSION|%v", self.remoteAddr, head.BodyLen)
 				return err
 			}
 
 			//读取body
 			body, err := self.read0(self.br, int(head.BodyLen))
 			if nil != err {
-				log.Error("Session|ReadBody|%s|FAIL|CLOSE SESSION|%s|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
+				log.Error("Session|ReadBody|%s|FAIL|CLOSE SESSION|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
 				return err
 			}
 
 			p := packet.Packet{Header: head, Data: body}
 			packetWithPayLoad, err := self.frameCodec.UnmarshalPacket(p)
-
 			if nil != err {
-				log.Error("Session|UnmarshalPacket|%s|FAIL|CLOSE SESSION|%s|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
+				log.WarnLog("Session|UnmarshalPacket|%s|FAIL|%v|bodyLen:%d", self.remoteAddr, err, head.BodyLen)
 				return nil
 			}
 			//写入缓冲
@@ -135,8 +134,9 @@ func (self *Session) read0(br *bufio.Reader, len int) ([]byte, error) {
 			log.Error("Session|ReadPacket|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 			return nil, err
 		}
-		if l != cap(buff) {
-			idx += l
+		idx += l
+		if idx < cap(buff) {
+
 		} else {
 			//read full
 			break
