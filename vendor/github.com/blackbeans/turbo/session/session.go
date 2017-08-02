@@ -135,10 +135,7 @@ func (self *Session) read0(br *bufio.Reader, len int) ([]byte, error) {
 			return nil, err
 		}
 		idx += l
-		if idx < cap(buff) {
-
-		} else {
-			//read full
+		if idx >= len {
 			break
 		}
 	}
