@@ -61,6 +61,7 @@ message Header{
     required bool fly = 8 [default = false];//消息是否为fly模式   true 为 不存储直接投递 false为存储并投递
     repeated Entry properties =9; //用户自定义的消息属性其实就是Map
     optional int64 createTime  = 10; //消息生成时间
+    optional bool snappy = 11; //是需要开启snappy压缩
 }
 
 //byte类消息
