@@ -1,249 +1,230 @@
 package turbo
 
 import (
-	"container/list"
-	"fmt"
-	log "github.com/blackbeans/log4go"
-	"sync"
+	"container/heap"
 	"sync/atomic"
 	"time"
 )
 
-type slotJob struct {
-	id  uint32
-	do  func()
-	ttl int
-	ch  chan bool
+type OnEvent func(t time.Time)
+
+//一个timer任务
+type Timer struct {
+	timerId  int64
+	Index    int
+	expired  time.Time
+	interval time.Duration
+	//回调函数
+	onTimeout OnEvent
+	onCancel  OnEvent
+	//是否重复过期
+	repeated bool
 }
 
-type Slot struct {
-	index int
-	hooks *list.List
-	sync.RWMutex
+type TimerHeap []*Timer
+
+// A PriorityQueue implements heap.Interface and holds Items.
+func (h TimerHeap) Len() int { return len(h) }
+
+func (h TimerHeap) Less(i, j int) bool {
+	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
+	if h[i].expired.Before(h[j].expired) {
+		return true
+	}
+
+	if h[i].timerId < h[i].timerId {
+		return true
+	}
+	return false
 }
 
-type TimeWheel struct {
-	maxHash        uint32
-	autoId         int32
-	tick           <-chan time.Time
-	wheel          []*Slot
-	hashWheel      map[uint32]*list.List
-	ticksPerwheel  int32
-	tickPeriod     time.Duration
-	currentTick    int32
-	slotJobWorkers chan bool
-	lock           sync.RWMutex
+func (h TimerHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+	h[i].Index = i
+	h[j].Index = j
 }
 
-//超时时间及每个个timewheel所需要的tick数
-func NewTimeWheel(tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers int) *TimeWheel {
-	tick := time.NewTicker(tickPeriod)
-	return NewTimeWheelWithTicker(tick.C, tickPeriod, ticksPerwheel, slotJobWorkers)
+func (h *TimerHeap) Push(x interface{}) {
+	n := len(*h)
+	item := x.(*Timer)
+	item.Index = n
+	*h = append(*h, item)
 }
 
-//超时时间及每个个timewheel所需要的tick数
-func NewTimeWheelWithTicker(ticker <-chan time.Time, tickPeriod time.Duration, ticksPerwheel int, slotJobWorkers int) *TimeWheel {
+func (h *TimerHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	item := old[n-1]
+	item.Index = -1 // for safety
+	*h = old[0 : n-1]
+	return item
+}
 
-	tw := &TimeWheel{
-		maxHash:        50 * 10000,
-		lock:           sync.RWMutex{},
-		tickPeriod:     tickPeriod,
-		hashWheel:      make(map[uint32]*list.List, 50*10000),
-		tick:           ticker,
-		slotJobWorkers: make(chan bool, slotJobWorkers),
-		wheel: func() []*Slot {
-			//ticksPerWheel make ticksPerWheel+1 slide
-			w := make([]*Slot, 0, ticksPerwheel+1)
-			for i := 0; i < ticksPerwheel+1; i++ {
-				w = append(w, func() *Slot {
-					return &Slot{
-						index: i,
-						hooks: list.New()}
-				}())
-			}
-			return w
-		}(),
-		ticksPerwheel: int32(ticksPerwheel) + 1,
-		currentTick:   0}
+var timerIds int64 = 0
 
-	go func() {
-		// pre := time.Now()
-		for i := int32(0); ; i++ {
-			i = i % tw.ticksPerwheel
-			<-tw.tick
-			// fmt.Printf("-------------%d\n", t.Nanosecond()-pre.Nanosecond())
-			atomic.StoreInt32(&tw.currentTick, i)
-			tw.notifyExpired(i)
-		}
-	}()
+const (
+	MIN_INTERVAL = 100 * time.Millisecond
+)
 
+func timerId() int64 {
+	return atomic.AddInt64(&timerIds, 1)
+}
+
+//时间轮
+type TimerWheel struct {
+	timerHeap   TimerHeap
+	tick        *time.Ticker
+	hashTimer   map[int64]*Timer
+	interval    time.Duration
+	cancelTimer chan int64
+	addTimer    chan *Timer
+	updateTimer chan Timer
+	workLimit   chan *interface{}
+}
+
+func NewTimerWheel(interval time.Duration, workSize int) *TimerWheel {
+
+	if int64(interval)-int64(MIN_INTERVAL) < 0 {
+		interval = MIN_INTERVAL
+	}
+
+	tw := &TimerWheel{
+		timerHeap:   make(TimerHeap, 0),
+		tick:        time.NewTicker(interval),
+		hashTimer:   make(map[int64]*Timer, 10),
+		interval:    interval,
+		updateTimer: make(chan Timer, 2000),
+		cancelTimer: make(chan int64, 2000),
+		addTimer:    make(chan *Timer, 2000),
+		workLimit:   make(chan *interface{}, workSize),
+	}
+	heap.Init(&tw.timerHeap)
+	tw.start()
 	return tw
 }
 
-func (self *TimeWheel) Monitor() string {
-	ticks := 0
-	for _, v := range self.wheel {
-		v.RLock()
-		ticks += v.hooks.Len()
-		v.RUnlock()
-	}
-	return fmt.Sprintf("TimeWheel|[total-tick:%d\tworkers:%d/%d]",
-		ticks, len(self.slotJobWorkers), cap(self.slotJobWorkers))
+func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
+	ch := make(chan time.Time, 1)
+	t := &Timer{
+		timerId:   timerId(),
+		expired:   time.Now().Add(timeout),
+		onTimeout: func(t time.Time) { ch <- t },
+		onCancel:  nil}
+
+	self.addTimer <- t
+	return t.timerId, ch
 }
 
-//notifyExpired func
-func (self *TimeWheel) notifyExpired(idx int32) {
-	var remove []*list.Element
+//周期性的timer
+func (self *TimerWheel) RepeatedTimer(interval time.Duration,
+	onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
+	ch := make(chan time.Time, 1)
+	t := &Timer{
+		repeated: true,
+		interval: interval,
+		timerId:  timerId(),
+		expired:  time.Now().Add(interval),
+		onTimeout: func(t time.Time) {
+			ch <- t
+			onTimout(t)
+		},
+		onCancel: onCancel}
 
-	self.lock.RLock()
-	slots := self.wheel[idx]
-	//-------clear expired
-	slots.RLock()
-	for e := slots.hooks.Back(); nil != e; e = e.Prev() {
-		sj := e.Value.(*slotJob)
-		sj.ttl--
-		//ttl expired
-		if sj.ttl <= 0 {
-			if nil == remove {
-				remove = make([]*list.Element, 0, 10)
-			}
+	self.addTimer <- t
+	return t.timerId, ch
 
-			//记录删除
-			remove = append(remove, e)
-			//写出超时
-			sj.ch <- true
+}
 
-			self.slotJobWorkers <- true
-			//async
-			go func() {
-				defer func() {
-					if err := recover(); nil != err {
-						//ignored
-						log.Error("TimeWheel|notifyExpired|Do|ERROR|%s\n", err)
-					}
-					<-self.slotJobWorkers
+func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
+	ch := make(chan time.Time, 1)
+	t := &Timer{
+		timerId: timerId(),
+		expired: time.Now().Add(timeout),
+		onTimeout: func(t time.Time) {
+			ch <- t
+			onTimout(t)
+		},
+		onCancel: onCancel}
 
+	self.addTimer <- t
+	return t.timerId, ch
+}
+
+//更新timer的时间
+func (self *TimerWheel) UpdateTimer(timerid int64, expired time.Time) {
+	t := Timer{
+		timerId: timerid,
+		expired: expired}
+	self.updateTimer <- t
+}
+
+//取消一个id
+func (self *TimerWheel) CancelTimer(timerid int64) {
+	self.cancelTimer <- timerid
+}
+
+func (self *TimerWheel) checkExpired(now time.Time) {
+	for self.timerHeap.Len() > 0 {
+
+		t := self.timerHeap.Pop().(*Timer)
+		//如果过期时间再当前tick之前则超时
+		//或者当前时间和过期时间的差距在一个Interval周期内那么就认为过期的
+		cost := now.UnixNano() - t.expired.UnixNano()
+		if t.expired.Before(now) ||
+			(cost > 0 && cost < int64(self.interval)) {
+			if nil != t.onTimeout {
+				self.workLimit <- nil
+				go func() {
+					<-self.workLimit
+					t.onTimeout(now)
 				}()
-
-				sj.do()
-
-				// log.Debug("TimeWheel|notifyExpired|%d\n", sj.ttl)
-
-			}()
+				//如果是repeated的那么就检查并且重置过期时间
+				if t.repeated {
+					//如果是需要repeat的那么继续放回去
+					t.expired = now.Add(t.interval)
+					if time.Since(t.expired).Seconds() > 10 {
+						t.expired = time.Now()
+					}
+					heap.Push(&self.timerHeap, t)
+				}
+			}
+		} else {
+			//没有过期那么久放回去
+			heap.Push(&self.timerHeap, t)
+			break
 		}
 	}
-	slots.RUnlock()
-	self.lock.RUnlock()
+}
 
-	if len(remove) > 0 {
-		slots.Lock()
-		//remove
-		for _, v := range remove {
-			slots.hooks.Remove(v)
-		}
-		slots.Unlock()
+//
+func (self *TimerWheel) start() {
 
-		self.lock.Lock()
-		//remove
-		for _, v := range remove {
-			job := v.Value.(*slotJob)
-			hashId := self.hashId(job.id)
-			link, ok := self.hashWheel[hashId]
-			if ok {
-				for e := link.Front(); nil != e; e = e.Next() {
-					//same node remove
-					if e.Value.(*list.Element) == v {
-						//remove
-						link.Remove(e)
-						select {
-						case <-job.ch:
-						default:
-						}
-						break
+	go func() {
+		for {
+			select {
+			case now := <-self.tick.C:
+				self.checkExpired(now)
+			case updateT := <-self.updateTimer:
+				if t, ok := self.hashTimer[updateT.timerId]; ok {
+					t.expired = updateT.expired
+				}
+			case t := <-self.addTimer:
+				heap.Push(&self.timerHeap, t)
+				self.hashTimer[t.timerId] = t
+			case timerid := <-self.cancelTimer:
+				if t, ok := self.hashTimer[timerid]; ok {
+					delete(self.hashTimer, timerid)
+					heap.Remove(&self.timerHeap, t.Index)
+
+					if nil != t.onCancel {
+						self.workLimit <- nil
+						go func() {
+							<-self.workLimit
+							t.onCancel(time.Now())
+						}()
 					}
 				}
 			}
 		}
-		self.lock.Unlock()
-	}
-
-}
-
-//add timeout func
-func (self *TimeWheel) After(timeout time.Duration, do func()) (int64, chan bool) {
-
-	sid := self.preTickIndex()
-	ttl := int(int64(timeout) / (int64(self.tickPeriod) * int64(self.ticksPerwheel-1)))
-	//fmt.Printf("After|TTL:%d|%d|%d|%d|%d\n", ttl, timeout, int64(self.tickPeriod), int64(self.ticksPerwheel-1), (int64(self.tickPeriod) * int64(self.ticksPerwheel-1)))
-	tid := self.timerId(sid)
-	ch := make(chan bool, 1)
-	job := &slotJob{tid, do, ttl, ch}
-
-	self.lock.Lock()
-	slots := self.wheel[sid]
-	slots.Lock()
-	e := slots.hooks.PushFront(job)
-	slots.Unlock()
-
-	v, ok := self.hashWheel[self.hashId(tid)]
-	if ok {
-		self.hashWheel[self.hashId(tid)].PushBack(e)
-	} else {
-		v = list.New()
-		v.PushBack(e)
-		self.hashWheel[self.hashId(tid)] = v
-	}
-	self.lock.Unlock()
-	return int64(tid), job.ch
-}
-
-func (self *TimeWheel) Remove(timerId int64) {
-	tid := uint32(timerId)
-	sid := self.decodeSlot(timerId)
-
-	self.lock.RLock()
-	sl := self.wheel[sid]
-	link, ok := self.hashWheel[self.hashId(tid)]
-	if ok {
-		sl.Lock()
-		//search and remove
-		var tmp *list.Element
-		for e := link.Front(); nil != e; e = e.Next() {
-			tmp = e.Value.(*list.Element)
-			job := tmp.Value.(*slotJob)
-			if job.id == tid {
-				//remove hashlink
-				link.Remove(e)
-				//remove slot
-				sl.hooks.Remove(tmp)
-				break
-			}
-		}
-		sl.Unlock()
-
-	}
-	self.lock.RUnlock()
-}
-
-func (self *TimeWheel) hashId(id uint32) uint32 {
-	return (id % self.maxHash)
-}
-
-func (self *TimeWheel) decodeSlot(timerId int64) uint32 {
-	return uint32(timerId) >> 32
-}
-
-func (self *TimeWheel) timerId(idx int32) uint32 {
-
-	return uint32(idx<<32 | atomic.AddInt32(&self.autoId, 1))
-}
-
-func (self *TimeWheel) preTickIndex() int32 {
-	idx := atomic.LoadInt32(&self.currentTick)
-	if idx > 0 {
-		idx -= 1
-	} else {
-		idx = (self.ticksPerwheel - 1)
-	}
-	return idx
+	}()
 }

@@ -87,7 +87,7 @@ type RemotingConfig struct {
 	ReadChannelSize  int           //读异步channel长度
 	IdleTime         time.Duration //连接空闲时间
 	RequestHolder    *ReqHolder
-	TW               *TimeWheel // timewheel
+	TW               *TimerWheel // timewheel
 }
 
 func NewRemotingConfig(name string,
@@ -119,7 +119,7 @@ func NewRemotingConfig(name string,
 		ReadChannelSize:  readchannelsize,
 		IdleTime:         idletime,
 		RequestHolder:    rh,
-		TW:               NewTimeWheel(1*time.Second, 6, 10)}
+		TW:               NewTimerWheel(100*time.Millisecond, 50)}
 	return rc
 }
 

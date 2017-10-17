@@ -9,7 +9,7 @@ type QMessage struct {
 	message proto.Message
 	msgType uint8
 	header  *Header
-	body    interface{}
+	Body    interface{}
 }
 
 func NewQMessage(msg interface{}) *QMessage {
@@ -19,25 +19,26 @@ func NewQMessage(msg interface{}) *QMessage {
 		return nil
 	}
 
+	//bytesmessage
 	bm, bok := message.(*BytesMessage)
 	if bok {
 		return &QMessage{
 			msgType: CMD_BYTES_MESSAGE,
 			header:  bm.GetHeader(),
-			body:    bm.GetBody(),
+			Body:    bm.GetBody(),
 			message: message}
-	} else {
-		sm, mok := message.(*StringMessage)
-		if mok {
-			return &QMessage{
-				msgType: CMD_STRING_MESSAGE,
-				header:  sm.GetHeader(),
-				body:    sm.GetBody(),
-				message: message}
-		}
+	}
+
+	//stringmessage
+	sm, mok := message.(*StringMessage)
+	if mok {
+		return &QMessage{
+			msgType: CMD_STRING_MESSAGE,
+			header:  sm.GetHeader(),
+			Body:    sm.GetBody(),
+			message: message}
 	}
 	return nil
-
 }
 
 func (self *QMessage) GetHeader() *Header {
@@ -45,7 +46,7 @@ func (self *QMessage) GetHeader() *Header {
 }
 
 func (self *QMessage) GetBody() interface{} {
-	return self.body
+	return self.Body
 }
 
 func (self *QMessage) GetMsgType() uint8 {

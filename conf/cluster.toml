@@ -1,6 +1,3 @@
-# This is a TOML document.
-
-
 #registry的管理
 [registry]
 	[registry.dev]
