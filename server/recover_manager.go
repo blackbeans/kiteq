@@ -3,14 +3,15 @@ package server
 import (
 	// "encoding/json"
 	"fmt"
+	"kiteq/handler"
+	"time"
+
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/blackbeans/turbo/packet"
 	. "github.com/blackbeans/turbo/pipe"
-	"kiteq/handler"
-	"time"
 )
 
 //-----------recover的handler
@@ -25,7 +26,7 @@ type RecoverManager struct {
 
 //------创建persitehandler
 func NewRecoverManager(serverName string, recoverPeriod time.Duration,
-	pipeline *DefaultPipeline, kitestore store.IKiteStore, tw *turbo.TimeWheel) *RecoverManager {
+	pipeline *DefaultPipeline, kitestore store.IKiteStore, tw *turbo.TimerWheel) *RecoverManager {
 
 	limter, _ := turbo.NewBurstyLimiter(2000, 2000)
 	rm := &RecoverManager{

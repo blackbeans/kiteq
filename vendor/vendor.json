@@ -3,6 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "=master",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
@@ -207,6 +211,14 @@
 			"path": "golang.org/x/time/rate",
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
+		},
+		{
+			"path": "master",
+			"revision": ""
+		},
+		{
+			"path": "v",
+			"revision": ""
 		}
 	],
 	"rootPath": "kiteq"
