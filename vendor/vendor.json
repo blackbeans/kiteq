@@ -85,58 +85,58 @@
 			"revisionTime": "2016-11-11T07:32:44Z"
 		},
 		{
-			"checksumSHA1": "HNIFVI7FT7ZZ/I8TGF4voEWbHl8=",
+			"checksumSHA1": "Yn99DKvZDNgD8CtR9pWmGFXtVmM=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "QZgub3iSDRDOy4S/AMoMOyJRUys=",
 			"path": "github.com/blackbeans/turbo/client",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "wKpooOEL3tVBqSsB7IFiH2f35Qk=",
 			"path": "github.com/blackbeans/turbo/codec",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "ZF6dx24BCUXbuWVn6r4NBECKdiE=",
 			"path": "github.com/blackbeans/turbo/packet",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "inBP0jLpQoj+2KLN3mzFnYT6k7s=",
 			"path": "github.com/blackbeans/turbo/pipe",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "BKP+Zr2GOqCH2VAJsDTTeQBer58=",
 			"path": "github.com/blackbeans/turbo/server",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "e1+OiMady8EVvXuoFoBaogEA/XI=",
 			"path": "github.com/blackbeans/turbo/session",
-			"revision": "93366c0f9e003017a3542781933543af247a599b",
-			"revisionTime": "2017-09-11T03:15:13Z",
+			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
+			"revisionTime": "2017-10-30T04:06:02Z",
 			"version": "=master",
 			"versionExact": "master"
 		},

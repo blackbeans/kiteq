@@ -117,21 +117,19 @@ func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
 
 //周期性的timer
 func (self *TimerWheel) RepeatedTimer(interval time.Duration,
-	onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
-	ch := make(chan time.Time, 1)
+	onTimout OnEvent, onCancel OnEvent) int64 {
 	t := &Timer{
 		repeated: true,
 		interval: interval,
 		timerId:  timerId(),
 		expired:  time.Now().Add(interval),
 		onTimeout: func(t time.Time) {
-			ch <- t
 			onTimout(t)
 		},
 		onCancel: onCancel}
 
 	self.addTimer <- t
-	return t.timerId, ch
+	return t.timerId
 
 }
 
