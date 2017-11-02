@@ -152,12 +152,6 @@ KiteQ ![image](./doc/logo.jpg)
 
 [CPP-Client](https://github.com/quguangjie/kiteq-client-cpp)
 
-#### Donate
-
-
-![image](doc/qcode.png)
-
-
 #### Contact us 
 
 Mail: blackbeans.zc@gmail.com
