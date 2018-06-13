@@ -1,5 +1,7 @@
 package protocol
 
+import "github.com/blackbeans/turbo"
+
 type TxStatus int32
 
 const (
@@ -25,3 +27,19 @@ const (
 	RESP_STATUS_FAIL    = 500
 	RESP_STATUS_TIMEOUT = 501
 )
+
+
+//kite的序列化
+type KiteQBytesCodec struct {
+	MaxFrameLength int32 //最大的包大小
+}
+
+//反序列化
+func (self KiteQBytesCodec) UnmarshalPayload(p *turbo.Packet) (interface{}, error) {
+	return p.Data, nil
+}
+
+//序列化
+func (self KiteQBytesCodec) MarshalPayload(p *turbo.Packet) ([]byte, error) {
+	return p.Data,nil
+}

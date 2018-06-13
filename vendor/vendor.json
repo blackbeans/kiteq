@@ -7,6 +7,10 @@
 			"revision": ""
 		},
 		{
+			"path": "@=feature/1.0.0",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
@@ -25,10 +29,12 @@
 			"revisionTime": "2017-10-17T07:06:50Z"
 		},
 		{
-			"checksumSHA1": "w9hnV5KF/bqvxdMDiSpE+qk2m/o=",
+			"checksumSHA1": "fEiTkthSBq1LT487uW06X5g2kcA=",
 			"path": "github.com/blackbeans/kiteq-common/protocol",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.0",
+			"versionExact": "feature/1.0.0"
 		},
 		{
 			"checksumSHA1": "ZF9uPhQL44IcE6U9o6HC9vl/H9E=",

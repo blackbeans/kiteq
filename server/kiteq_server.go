@@ -11,6 +11,7 @@ import (
 	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
+	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
@@ -109,7 +110,11 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 func (self *KiteQServer) Start() {
 
-	self.remotingServer = turbo.NewTServer(self.kc.so.bindHost, self.kc.rc,
+	codec:= protocol.KiteQBytesCodec{MaxFrameLength:turbo.MAX_PACKET_BYTES}
+	self.remotingServer = turbo.NewTServerWithCodec(self.kc.so.bindHost, self.kc.rc,
+		func() turbo.ICodec{
+			return codec
+		},
 		func(ctx *turbo.TContext) error{
 			c := ctx.Client
 			p := ctx.Message
