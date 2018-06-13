@@ -60,7 +60,7 @@ func (self *DeliverQosHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 	for g, limiter := range pevent.limiters {
 		//matches valid limiter
 		idx := sort.SearchStrings(pevent.deliverGroups, g)
-		if idx >= len(pevent.deliverGroups) {
+		if idx >= len(pevent.deliverGroups) || pevent.deliverGroups[idx]!= g{
 			//not find
 			continue
 		}
