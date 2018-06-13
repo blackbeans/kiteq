@@ -12,9 +12,11 @@ type BurstyLimiter struct {
 	preAllowCount int64
 }
 
-func NewBurstyLimiter(initPermits int, permitsPerSecond int) (*BurstyLimiter, error) {
+//tokens : initial  tokens
+// rates : refill token into buckets  at 1/rates persecond
+func NewBurstyLimiter(tokens int, rates int) (*BurstyLimiter, error) {
 
-	limiter := rate.NewLimiter(rate.Limit(permitsPerSecond), initPermits)
+	limiter := rate.NewLimiter(rate.Limit(rates), tokens)
 
 	return &BurstyLimiter{rateLimiter: limiter}, nil
 }
@@ -38,6 +40,7 @@ func (self *BurstyLimiter) Acquire() bool {
 	if succ {
 		atomic.AddInt64(&self.allowCount, 1)
 	}
+
 	return succ
 }
 

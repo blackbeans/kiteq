@@ -15,10 +15,10 @@ import (
 type KiteQConfig struct {
 	so       ServerOption
 	flowstat *stat.FlowStat
-	rc       *turbo.RemotingConfig
+	rc       *turbo.TConfig
 }
 
-func NewKiteQConfig(so ServerOption, rc *turbo.RemotingConfig) KiteQConfig {
+func NewKiteQConfig(so ServerOption, rc *turbo.TConfig) KiteQConfig {
 	flowstat := stat.NewFlowStat()
 	return KiteQConfig{
 		flowstat: flowstat,

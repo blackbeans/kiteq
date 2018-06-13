@@ -5,7 +5,7 @@ import (
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
-	p "github.com/blackbeans/turbo/pipe"
+	"github.com/blackbeans/turbo"
 	"sort"
 	"time"
 )
@@ -46,7 +46,7 @@ func (self redeliveryWindows) String() string {
 
 //-------投递结果记录的handler
 type DeliverResultHandler struct {
-	p.BaseForwardHandler
+	turbo.BaseForwardHandler
 	kitestore        store.IKiteStore
 	rw               redeliveryWindows //多个恢复的windows
 	deliverTimeout   time.Duration
@@ -59,7 +59,7 @@ type DeliverResultHandler struct {
 func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestore store.IKiteStore,
 	rw []RedeliveryWindow, deliveryRegistry *stat.DeliveryRegistry) *DeliverResultHandler {
 	dhandler := &DeliverResultHandler{}
-	dhandler.BaseForwardHandler = p.NewBaseForwardHandler(name, dhandler)
+	dhandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, dhandler)
 	dhandler.kitestore = kitestore
 	dhandler.deliverTimeout = deliverTimeout
 	dhandler.rw = redeliveryWindows(rw)
@@ -70,21 +70,21 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	return dhandler
 }
 
-func (self *DeliverResultHandler) TypeAssert(event p.IEvent) bool {
+func (self *DeliverResultHandler) TypeAssert(event turbo.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *DeliverResultHandler) cast(event p.IEvent) (val *deliverResultEvent, ok bool) {
+func (self *DeliverResultHandler) cast(event turbo.IEvent) (val *deliverResultEvent, ok bool) {
 	val, ok = event.(*deliverResultEvent)
 	return
 }
 
-func (self *DeliverResultHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
+func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
 	fevent, ok := self.cast(event)
 	if !ok {
-		return p.ERROR_INVALID_EVENT_TYPE
+		return turbo.ERROR_INVALID_EVENT_TYPE
 	}
 
 	if len(fevent.futures) > 0 {

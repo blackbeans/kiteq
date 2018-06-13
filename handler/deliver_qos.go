@@ -4,7 +4,6 @@ import (
 	"github.com/blackbeans/kiteq-common/stat"
 	// log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	p "github.com/blackbeans/turbo/pipe"
 	"sort"
 	"time"
 )
@@ -16,7 +15,7 @@ const (
 
 //----------------投递的handler
 type DeliverQosHandler struct {
-	p.BaseDoubleSidedHandler
+	turbo.BaseDoubleSidedHandler
 	flowstat *stat.FlowStat
 }
 
@@ -24,25 +23,25 @@ type DeliverQosHandler struct {
 func NewDeliverQosHandler(name string, flowstat *stat.FlowStat) *DeliverQosHandler {
 
 	phandler := &DeliverQosHandler{}
-	phandler.BaseDoubleSidedHandler = p.NewBaseDoubleSidedHandler(name, phandler)
+	phandler.BaseDoubleSidedHandler = turbo.NewBaseDoubleSidedHandler(name, phandler)
 	phandler.flowstat = flowstat
 	return phandler
 }
 
-func (self *DeliverQosHandler) TypeAssert(event p.IEvent) bool {
+func (self *DeliverQosHandler) TypeAssert(event turbo.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *DeliverQosHandler) cast(event p.IEvent) (val *deliverEvent, ok bool) {
+func (self *DeliverQosHandler) cast(event turbo.IEvent) (val *deliverEvent, ok bool) {
 	val, ok = event.(*deliverEvent)
 	return
 }
 
-func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
+func (self *DeliverQosHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 	pevent, ok := self.cast(event)
 	if !ok {
-		return p.ERROR_INVALID_EVENT_TYPE
+		return turbo.ERROR_INVALID_EVENT_TYPE
 	}
 
 	//没有投递分组直接投递结果
@@ -72,7 +71,7 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 			groups = append(groups, g)
 		} else {
 			//too fast overflow
-			overflow[g] = turbo.NewErrFuture(-1, g, turbo.ERROR_OVER_FLOW)
+			overflow[g] = turbo.NewErrFuture(-1, g, turbo.ERR_OVER_FLOW)
 		}
 	}
 
@@ -86,7 +85,7 @@ func (self *DeliverQosHandler) Process(ctx *p.DefaultPipelineContext, event p.IE
 	pevent.deliverCount++
 
 	//创建投递事件
-	revent := p.NewRemotingEvent(pevent.packet, nil, groups...)
+	revent := turbo.NewRemotingEvent(pevent.packet, nil, groups...)
 	revent.AttachEvent(pevent)
 	revent.AttachErrFutures(overflow)
 	//发起网络请求

@@ -4,32 +4,28 @@ import (
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store"
-	// log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/kiteq-common/registry/bind"
 	"github.com/blackbeans/turbo"
-	client "github.com/blackbeans/turbo/client"
-	packet "github.com/blackbeans/turbo/packet"
-	p "github.com/blackbeans/turbo/pipe"
 	"time"
 )
 
 type iauth interface {
-	p.IForwardEvent
-	getClient() *client.RemotingClient
+	turbo.IForwardEvent
+	getClient() *turbo.TClient
 }
 
 type accessEvent struct {
 	iauth
 	connMeta     protocol.ConnMeta
 	opaque       int32
-	remoteClient *client.RemotingClient
+	remoteClient *turbo.TClient
 }
 
-func (self *accessEvent) getClient() *client.RemotingClient {
+func (self *accessEvent) getClient() *turbo.TClient {
 	return self.remoteClient
 }
 
-func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *client.RemotingClient, opaque int32) *accessEvent {
+func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *turbo.TClient, opaque int32) *accessEvent {
 	access := &accessEvent{
 		connMeta:     connMeta,
 		opaque:       opaque,
@@ -40,23 +36,23 @@ func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *client.RemotingCli
 //接受消息事件
 type acceptEvent struct {
 	iauth
-	msgType      uint8
-	msg          interface{} //attach的数据message
-	opaque       int32
-	remoteClient *client.RemotingClient
+	msgType uint8
+	msg     interface{} //attach的数据message
+	opaque  int32
+	client  *turbo.TClient
 }
 
-func (self *acceptEvent) getClient() *client.RemotingClient {
-	return self.remoteClient
+func (self *acceptEvent) getClient() *turbo.TClient {
+	return self.client
 }
 
 func newAcceptEvent(msgType uint8, msg interface{},
-	remoteClient *client.RemotingClient, opaque int32) *acceptEvent {
+	remoteClient *turbo.TClient, opaque int32) *acceptEvent {
 	ae := &acceptEvent{
-		msgType:      msgType,
-		msg:          msg,
-		opaque:       opaque,
-		remoteClient: remoteClient}
+		msgType: msgType,
+		msg:     msg,
+		opaque:  opaque,
+		client:  remoteClient}
 	return ae
 }
 
@@ -64,14 +60,14 @@ type txAckEvent struct {
 	iauth
 	txPacket     *protocol.TxACKPacket
 	opaque       int32
-	remoteClient *client.RemotingClient
+	remoteClient *turbo.TClient
 }
 
-func (self *txAckEvent) getClient() *client.RemotingClient {
+func (self *txAckEvent) getClient() *turbo.TClient {
 	return self.remoteClient
 }
 
-func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *client.RemotingClient) *txAckEvent {
+func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *turbo.TClient) *txAckEvent {
 	tx := &txAckEvent{
 		txPacket:     txPacket,
 		opaque:       opaque,
@@ -81,20 +77,20 @@ func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *c
 
 //投递策略
 type persistentEvent struct {
-	p.IForwardEvent
+	turbo.IForwardEvent
 	entity       *store.MessageEntity
-	remoteClient *client.RemotingClient
+	remoteClient *turbo.TClient
 	opaque       int32
 }
 
-func newPersistentEvent(entity *store.MessageEntity, remoteClient *client.RemotingClient, opaque int32) *persistentEvent {
+func newPersistentEvent(entity *store.MessageEntity, remoteClient *turbo.TClient, opaque int32) *persistentEvent {
 	return &persistentEvent{entity: entity, remoteClient: remoteClient, opaque: opaque}
 
 }
 
 //投递准备事件
 type deliverPreEvent struct {
-	p.IForwardEvent
+	turbo.IForwardEvent
 	messageId      string
 	header         *protocol.Header
 	entity         *store.MessageEntity
@@ -111,11 +107,11 @@ func NewDeliverPreEvent(messageId string, header *protocol.Header,
 
 //投递事件
 type deliverEvent struct {
-	p.IForwardEvent
-	p.IBackwardEvent
+	turbo.IForwardEvent
+	turbo.IBackwardEvent
 	header *protocol.Header
 	// fly            bool           //是否为fly模式的消息
-	packet         *packet.Packet //消息包
+	packet         *turbo.Packet //消息包
 	succGroups     []string       //已经投递成功的分组
 	deliverGroups  []string       //需要投递的群组
 	deliverLimit   int32
@@ -149,7 +145,7 @@ func (self GroupFuture) String() string {
 //统计投递结果的事件，决定不决定重发
 type deliverResultEvent struct {
 	*deliverEvent
-	p.IBackwardEvent
+	turbo.IBackwardEvent
 	futures           map[string]*turbo.Future
 	failGroupFuture   []GroupFuture
 	succGroupFuture   []GroupFuture
@@ -182,7 +178,7 @@ func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[strin
 	for g, f := range self.futures {
 		resp, err := f.Get(tch)
 
-		if err == turbo.TIMEOUT_ERROR {
+		if err == turbo.ERR_TIMEOUT{
 			istimeout = true
 		} else if nil != resp {
 			ack, ok := resp.(*protocol.DeliverAck)
@@ -196,7 +192,7 @@ func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[strin
 		if nil != err {
 			//如果没有存在存活机器并且当前分组的订阅关系
 			//是一个非持久订阅那么就认为成功的
-			if err == turbo.ERROR_NO_HOSTS {
+			if err == turbo.ERR_NO_HOSTS {
 				b, ok := groupBinds[g]
 				if ok && !b.Persistent {
 					f.Err = fmt.Errorf("All Clients Offline ! Bind[%v]", b)

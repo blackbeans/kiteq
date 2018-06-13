@@ -85,12 +85,17 @@
 			"revisionTime": "2016-11-11T07:32:44Z"
 		},
 		{
-			"checksumSHA1": "Yn99DKvZDNgD8CtR9pWmGFXtVmM=",
+			"path": "github.com/blackbeans/tubro",
+			"revision": "=feature/1.0.1",
+			"version": "=feature/1.0.1"
+		},
+		{
+			"checksumSHA1": "NxZ5csQv2FhICz+vkO2fP4BenyY=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
+			"revision": "f38c74b037a1f7857e3384c97c56f9567190e38a",
+			"revisionTime": "2018-06-13T07:39:47Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "QZgub3iSDRDOy4S/AMoMOyJRUys=",

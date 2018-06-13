@@ -1,7 +1,6 @@
 package turbo
 
 import (
-	"errors"
 	"sync/atomic"
 	"time"
 )
@@ -10,9 +9,7 @@ const (
 	CONCURRENT_LEVEL = 8
 )
 
-var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
-var ERROR_OVER_FLOW = errors.New("Group Over Flow")
-var ERROR_NO_HOSTS = errors.New("NO VALID RemoteClient")
+
 
 //-----------响应的future
 type Future struct {
@@ -40,17 +37,17 @@ func NewErrFuture(opaque int32, TargetHost string, err error) *Future {
 		err}
 }
 
-func (self Future) Error(err error) {
+func (self *Future) Error(err error) {
 	self.Err = err
 	self.response <- err
 }
 
-func (self Future) SetResponse(resp interface{}) {
+func  (self *Future)  SetResponse(resp interface{}) {
 	self.response <- resp
 
 }
 
-func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
+func  (self *Future)  Get(timeout <-chan time.Time) (interface{}, error) {
 	//强制设置
 	if nil != self.Err {
 		return nil, self.Err
@@ -63,7 +60,7 @@ func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
 			return resp, nil
 		default:
 			//如果是已经超时了但是当前还是没有响应也认为超时
-			return nil, TIMEOUT_ERROR
+			return nil, ERR_TIMEOUT
 		}
 
 	case resp := <-self.response:
@@ -78,7 +75,7 @@ func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
 }
 
 //网络层参数
-type RemotingConfig struct {
+type TConfig struct {
 	FlowStat         *RemotingFlow //网络层流量
 	MaxDispatcherNum chan int      //最大分发处理协程数
 	ReadBufferSize   int           //读取缓冲大小
@@ -90,10 +87,10 @@ type RemotingConfig struct {
 	TW               *TimerWheel // timewheel
 }
 
-func NewRemotingConfig(name string,
+func NewTConfig(name string,
 	maxdispatcherNum,
 	readbuffersize, writebuffersize, writechannlesize, readchannelsize int,
-	idletime time.Duration, maxOpaque int) *RemotingConfig {
+	idletime time.Duration, maxOpaque int) *TConfig {
 
 	//定义holder
 	holders := make([]map[int32]*Future, 0, CONCURRENT_LEVEL)
@@ -110,7 +107,7 @@ func NewRemotingConfig(name string,
 		maxOpaque: maxOpaque}
 
 	//初始化
-	rc := &RemotingConfig{
+	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name),
 		MaxDispatcherNum: make(chan int, maxdispatcherNum),
 		ReadBufferSize:   readbuffersize,

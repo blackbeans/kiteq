@@ -7,15 +7,14 @@ import (
 	"github.com/blackbeans/kiteq-common/registry/bind"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
-	packet "github.com/blackbeans/turbo/packet"
-	p "github.com/blackbeans/turbo/pipe"
+	"github.com/blackbeans/turbo"
 	"sync/atomic"
 	"time"
 )
 
 //----------------持久化的handler
 type DeliverPreHandler struct {
-	p.BaseForwardHandler
+	turbo.BaseForwardHandler
 	kitestore        store.IKiteStore
 	exchanger        *exchange.BindExchanger
 	maxDeliverNum    int32
@@ -30,7 +29,7 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	exchanger *exchange.BindExchanger, flowstat *stat.FlowStat,
 	maxDeliverWorker int, deliveryRegistry *stat.DeliveryRegistry) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
-	phandler.BaseForwardHandler = p.NewBaseForwardHandler(name, phandler)
+	phandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
 	phandler.maxDeliverNum = (int32)(maxDeliverWorker)
@@ -41,21 +40,21 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	return phandler
 }
 
-func (self *DeliverPreHandler) TypeAssert(event p.IEvent) bool {
+func (self *DeliverPreHandler) TypeAssert(event turbo.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *DeliverPreHandler) cast(event p.IEvent) (val *deliverPreEvent, ok bool) {
+func (self *DeliverPreHandler) cast(event turbo.IEvent) (val *deliverPreEvent, ok bool) {
 	val, ok = event.(*deliverPreEvent)
 	return
 }
 
-func (self *DeliverPreHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
+func (self *DeliverPreHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
 	pevent, ok := self.cast(event)
 	if !ok {
-		return p.ERROR_INVALID_EVENT_TYPE
+		return turbo.ERROR_INVALID_EVENT_TYPE
 	}
 
 	//尝试注册一下当前的投递事件的消息
@@ -102,7 +101,7 @@ func (self *DeliverPreHandler) checkValid(entity *store.MessageEntity) bool {
 }
 
 //内部处理
-func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deliverPreEvent) {
+func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *deliverPreEvent) {
 
 	//如果没有entity则直接查询一下db
 	entity := pevent.entity
@@ -131,9 +130,9 @@ func (self *DeliverPreHandler) send0(ctx *p.DefaultPipelineContext, pevent *deli
 	//创建不同的packet
 	switch entity.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
-		deliverEvent.packet = packet.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
+		deliverEvent.packet = turbo.NewPacket(protocol.CMD_BYTES_MESSAGE, data)
 	case protocol.CMD_STRING_MESSAGE:
-		deliverEvent.packet = packet.NewPacket(protocol.CMD_STRING_MESSAGE, data)
+		deliverEvent.packet = turbo.NewPacket(protocol.CMD_STRING_MESSAGE, data)
 	}
 
 	//填充订阅分组
