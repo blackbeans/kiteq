@@ -96,10 +96,10 @@
 			"version": "=feature/1.0.1"
 		},
 		{
-			"checksumSHA1": "NxZ5csQv2FhICz+vkO2fP4BenyY=",
+			"checksumSHA1": "8lT/+ycTyGYtIaq0frdV0kUF37Q=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "f38c74b037a1f7857e3384c97c56f9567190e38a",
-			"revisionTime": "2018-06-13T07:39:47Z",
+			"revision": "0de204ca99134b34cd713d5fbb6957ef96b9209c",
+			"revisionTime": "2018-06-15T10:28:11Z",
 			"version": "=feature/1.0.1",
 			"versionExact": "feature/1.0.1"
 		},
