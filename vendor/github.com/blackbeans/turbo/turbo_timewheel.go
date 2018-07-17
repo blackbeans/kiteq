@@ -23,19 +23,17 @@ type Timer struct {
 
 type TimerHeap []*Timer
 
-// A PriorityQueue implements heap.Interface and holds Items.
 func (h TimerHeap) Len() int { return len(h) }
 
 func (h TimerHeap) Less(i, j int) bool {
-	// We want Pop to give us the highest, not lowest, priority so we use greater than here.
 	if h[i].expired.Before(h[j].expired) {
 		return true
 	}
 
-	if h[i].timerId < h[i].timerId {
-		return true
+	if h[i].expired.After(h[j].expired) {
+		return false
 	}
-	return false
+	return h[i].timerId < h[j].timerId
 }
 
 func (h TimerHeap) Swap(i, j int) {
@@ -104,6 +102,9 @@ func NewTimerWheel(interval time.Duration, workSize int) *TimerWheel {
 }
 
 func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
+	if timeout < self.interval {
+		timeout = self.interval
+	}
 	ch := make(chan time.Time, 1)
 	t := &Timer{
 		timerId:   timerId(),
@@ -117,7 +118,10 @@ func (self *TimerWheel) After(timeout time.Duration) (int64, chan time.Time) {
 
 //周期性的timer
 func (self *TimerWheel) RepeatedTimer(interval time.Duration,
-	onTimout OnEvent, onCancel OnEvent) int64 {
+	onTimout OnEvent, onCancel OnEvent) {
+	if interval < self.interval {
+		interval = self.interval
+	}
 	t := &Timer{
 		repeated: true,
 		interval: interval,
@@ -129,17 +133,18 @@ func (self *TimerWheel) RepeatedTimer(interval time.Duration,
 		onCancel: onCancel}
 
 	self.addTimer <- t
-	return t.timerId
-
 }
 
 func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCancel OnEvent) (int64, chan time.Time) {
 	ch := make(chan time.Time, 1)
 	t := &Timer{
-		timerId: timerId(),
-		expired: time.Now().Add(timeout),
+		timerId:  timerId(),
+		interval: timeout,
+		expired:  time.Now().Add(timeout),
 		onTimeout: func(t time.Time) {
-			ch <- t
+			defer func() {
+				ch <- t
+			}()
 			onTimout(t)
 		},
 		onCancel: onCancel}
@@ -162,35 +167,44 @@ func (self *TimerWheel) CancelTimer(timerid int64) {
 }
 
 func (self *TimerWheel) checkExpired(now time.Time) {
-	for self.timerHeap.Len() > 0 {
-
-		t := self.timerHeap.Pop().(*Timer)
-		//如果过期时间再当前tick之前则超时
-		//或者当前时间和过期时间的差距在一个Interval周期内那么就认为过期的
-		cost := now.UnixNano() - t.expired.UnixNano()
-		if t.expired.Before(now) ||
-			(cost > 0 && cost < int64(self.interval)) {
-			if nil != t.onTimeout {
-				self.workLimit <- nil
-				go func() {
-					<-self.workLimit
-					t.onTimeout(now)
-				}()
-				//如果是repeated的那么就检查并且重置过期时间
-				if t.repeated {
-					//如果是需要repeat的那么继续放回去
-					t.expired = now.Add(t.interval)
-					if time.Since(t.expired).Seconds() > 10 {
-						t.expired = time.Now()
-					}
-					heap.Push(&self.timerHeap, t)
-				}
-			}
-		} else {
-			//没有过期那么久放回去
-			heap.Push(&self.timerHeap, t)
+	for {
+		if self.timerHeap.Len() <= 0 {
 			break
 		}
+
+		expired := self.timerHeap[0].expired
+		//如果过期时间再当前tick之前则超时
+		//或者当前时间和过期时间的差距在一个Interval周期内那么就认为过期的
+		if expired.After(now) {
+			break
+		}
+		t := heap.Pop(&self.timerHeap).(*Timer)
+		if nil != t.onTimeout {
+			self.workLimit <- nil
+			go func() {
+				defer func() {
+					<-self.workLimit
+				}()
+				t.onTimeout(now)
+
+			}()
+
+			//如果是repeated的那么就检查并且重置过期时间
+			if t.repeated {
+				//如果是需要repeat的那么继续放回去
+				t.expired = t.expired.Add(t.interval)
+				if !t.expired.After(now) {
+					t.expired = now.Add(t.interval)
+				}
+				t.timerId = timerId()
+				heap.Push(&self.timerHeap, t)
+			} else {
+				delete(self.hashTimer, t.timerId)
+			}
+		} else {
+			delete(self.hashTimer, t.timerId)
+		}
+
 	}
 }
 
@@ -205,7 +219,9 @@ func (self *TimerWheel) start() {
 			case updateT := <-self.updateTimer:
 				if t, ok := self.hashTimer[updateT.timerId]; ok {
 					t.expired = updateT.expired
+					heap.Fix(&self.timerHeap, t.Index)
 				}
+
 			case t := <-self.addTimer:
 				heap.Push(&self.timerHeap, t)
 				self.hashTimer[t.timerId] = t
@@ -213,7 +229,6 @@ func (self *TimerWheel) start() {
 				if t, ok := self.hashTimer[timerid]; ok {
 					delete(self.hashTimer, timerid)
 					heap.Remove(&self.timerHeap, t.Index)
-
 					if nil != t.onCancel {
 						self.workLimit <- nil
 						go func() {

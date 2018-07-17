@@ -3,42 +3,41 @@ package handler
 import (
 	"errors"
 	"github.com/blackbeans/kiteq-common/protocol"
-	p "github.com/blackbeans/turbo/pipe"
-	// 	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 )
 
 //远程操作的PacketHandler
 
 type PacketHandler struct {
-	p.BaseForwardHandler
+	turbo.BaseForwardHandler
 }
 
 func NewPacketHandler(name string) *PacketHandler {
 	packetHandler := &PacketHandler{}
-	packetHandler.BaseForwardHandler = p.NewBaseForwardHandler(name, packetHandler)
+	packetHandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, packetHandler)
 	return packetHandler
 
 }
 
-func (self *PacketHandler) TypeAssert(event p.IEvent) bool {
+func (self *PacketHandler) TypeAssert(event turbo.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *PacketHandler) cast(event p.IEvent) (val *p.PacketEvent, ok bool) {
-	val, ok = event.(*p.PacketEvent)
+func (self *PacketHandler) cast(event turbo.IEvent) (val *turbo.PacketEvent, ok bool) {
+	val, ok = event.(*turbo.PacketEvent)
 	return
 }
 
 var INVALID_PACKET_ERROR = errors.New("INVALID PACKET ERROR")
 
-func (self *PacketHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent) error {
+func (self *PacketHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
 	// log.DebugLog("kite_handler", "PacketHandler|Process|%s|%t\n", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
-		return p.ERROR_INVALID_EVENT_TYPE
+		return turbo.ERROR_INVALID_EVENT_TYPE
 	}
 
 	cevent, err := self.handlePacket(pevent)
@@ -50,12 +49,12 @@ func (self *PacketHandler) Process(ctx *p.DefaultPipelineContext, event p.IEvent
 	return nil
 }
 
-var sunkEvent = &p.SunkEvent{}
+var sunkEvent = &turbo.SunkEvent{}
 
 //对于请求事件
-func (self *PacketHandler) handlePacket(pevent *p.PacketEvent) (p.IEvent, error) {
+func (self *PacketHandler) handlePacket(pevent *turbo.PacketEvent) (turbo.IEvent, error) {
 	var err error
-	var event p.IEvent
+	var event turbo.IEvent
 
 	packet := pevent.Packet
 	//根据类型反解packet

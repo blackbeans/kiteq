@@ -1,4 +1,4 @@
-package client
+package turbo
 
 import (
 	log "github.com/blackbeans/log4go"
@@ -22,8 +22,8 @@ func NewGroupAuth(groupId, secretKey string) *GroupAuth {
 type ClientManager struct {
 	reconnectManager *ReconnectManager
 	groupAuth        map[string] /*host:port*/ *GroupAuth
-	groupClients     map[string] /*groupId*/ []*RemotingClient
-	allClients       map[string] /*host:port*/ *RemotingClient
+	groupClients     map[string] /*groupId*/ []*TClient
+	allClients       map[string] /*host:port*/ *TClient
 	lock             sync.RWMutex
 }
 
@@ -31,8 +31,8 @@ func NewClientManager(reconnectManager *ReconnectManager) *ClientManager {
 
 	cm := &ClientManager{
 		groupAuth:        make(map[string]*GroupAuth, 10),
-		groupClients:     make(map[string][]*RemotingClient, 50),
-		allClients:       make(map[string]*RemotingClient, 100),
+		groupClients:     make(map[string][]*TClient, 50),
+		allClients:       make(map[string]*TClient, 100),
 		reconnectManager: reconnectManager}
 	go cm.evict()
 	return cm
@@ -66,34 +66,34 @@ func (self *ClientManager) ConnNum() int32 {
 }
 
 //验证是否授权
-func (self *ClientManager) Validate(remoteClient *RemotingClient) bool {
+func (self *ClientManager) Validate(client *TClient) bool {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-	_, auth := self.groupAuth[remoteClient.RemoteAddr()]
+	_, auth := self.groupAuth[client.RemoteAddr()]
 	return auth
 }
 
-func (self *ClientManager) Auth(auth *GroupAuth, remoteClient *RemotingClient) bool {
+func (self *ClientManager) Auth(auth *GroupAuth, client *TClient) bool {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	cs, ok := self.groupClients[auth.GroupId]
 	if !ok {
-		cs = make([]*RemotingClient, 0, 50)
+		cs = make([]*TClient, 0, 50)
 	}
 	//创建remotingClient
 	//增加授权时间的秒数
-	remoteClient.AuthSecond = time.Now().Unix()
-	self.groupClients[auth.GroupId] = append(cs, remoteClient)
-	self.allClients[remoteClient.RemoteAddr()] = remoteClient
-	self.groupAuth[remoteClient.RemoteAddr()] = auth
+	client.authSecond = time.Now().Unix()
+	self.groupClients[auth.GroupId] = append(cs, client)
+	self.allClients[client.RemoteAddr()] = client
+	self.groupAuth[client.RemoteAddr()] = auth
 	return true
 }
 
-func (self *ClientManager) ClientsClone() map[string]*RemotingClient {
+func (self *ClientManager) ClientsClone() map[string]*TClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-	clone := make(map[string]*RemotingClient, len(self.allClients))
+	clone := make(map[string]*TClient, len(self.allClients))
 	for k, v := range self.allClients {
 		clone[k] = v
 	}
@@ -163,7 +163,7 @@ func (self *ClientManager) removeClient(hostport string) {
 	log.Info("ClientManager|removeClient|%s...\n", hostport)
 }
 
-func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
+func (self *ClientManager) SubmitReconnect(c *TClient) {
 
 	self.lock.Lock()
 	defer self.lock.Unlock()
@@ -185,10 +185,10 @@ func (self *ClientManager) SubmitReconnect(c *RemotingClient) {
 }
 
 //查找remotingclient
-func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
+func (self *ClientManager) FindTClient(hostport string) *TClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
-	// log.Printf("ClientManager|FindRemoteClient|%s|%s\n", hostport, self.allClients)
+	// log.Printf("ClientManager|FindTClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
 	if !ok || rclient.IsClosed() {
 		//已经关闭的直接返回nil
@@ -198,9 +198,9 @@ func (self *ClientManager) FindRemoteClient(hostport string) *RemotingClient {
 }
 
 //查找匹配的groupids
-func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(groupId string, rc *RemotingClient) bool) map[string][]*RemotingClient {
-	clients := make(map[string][]*RemotingClient, 10)
-	var closedClients []*RemotingClient
+func (self *ClientManager) FindTClients(groupIds []string, filter func(groupId string, rc *TClient) bool) map[string][]*TClient {
+	clients := make(map[string][]*TClient, 10)
+	var closedClients []*TClient
 	self.lock.RLock()
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
@@ -209,14 +209,14 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 		//按groupId来获取remoteclient
 		gclient, ok := clients[gid]
 		if !ok {
-			gclient = make([]*RemotingClient, 0, 10)
+			gclient = make([]*TClient, 0, 10)
 		}
 
 		for _, c := range self.groupClients[gid] {
 
 			if c.IsClosed() {
 				if nil == clients {
-					closedClients = make([]*RemotingClient, 0, 2)
+					closedClients = make([]*TClient, 0, 2)
 				}
 				closedClients = append(closedClients, c)
 				continue
@@ -230,7 +230,7 @@ func (self *ClientManager) FindRemoteClients(groupIds []string, filter func(grou
 
 					//如果当前时间和授权时间差与warmingup需要的时间几率按照100%计算的比例
 					//小于等于随机100出来的数据那么久可以选取
-					rate := int((time.Now().Unix() - c.AuthSecond) * 100 / int64(auth.WarmingupSec))
+					rate := int((time.Now().Unix() - c.authSecond) * 100 / int64(auth.WarmingupSec))
 					if rate < 100 && rand.Intn(100) > rate {
 						continue
 					}

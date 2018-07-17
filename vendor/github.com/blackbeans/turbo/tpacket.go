@@ -1,9 +1,11 @@
-package packet
+package turbo
 
 import (
 	"bytes"
 	"encoding/binary"
 )
+
+
 
 type Compress int8
 
@@ -56,4 +58,57 @@ func UnmarshalHeader(r *bytes.Reader) (PacketHeader, error) {
 	}
 
 	return header, nil
+}
+
+
+
+//-----------请求的packet
+type Packet struct {
+	Header  PacketHeader
+	Data    []byte
+	PayLoad interface{}
+	//packet的回调
+	OnComplete func(err error)
+}
+
+func NewPacket(cmdtype uint8, data []byte) *Packet {
+	h := PacketHeader{Opaque: -1, CmdType: cmdtype, BodyLen: int32(len(data))}
+	return &Packet{Header: h,
+		Data: data}
+}
+
+func (self *Packet) Reset() {
+	self.Header.Opaque = -1
+}
+
+func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
+	p := NewPacket(cmdtype, data)
+	p.Header.Opaque = opaque
+	return p
+}
+
+func (self *Packet) Marshal() []byte {
+	dl := 0
+	if nil != self.Data {
+		dl = len(self.Data)
+	}
+
+	buff := MarshalHeader(self.Header, int32(dl))
+	buff.Write(self.Data)
+	return buff.Bytes()
+}
+
+
+// TContext 处理的上下文
+
+//处理器
+type THandler func(ctx *TContext) error
+
+//接受消息
+type IOHandler func(message Packet,err error)
+
+type TContext struct{
+	Client *TClient
+	Message *Packet
+	Err error //上下文的错误
 }

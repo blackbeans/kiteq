@@ -7,32 +7,52 @@ import (
 	"github.com/blackbeans/kiteq-common/store"
 	"github.com/blackbeans/kiteq-common/store/memory"
 	"github.com/blackbeans/turbo"
-	. "github.com/blackbeans/turbo/pipe"
 	"kiteq/handler"
 	"log"
 	"os"
 	"testing"
 	"time"
+	"github.com/golang/protobuf/proto"
 )
 
+func buildStringMessage(id string) *protocol.StringMessage {
+	//创建消息
+	entity := &protocol.StringMessage{}
+	mid := store.MessageId()
+	mid = string(mid[:len(mid)-1]) + id
+	// mid[len(mid)-1] = id[0]
+	entity.Header = &protocol.Header{
+		MessageId:    proto.String(mid),
+		Topic:        proto.String("trade"),
+		MessageType:  proto.String("pay-succ"),
+		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+		DeliverLimit: proto.Int32(100),
+		GroupId:      proto.String("go-kite-test"),
+		Commit:       proto.Bool(true),
+		Fly:          proto.Bool(false)}
+	entity.Body = proto.String("hello go-kite")
+
+	return entity
+}
+
 type mockDeliverHandler struct {
-	BaseDoubleSidedHandler
+	turbo.BaseDoubleSidedHandler
 	ch chan bool
 }
 
 func newmockDeliverHandler(name string, ch chan bool) *mockDeliverHandler {
 
 	phandler := &mockDeliverHandler{}
-	phandler.BaseDoubleSidedHandler = NewBaseDoubleSidedHandler(name, phandler)
+	phandler.BaseDoubleSidedHandler = turbo.NewBaseDoubleSidedHandler(name, phandler)
 	phandler.ch = ch
 	return phandler
 }
 
-func (self *mockDeliverHandler) TypeAssert(event IEvent) bool {
+func (self *mockDeliverHandler) TypeAssert(event turbo.IEvent) bool {
 	return true
 }
 
-func (self *mockDeliverHandler) Process(ctx *DefaultPipelineContext, event IEvent) error {
+func (self *mockDeliverHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 	log.Printf("TestRecoverManager|-------------------%s\n", event)
 	self.ch <- true
 	return nil
@@ -41,7 +61,7 @@ func (self *mockDeliverHandler) Process(ctx *DefaultPipelineContext, event IEven
 
 func TestRecoverManager(t *testing.T) {
 
-	pipeline := NewDefaultPipeline()
+	pipeline := turbo.NewDefaultPipeline()
 
 	kitedb := memory.NewKiteMemoryStore(100, 100)
 
@@ -56,7 +76,7 @@ func TestRecoverManager(t *testing.T) {
 		}
 	}()
 
-	fs := stat.NewFlowStat("recover")
+	fs := stat.NewFlowStat()
 	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger
@@ -65,7 +85,7 @@ func TestRecoverManager(t *testing.T) {
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100, deliveryRegistry))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
-	tw := turbo.NewTimeWheel(100*time.Millisecond, 10, 10)
+	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
 	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb, tw)
 	rm.Start()
 	select {

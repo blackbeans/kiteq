@@ -7,138 +7,122 @@
 			"revision": ""
 		},
 		{
+			"path": "@=feature/1.0.0",
+			"revision": ""
+		},
+		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
-			"revisionTime": "2016-05-24T09:24:44Z"
+			"revisionTime": "2016-05-24T09:24:44Z",
+			"version": "=feature/1.0.0"
 		},
 		{
 			"checksumSHA1": "yJ6+pLllOibGZCIU0wSGdoU1fV0=",
 			"path": "github.com/blackbeans/go-zookeeper/zk",
 			"revision": "e9ca0f2da2a7e4b72457d5a0df3f941caf92954e",
-			"revisionTime": "2016-03-15T04:18:20Z"
+			"revisionTime": "2016-03-15T04:18:20Z",
+			"version": "=feature/1.0.0"
 		},
 		{
 			"checksumSHA1": "M389o28biSXw32l14Tu2TWaVPpo=",
 			"path": "github.com/blackbeans/kiteq-common/exchange",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
-			"checksumSHA1": "w9hnV5KF/bqvxdMDiSpE+qk2m/o=",
+			"checksumSHA1": "fEiTkthSBq1LT487uW06X5g2kcA=",
 			"path": "github.com/blackbeans/kiteq-common/protocol",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "ZF9uPhQL44IcE6U9o6HC9vl/H9E=",
 			"path": "github.com/blackbeans/kiteq-common/registry",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "YZZbtcuns6dMZCJ6hkzEImv1Mi4=",
 			"path": "github.com/blackbeans/kiteq-common/registry/bind",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "MaYnsbzjanjUOleAk2/D3m9Juj0=",
 			"path": "github.com/blackbeans/kiteq-common/stat",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "A7pqP79HsEp0rS+g+lwWETHZ6Ms=",
 			"path": "github.com/blackbeans/kiteq-common/store",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "lzP5M0xMVBRDgSVNSQ01zOyBSms=",
 			"path": "github.com/blackbeans/kiteq-common/store/file",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "6Ae1j6ppod2gNvSDrWjc+W4mCMk=",
 			"path": "github.com/blackbeans/kiteq-common/store/memory",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "xyxZT7JSCHPaXu0BQigbQoobwzE=",
 			"path": "github.com/blackbeans/kiteq-common/store/mysql",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "EYwRN4wf0CsmIe00PMJlJrZMYao=",
 			"path": "github.com/blackbeans/kiteq-common/store/parser",
-			"revision": "94f9c365fa8e8ecc100178172fc1c41a276b3f13",
-			"revisionTime": "2017-10-17T07:06:50Z"
+			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
+			"revisionTime": "2018-06-13T10:12:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "Zqi56gWHqXhmVr335Rhndl4zooE=",
 			"path": "github.com/blackbeans/log4go",
 			"revision": "bfe8bc4f9c44d57ef14e44deed4796838fc36876",
-			"revisionTime": "2016-11-11T07:32:44Z"
+			"revisionTime": "2016-11-11T07:32:44Z",
+			"version": "=feature/1.0.0"
 		},
 		{
-			"checksumSHA1": "Yn99DKvZDNgD8CtR9pWmGFXtVmM=",
+			"path": "github.com/blackbeans/tubro",
+			"revision": "=feature/1.0.1",
+			"version": "=feature/1.0.0"
+		},
+		{
+			"checksumSHA1": "8lT/+ycTyGYtIaq0frdV0kUF37Q=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "QZgub3iSDRDOy4S/AMoMOyJRUys=",
-			"path": "github.com/blackbeans/turbo/client",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "wKpooOEL3tVBqSsB7IFiH2f35Qk=",
-			"path": "github.com/blackbeans/turbo/codec",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "ZF6dx24BCUXbuWVn6r4NBECKdiE=",
-			"path": "github.com/blackbeans/turbo/packet",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "inBP0jLpQoj+2KLN3mzFnYT6k7s=",
-			"path": "github.com/blackbeans/turbo/pipe",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "BKP+Zr2GOqCH2VAJsDTTeQBer58=",
-			"path": "github.com/blackbeans/turbo/server",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "e1+OiMady8EVvXuoFoBaogEA/XI=",
-			"path": "github.com/blackbeans/turbo/session",
-			"revision": "4d2960eb00e0aa119e1e1ad9eace6adceda5b222",
-			"revisionTime": "2017-10-30T04:06:02Z",
-			"version": "=master",
-			"versionExact": "master"
+			"revision": "0de204ca99134b34cd713d5fbb6957ef96b9209c",
+			"revisionTime": "2018-06-15T10:28:11Z",
+			"version": "=feature/1.0.1",
+			"versionExact": "feature/1.0.1"
 		},
 		{
 			"checksumSHA1": "fD5l709voaF+GGsD1Vtk+G+1RPY=",

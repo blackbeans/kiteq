@@ -8,14 +8,13 @@ import (
 	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/pipe"
 	"os"
 	"time"
 )
 
 //--------------------如下为具体的处理Handler
 type AcceptHandler struct {
-	pipe.BaseForwardHandler
+	turbo.BaseForwardHandler
 	topics     []string
 	kiteserver string
 	flowstat   *stat.FlowStat
@@ -24,7 +23,7 @@ type AcceptHandler struct {
 
 func NewAcceptHandler(name string, limiter *turbo.BurstyLimiter, flowstat *stat.FlowStat) *AcceptHandler {
 	ahandler := &AcceptHandler{}
-	ahandler.BaseForwardHandler = pipe.NewBaseForwardHandler(name, ahandler)
+	ahandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, ahandler)
 	hn, _ := os.Hostname()
 	ahandler.kiteserver = hn
 	ahandler.flowstat = flowstat
@@ -32,24 +31,24 @@ func NewAcceptHandler(name string, limiter *turbo.BurstyLimiter, flowstat *stat.
 	return ahandler
 }
 
-func (self *AcceptHandler) TypeAssert(event pipe.IEvent) bool {
+func (self *AcceptHandler) TypeAssert(event turbo.IEvent) bool {
 	_, ok := self.cast(event)
 	return ok
 }
 
-func (self *AcceptHandler) cast(event pipe.IEvent) (val *acceptEvent, ok bool) {
+func (self *AcceptHandler) cast(event turbo.IEvent) (val *acceptEvent, ok bool) {
 	val, ok = event.(*acceptEvent)
 	return
 }
 
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
-func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.IEvent) error {
+func (self *AcceptHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 	// log.Debug("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
 
 	ae, ok := self.cast(event)
 	if !ok {
-		return pipe.ERROR_INVALID_EVENT_TYPE
+		return turbo.ERROR_INVALID_EVENT_TYPE
 	}
 
 	//这里处理一下ae,做一下校验
@@ -58,11 +57,11 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	case protocol.CMD_DELIVER_ACK:
 		//收到投递结果直接attach响应
 		// log.DebugLog("kite_handler", "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
-		ae.remoteClient.Attach(ae.opaque, ae.msg)
+		ae.client.Attach(ae.opaque, ae.msg)
 		return nil
 	case protocol.CMD_HEARTBEAT:
 		hb := ae.msg.(*protocol.HeartBeat)
-		event = pipe.NewHeartbeatEvent(ae.remoteClient, ae.opaque, hb.GetVersion())
+		event = turbo.NewHeartbeatEvent(ae.client, ae.opaque, hb.GetVersion())
 		ctx.SendForward(event)
 		return nil
 
@@ -77,10 +76,10 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 
 	//如果申请流量失败则放弃
 	if nil != msg && !self.limiter.Acquire() {
-		remoteEvent := pipe.NewRemotingEvent(storeAck(ae.opaque,
+		remoteEvent := turbo.NewRemotingEvent(storeAck(ae.opaque,
 			msg.Header.GetMessageId(), false,
-			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.remoteClient.LocalAddr())),
-			[]string{ae.remoteClient.RemoteAddr()})
+			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.client.LocalAddr())),
+			[]string{ae.client.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 		return nil
 	}
@@ -88,7 +87,7 @@ func (self *AcceptHandler) Process(ctx *pipe.DefaultPipelineContext, event pipe.
 	if nil != msg {
 		msg.PublishTime = time.Now().Unix()
 		msg.KiteServer = self.kiteserver
-		deliver := newPersistentEvent(msg, ae.remoteClient, ae.opaque)
+		deliver := newPersistentEvent(msg, ae.client, ae.opaque)
 
 		//接收消息的统计
 		self.flowstat.IncrTopicReceiveFlow(msg.Topic, 1)

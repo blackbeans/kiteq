@@ -1,4 +1,4 @@
-package client
+package turbo
 
 import (
 	log "github.com/blackbeans/log4go"
@@ -9,13 +9,13 @@ import (
 
 //-------------重连任务
 type reconnectTask struct {
-	remoteClient *RemotingClient
+	remoteClient *TClient
 	retryCount   int
 	ga           *GroupAuth
 	finishHook   func(addr string)
 }
 
-func newReconnectTasK(remoteClient *RemotingClient, ga *GroupAuth, finishHook func(addr string)) *reconnectTask {
+func newReconnectTasK(remoteClient *TClient, ga *GroupAuth, finishHook func(addr string)) *reconnectTask {
 	return &reconnectTask{
 		remoteClient: remoteClient,
 		ga:           ga,
@@ -24,7 +24,7 @@ func newReconnectTasK(remoteClient *RemotingClient, ga *GroupAuth, finishHook fu
 }
 
 //先进行初次握手上传连接元数据
-func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient *RemotingClient) (bool, error)) (bool, error) {
+func (self *reconnectTask) reconnect(handshake func(ga *GroupAuth, remoteClient *TClient) (bool, error)) (bool, error) {
 
 	self.retryCount++
 	//开启remoteClient的重连任务
@@ -42,14 +42,14 @@ type ReconnectManager struct {
 	allowReconnect    bool          //是否允许重连
 	reconnectTimeout  time.Duration //重连超时
 	maxReconnectTimes int           //最大重连次数
-	handshake         func(ga *GroupAuth, remoteClient *RemotingClient) (bool, error)
+	handshake         func(ga *GroupAuth, remoteClient *TClient) (bool, error)
 	lock              sync.Mutex
 }
 
 //重连管理器
 func NewReconnectManager(allowReconnect bool,
 	reconnectTimeout time.Duration, maxReconnectTimes int,
-	handshake func(ga *GroupAuth, remoteClient *RemotingClient) (bool, error)) *ReconnectManager {
+	handshake func(ga *GroupAuth, remoteClient *TClient) (bool, error)) *ReconnectManager {
 
 	manager := &ReconnectManager{
 		timers:            make(map[string]*time.Timer, 20),
@@ -61,7 +61,7 @@ func NewReconnectManager(allowReconnect bool,
 }
 
 //提交重连任务
-func (self *ReconnectManager) submit(c *RemotingClient, ga *GroupAuth, finishHook func(addr string)) {
+func (self *ReconnectManager) submit(c *TClient, ga *GroupAuth, finishHook func(addr string)) {
 	if !self.allowReconnect {
 		return
 	}

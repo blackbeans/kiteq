@@ -11,21 +11,18 @@ import (
 	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/kiteq-common/store"
+	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	"github.com/blackbeans/turbo/client"
-	"github.com/blackbeans/turbo/packet"
-	"github.com/blackbeans/turbo/pipe"
-	"github.com/blackbeans/turbo/server"
 )
 
 type KiteQServer struct {
-	reconnManager  *client.ReconnectManager
-	clientManager  *client.ClientManager
+	reconnManager  *turbo.ReconnectManager
+	clientManager  *turbo.ClientManager
 	exchanger      *exchange.BindExchanger
-	remotingServer *server.RemotingServer
-	pipeline       *pipe.DefaultPipeline
+	remotingServer *turbo.TServer
+	pipeline       *turbo.DefaultPipeline
 	recoverManager *RecoverManager
 	kc             KiteQConfig
 	kitedb         store.IKiteStore
@@ -37,7 +34,7 @@ type KiteQServer struct {
 }
 
 //握手包
-func handshake(ga *client.GroupAuth, remoteClient *client.RemotingClient) (bool, error) {
+func handshake(ga *turbo.GroupAuth, remoteClient *turbo.TClient) (bool, error) {
 	return false, nil
 }
 
@@ -50,10 +47,10 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	kitedb.Start()
 
 	//重连管理器
-	reconnManager := client.NewReconnectManager(false, -1, -1, handshake)
+	reconnManager := turbo.NewReconnectManager(false, -1, -1, handshake)
 
 	//客户端连接管理器
-	clientManager := client.NewClientManager(reconnManager)
+	clientManager := turbo.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
 	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
@@ -77,7 +74,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	topicNotify := make(chan []string, 10)
 	topicNotify <- kc.so.topics
 	//初始化pipeline
-	pipeline := pipe.NewDefaultPipeline()
+	pipeline := turbo.NewDefaultPipeline()
 	pipeline.RegisteHandler("packet", handler.NewPacketHandler("packet"))
 	pipeline.RegisteHandler("access", handler.NewAccessHandler("access", clientManager))
 	pipeline.RegisteHandler("validate", handler.NewValidateHandler("validate", clientManager))
@@ -88,7 +85,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers, registry))
 	pipeline.RegisteHandler("deliver", handler.NewDeliverQosHandler("deliver", kc.flowstat))
-	pipeline.RegisteHandler("remoting", pipe.NewRemotingHandler("remoting", clientManager))
+	pipeline.RegisteHandler("remoting", turbo.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("deliver-result", handler.NewDeliverResultHandler("deliver-result", kc.so.deliveryTimeout, kitedb, rw, registry))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
@@ -113,15 +110,23 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 func (self *KiteQServer) Start() {
 
-	self.remotingServer = server.NewRemotionServer(self.kc.so.bindHost, self.kc.rc,
-		func(rclient *client.RemotingClient, p *packet.Packet) {
-			event := pipe.NewPacketEvent(rclient, p)
+	codec:= protocol.KiteQBytesCodec{MaxFrameLength:turbo.MAX_PACKET_BYTES}
+	self.remotingServer = turbo.NewTServerWithCodec(self.kc.so.bindHost, self.kc.rc,
+		func() turbo.ICodec{
+			return codec
+		},
+		func(ctx *turbo.TContext) error{
+			c := ctx.Client
+			p := ctx.Message
+			event := turbo.NewPacketEvent(c, p)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
 				log.ErrorLog("kite_server", "RemotingServer|onPacketRecieve|FAIL|%s", err)
+
 			} else {
 				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
 			}
+			return err
 		})
 
 	err := self.remotingServer.ListenAndServer()

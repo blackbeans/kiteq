@@ -21,7 +21,7 @@ func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	rc := turbo.NewRemotingConfig(
+	rc := turbo.NewTConfig(
 		"remoting",
 		20000, 16*1024,
 		16*1024, 10000, 10000,
