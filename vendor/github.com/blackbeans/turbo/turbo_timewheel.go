@@ -196,8 +196,11 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 				if !t.expired.After(now) {
 					t.expired = now.Add(t.interval)
 				}
+
 				t.timerId = timerId()
-				heap.Push(&self.timerHeap, t)
+				//重新加入这个repeated 时间
+				self.addTimer<-t
+
 			} else {
 				delete(self.hashTimer, t.timerId)
 			}

@@ -177,30 +177,33 @@ func (self *ClientManager) SubmitReconnect(c *TClient) {
 		})
 		return
 
+	}else if ok{
+		//不需要重连的直接删除掉连接,或者分组不存在则直接删除
+		self.removeClient(c.RemoteAddr())
 	}
 
-	//不需要重连的直接删除掉连接,或者分组不存在则直接删除
-	self.removeClient(c.RemoteAddr())
+
 
 }
 
 //查找remotingclient
+//可能是已经关闭的状态
 func (self *ClientManager) FindTClient(hostport string) *TClient {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	// log.Printf("ClientManager|FindTClient|%s|%s\n", hostport, self.allClients)
 	rclient, ok := self.allClients[hostport]
-	if !ok || rclient.IsClosed() {
-		//已经关闭的直接返回nil
+	if !ok  {
 		return nil
 	}
+
 	return rclient
 }
 
 //查找匹配的groupids
 func (self *ClientManager) FindTClients(groupIds []string, filter func(groupId string, rc *TClient) bool) map[string][]*TClient {
 	clients := make(map[string][]*TClient, 10)
-	var closedClients []*TClient
+	closedClients := make(map[string]*TClient,2)
 	self.lock.RLock()
 	for _, gid := range groupIds {
 		if len(self.groupClients[gid]) <= 0 {
@@ -215,10 +218,7 @@ func (self *ClientManager) FindTClients(groupIds []string, filter func(groupId s
 		for _, c := range self.groupClients[gid] {
 
 			if c.IsClosed() {
-				if nil == clients {
-					closedClients = make([]*TClient, 0, 2)
-				}
-				closedClients = append(closedClients, c)
+				closedClients[c.remoteAddr] = c
 				continue
 			}
 			//如果当前client处于非关闭状态并且没有过滤则入选
@@ -244,7 +244,7 @@ func (self *ClientManager) FindTClients(groupIds []string, filter func(groupId s
 	self.lock.RUnlock()
 
 	//删除掉关掉的clients
-	if nil != closedClients && len(closedClients) > 0 {
+	if len(closedClients) > 0 {
 		for _, c := range closedClients {
 			self.SubmitReconnect(c)
 		}
