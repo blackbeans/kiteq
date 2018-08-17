@@ -3,124 +3,114 @@
 	"ignore": "test",
 	"package": [
 		{
-			"path": "=master",
-			"revision": ""
-		},
-		{
-			"path": "@=feature/1.0.0",
-			"revision": ""
-		},
-		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
 			"revisionTime": "2016-05-24T09:24:44Z",
-			"version": "=feature/1.0.0"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "yJ6+pLllOibGZCIU0wSGdoU1fV0=",
 			"path": "github.com/blackbeans/go-zookeeper/zk",
 			"revision": "e9ca0f2da2a7e4b72457d5a0df3f941caf92954e",
 			"revisionTime": "2016-03-15T04:18:20Z",
-			"version": "=feature/1.0.0"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "M389o28biSXw32l14Tu2TWaVPpo=",
 			"path": "github.com/blackbeans/kiteq-common/exchange",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "fEiTkthSBq1LT487uW06X5g2kcA=",
 			"path": "github.com/blackbeans/kiteq-common/protocol",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "ZF9uPhQL44IcE6U9o6HC9vl/H9E=",
 			"path": "github.com/blackbeans/kiteq-common/registry",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "YZZbtcuns6dMZCJ6hkzEImv1Mi4=",
 			"path": "github.com/blackbeans/kiteq-common/registry/bind",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "MaYnsbzjanjUOleAk2/D3m9Juj0=",
 			"path": "github.com/blackbeans/kiteq-common/stat",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "A7pqP79HsEp0rS+g+lwWETHZ6Ms=",
 			"path": "github.com/blackbeans/kiteq-common/store",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "lzP5M0xMVBRDgSVNSQ01zOyBSms=",
 			"path": "github.com/blackbeans/kiteq-common/store/file",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "6Ae1j6ppod2gNvSDrWjc+W4mCMk=",
 			"path": "github.com/blackbeans/kiteq-common/store/memory",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "xyxZT7JSCHPaXu0BQigbQoobwzE=",
 			"path": "github.com/blackbeans/kiteq-common/store/mysql",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "EYwRN4wf0CsmIe00PMJlJrZMYao=",
 			"path": "github.com/blackbeans/kiteq-common/store/parser",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=feature/1.0.1",
-			"versionExact": "feature/1.0.1"
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "Zqi56gWHqXhmVr335Rhndl4zooE=",
+			"checksumSHA1": "LKOKOc8CvKjVE4fo2Zs+O7Lpv2g=",
 			"path": "github.com/blackbeans/log4go",
-			"revision": "bfe8bc4f9c44d57ef14e44deed4796838fc36876",
-			"revisionTime": "2016-11-11T07:32:44Z",
-			"version": "=feature/1.0.0"
-		},
-		{
-			"path": "github.com/blackbeans/tubro",
-			"revision": "=feature/1.0.1",
-			"version": "=feature/1.0.0"
+			"revision": "a20c293261cf15300d0b49b6bbedb60a9fa6f6f4",
+			"revisionTime": "2017-12-30T16:00:53Z",
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "YIGJm16I3Ug6yN5/yKagp15pAiw=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "5cc70b55e64c756e424e3c9ff667140d8e0c43d4",
-			"revisionTime": "2018-08-16T06:42:22Z",
+			"revision": "7e8564cf7af8d67ab0bed9f37a94a171973ea466",
+			"revisionTime": "2018-08-16T07:24:58Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -195,14 +185,6 @@
 			"path": "golang.org/x/time/rate",
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
-		},
-		{
-			"path": "master",
-			"revision": ""
-		},
-		{
-			"path": "v",
-			"revision": ""
 		}
 	],
 	"rootPath": "kiteq"
