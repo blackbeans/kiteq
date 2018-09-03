@@ -24,7 +24,6 @@ type TClient struct {
 
 func NewTClient(conn *net.TCPConn, codec func() ICodec, dis THandler,
 	config *TConfig) *TClient {
-
 	//创建一个remotingcleint
 	tclient := &TClient{
 		heartbeat: 0,
@@ -242,8 +241,11 @@ func (self *TClient) asyncWrite() {
 	go func() {
 		for !self.IsClosed() {
 
+			tid,timeout := self.config.TW.AddTimer(1 * time.Second,nil,nil)
 			select {
 			case p := <-self.wchan:
+				//先读到数据，则取消定时
+				self.config.TW.CancelTimer(tid)
 				if nil != p {
 					//这里坐下序列化，看下Body是否大于最大的包大小
 					raw, err := self.codec().MarshalPayload(p)
@@ -277,7 +279,7 @@ func (self *TClient) asyncWrite() {
 						continue
 					}
 				}
-				case <-time.After(1 * time.Second):
+				case <-timeout:
 				//超时了
 			}
 		}

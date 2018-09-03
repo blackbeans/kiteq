@@ -3,6 +3,11 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "github.com/blackbeans/",
+			"revision": "=master",
+			"version": "=master"
+		},
+		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
@@ -107,10 +112,10 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "iUSF+Px4senoHh2rXAkLsPvsCXY=",
+			"checksumSHA1": "27XxxFGRHSKDz32wdseeC1E675E=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "1751ea86484f8dc230626edb4c810d1a0a4b085c",
-			"revisionTime": "2018-09-03T02:39:40Z",
+			"revision": "286c91f55ccd8a8204b68f162c83d22a7578ec76",
+			"revisionTime": "2018-09-03T08:20:16Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -187,5 +192,5 @@
 			"revisionTime": "2016-10-28T04:02:39Z"
 		}
 	],
-	"rootPath": "kiteq"
+	"rootPath": "kiteq.github"
 }
