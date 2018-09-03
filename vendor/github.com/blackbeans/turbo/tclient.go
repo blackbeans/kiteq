@@ -277,6 +277,8 @@ func (self *TClient) asyncWrite() {
 						continue
 					}
 				}
+				case <-time.After(1 * time.Second):
+				//超时了
 			}
 		}
 	}()
