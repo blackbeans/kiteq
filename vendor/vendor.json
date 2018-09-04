@@ -112,10 +112,10 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "27XxxFGRHSKDz32wdseeC1E675E=",
+			"checksumSHA1": "JKDyszkWunx4gBMdDhuIKLV2xis=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "286c91f55ccd8a8204b68f162c83d22a7578ec76",
-			"revisionTime": "2018-09-03T08:20:16Z",
+			"revision": "6ab9b0642b7ec41219e9b007ce4e81647c5ce75d",
+			"revisionTime": "2018-09-03T08:34:22Z",
 			"version": "=master",
 			"versionExact": "master"
 		},

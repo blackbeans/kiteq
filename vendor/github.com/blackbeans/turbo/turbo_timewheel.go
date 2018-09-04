@@ -128,7 +128,9 @@ func (self *TimerWheel) RepeatedTimer(interval time.Duration,
 		timerId:  timerId(),
 		expired:  time.Now().Add(interval),
 		onTimeout: func(t time.Time) {
-			onTimout(t)
+			if nil!=onTimout {
+				onTimout(t)
+			}
 		},
 		onCancel: onCancel}
 
@@ -145,7 +147,9 @@ func (self *TimerWheel) AddTimer(timeout time.Duration, onTimout OnEvent, onCanc
 			defer func() {
 				ch <- t
 			}()
-			onTimout(t)
+			if nil!=onTimout {
+				onTimout(t)
+			}
 		},
 		onCancel: onCancel}
 
