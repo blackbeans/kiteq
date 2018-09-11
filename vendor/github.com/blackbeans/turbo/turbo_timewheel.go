@@ -200,9 +200,8 @@ func (self *TimerWheel) checkExpired(now time.Time) {
 				if !t.expired.After(now) {
 					t.expired = now.Add(t.interval)
 				}
-
-				t.timerId = timerId()
 				//重新加入这个repeated 时间
+				t.timerId = timerId()
 				self.addTimer<-t
 
 			} else {
@@ -231,7 +230,10 @@ func (self *TimerWheel) start() {
 
 			case t := <-self.addTimer:
 				heap.Push(&self.timerHeap, t)
-				self.hashTimer[t.timerId] = t
+				//只有不是repeated那么加入hash结构，做对应关系
+				if !t.repeated {
+					self.hashTimer[t.timerId] = t
+				}
 			case timerid := <-self.cancelTimer:
 				if t, ok := self.hashTimer[timerid]; ok {
 					delete(self.hashTimer, timerid)
