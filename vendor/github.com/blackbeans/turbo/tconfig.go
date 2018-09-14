@@ -3,6 +3,7 @@ package turbo
 import (
 	"sync/atomic"
 	"time"
+	"gopkg.in/go-playground/pool.v3"
 )
 
 const (
@@ -13,28 +14,31 @@ const (
 
 //-----------响应的future
 type Future struct {
+	timeout time.Duration
 	opaque     int32
 	response   chan interface{}
 	TargetHost string
 	Err        error
 }
 
-func NewFuture(opaque int32, TargetHost string) *Future {
+func NewFuture(opaque int32,timeout time.Duration, targetHost string) *Future {
 
 	return &Future{
-		opaque,
-		make(chan interface{}, 1),
-		TargetHost,
-		nil}
+		timeout:    timeout,
+		opaque:     opaque,
+		response:   make(chan interface{}, 1),
+		TargetHost: targetHost,
+		Err:        nil}
 }
 
 //创建有错误的future
-func NewErrFuture(opaque int32, TargetHost string, err error) *Future {
+func NewErrFuture(opaque int32, targetHost string, err error) *Future {
 	return &Future{
-		opaque,
-		make(chan interface{}, 1),
-		TargetHost,
-		err}
+		timeout:    0,
+		opaque:     opaque,
+		response:   make(chan interface{}, 1),
+		TargetHost: targetHost,
+		Err:        err}
 }
 
 func (self *Future) Error(err error) {
@@ -77,7 +81,7 @@ func  (self *Future)  Get(timeout <-chan time.Time) (interface{}, error) {
 //网络层参数
 type TConfig struct {
 	FlowStat         *RemotingFlow //网络层流量
-	MaxDispatcherNum chan int      //最大分发处理协程数
+	dispool          pool.Pool     //   最大分发处理协程数
 	ReadBufferSize   int           //读取缓冲大小
 	WriteBufferSize  int           //写入缓冲大小
 	WriteChannelSize int           //写异步channel长度
@@ -89,70 +93,60 @@ type TConfig struct {
 
 func NewTConfig(name string,
 	maxdispatcherNum,
-	readbuffersize, writebuffersize, writechannlesize, readchannelsize int,
-	idletime time.Duration, maxOpaque int) *TConfig {
+	readbuffersize,
+	writebuffersize,
+	writechannlesize,
+	readchannelsize int,
+	idletime time.Duration,
+	maxOpaque uint32) *TConfig {
 
-	//定义holder
-	holders := make([]map[int32]*Future, 0, CONCURRENT_LEVEL)
-	locks := make([]chan *interface{}, 0, CONCURRENT_LEVEL)
-	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]*Future, maxOpaque/CONCURRENT_LEVEL)
-		holders = append(holders, splitMap)
-		locks = append(locks, make(chan *interface{}, 1))
-	}
+	tw := NewTimerWheel(100*time.Millisecond, 50)
+
 	rh := &ReqHolder{
 		opaque:    0,
-		locks:     locks,
-		holders:   holders,
+		holder:NewLRUCache(int(maxOpaque),tw,nil),
+		tw : tw,
+		idleTime:idletime,
 		maxOpaque: maxOpaque}
 
+	dispool := pool.NewLimited(uint(maxdispatcherNum))
 	//初始化
 	rc := &TConfig{
 		FlowStat:         NewRemotingFlow(name),
-		MaxDispatcherNum: make(chan int, maxdispatcherNum),
+		dispool:          dispool,
 		ReadBufferSize:   readbuffersize,
 		WriteBufferSize:  writebuffersize,
 		WriteChannelSize: writechannlesize,
 		ReadChannelSize:  readchannelsize,
 		IdleTime:         idletime,
 		RequestHolder:    rh,
-		TW:               NewTimerWheel(100*time.Millisecond, 50)}
+		TW:               tw,
+	}
+	rc.FlowStat.DispatcherGo.count = int64(maxdispatcherNum)
 	return rc
 }
 
 type ReqHolder struct {
-	maxOpaque int
+	maxOpaque uint32
 	opaque    uint32
-	locks     []chan *interface{}
-	holders   []map[int32]*Future
+	tw 	*TimerWheel
+	holder *LRUCache
+	idleTime  time.Duration //连接空闲时间
 }
 
 func (self *ReqHolder) CurrentOpaque() int32 {
-	return int32((atomic.AddUint32(&self.opaque, 1) % uint32(self.maxOpaque)))
+	return int32(atomic.AddUint32(&self.opaque, 1) % uint32(self.maxOpaque))
 }
 
 //从requesthold中移除
 func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 
-	l, m := self.locker(opaque)
-	l <- nil
-	defer func() { <-l }()
-
-	future, ok := m[opaque]
-	if ok {
-		delete(m, opaque)
-		future.SetResponse(obj)
-		// log.Printf("ReqHolder|Attach|%s|%s\n", opaque, obj)
+	future := self.holder.Remove(opaque)
+	if nil!=future{
+		future.(*Future).SetResponse(obj)
 	}
 }
 
-func (self *ReqHolder) Attach(opaque int32, future *Future) {
-	l, m := self.locker(opaque)
-	l <- nil
-	defer func() { <-l }()
-	m[opaque] = future
-}
-
-func (self *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
-	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
+func (self *ReqHolder) Attach(opaque int32, future *Future) chan time.Time{
+	return self.holder.Put(opaque,future,future.timeout)
 }

@@ -23,7 +23,7 @@ func main() {
 
 	rc := turbo.NewTConfig(
 		"remoting",
-		20000, 16*1024,
+		1000, 16*1024,
 		16*1024, 10000, 10000,
 		10*time.Second, 160000)
 

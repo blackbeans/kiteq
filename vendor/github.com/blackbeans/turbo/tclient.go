@@ -6,6 +6,7 @@ import (
 	"time"
 	log "github.com/blackbeans/log4go"
 	"errors"
+	"gopkg.in/go-playground/pool.v3"
 )
 
 //网络层的client
@@ -64,16 +65,9 @@ func (self *TClient) onMessage(msg Packet, err error) {
 			log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
 		}
 	} else {
-
-		self.config.MaxDispatcherNum <- 1
-		self.config.FlowStat.DispatcherGo.Incr(1)
-		go func() {
-			defer func() {
-				self.config.FlowStat.DispatcherGo.Incr(-1)
-				<-self.config.MaxDispatcherNum
-			}()
-
-			p := &msg
+		p := &msg
+		self.config.dispool.Queue(
+			func(wu pool.WorkUnit) (interface{}, error) {
 			//解析包
 			message, err := self.codec().UnmarshalPayload(p)
 			if nil != err {
@@ -86,7 +80,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 					Err:err,
 				}
 				err = self.dis(ctx)
-				return
+				return nil,nil
 			}
 
 			//强制设置payload
@@ -101,8 +95,8 @@ func (self *TClient) onMessage(msg Packet, err error) {
 			if nil != err {
 				log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
 			}
-
-		}()
+			return nil,err
+		})
 	}
 }
 
@@ -196,11 +190,31 @@ func (self *TClient) Attach(opaque int32, obj interface{}) {
 //写数据并且得到相应
 func (self *TClient) WriteAndGet(p Packet,
 	timeout time.Duration) (interface{}, error) {
-	future, err := self.Write(p)
-	if nil != err {
-		return nil, err
+
+	pp := &p
+	opaque := self.fillOpaque(pp)
+	future := NewFuture(opaque, timeout,self.localAddr)
+	tchan := self.config.RequestHolder.Attach(opaque, future)
+	//写入完成之后的操作
+	pp.OnComplete = func(err error) {
+		if nil != err {
+			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
+			future.Error(err)
+			//生成一个错误的转发
+			ctx := &TContext{
+				Client:self,
+				Message:pp,
+				Err:err}
+			self.dis(ctx)
+		}
 	}
-	tchan := time.After(timeout)
+
+	//写入队列
+	select {
+	case self.wchan <- pp:
+	default:
+		return nil, errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+	}
 	resp, err := future.Get(tchan)
 	return resp, err
 }
@@ -210,7 +224,7 @@ func (self *TClient) Write(p Packet) (*Future, error) {
 
 	pp := &p
 	opaque := self.fillOpaque(pp)
-	future := NewFuture(opaque, self.localAddr)
+	future := NewFuture(opaque, -1,self.localAddr)
 	self.config.RequestHolder.Attach(opaque, future)
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {

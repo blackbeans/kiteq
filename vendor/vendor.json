@@ -112,10 +112,10 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "pYfyt1rWkzD8ObK0YuROyhzjLz4=",
+			"checksumSHA1": "2yNAiAWaOauRI91/DpMc91qfPQ4=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "b70ec531bb20eb95272acae2ae85636e1f86eb59",
-			"revisionTime": "2018-09-11T06:48:44Z",
+			"revision": "82a253d2195e94a9bd7269fb8d10c893c940c43a",
+			"revisionTime": "2018-09-14T08:41:30Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -190,6 +190,12 @@
 			"path": "golang.org/x/time/rate",
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
+		},
+		{
+			"checksumSHA1": "3YKLguFMdriJgIyAhS8T2S3a4ZA=",
+			"path": "gopkg.in/go-playground/pool.v3",
+			"revision": "e73cd3a5ded835540c5cf4778488579c5b357d68",
+			"revisionTime": "2016-08-23T19:35:13Z"
 		}
 	],
 	"rootPath": "kiteq.github"
