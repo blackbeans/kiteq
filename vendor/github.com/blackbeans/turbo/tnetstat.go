@@ -3,6 +3,7 @@ package turbo
 import (
 	"fmt"
 	"sync/atomic"
+	"github.com/blackbeans/pool"
 )
 
 //network stat
@@ -12,6 +13,7 @@ type NetworkStat struct {
 	WriteCount   int32 `json:"write_count"`
 	WriteBytes   int32 `json:"write_bytes"`
 	DispatcherGo int32 `json:"dispatcher_go"`
+	GoQueueSize int32 `json:"goqueue_size"`
 	Connections  int32 `json:"connections"`
 }
 
@@ -26,14 +28,17 @@ type RemotingFlow struct {
 	ReadFlow       *Flow
 	ReadBytesFlow  *Flow
 	DispatcherGo   *Flow
+	GoQueueSize    *Flow
 	WriteFlow      *Flow
 	WriteBytesFlow *Flow
 	Connections    *Flow
+	pool pool.Pool
 }
 
-func NewRemotingFlow(name string) *RemotingFlow {
+func NewRemotingFlow(name string,pool pool.Pool) *RemotingFlow {
 	return &RemotingFlow{
 		OptimzeStatus:  true,
+		pool:pool,
 		Name:           name,
 		ReadFlow:       &Flow{},
 		ReadBytesFlow:  &Flow{},
@@ -48,7 +53,8 @@ func (self *RemotingFlow) Stat() NetworkStat {
 	return NetworkStat{
 		ReadCount:    self.ReadFlow.Changes(),
 		ReadBytes:    self.ReadBytesFlow.Changes(),
-		DispatcherGo: self.DispatcherGo.Count(),
+		DispatcherGo: int32(self.pool.CurrWorkers()),
+		GoQueueSize:  int32(self.pool.IncompleteTasks()),
 		WriteCount:   self.WriteFlow.Changes(),
 		WriteBytes:   self.WriteBytesFlow.Changes(),
 		Connections:  self.Connections.Count()}

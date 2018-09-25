@@ -6,7 +6,7 @@ import (
 	"time"
 	log "github.com/blackbeans/log4go"
 	"errors"
-	"gopkg.in/go-playground/pool.v3"
+	"github.com/blackbeans/pool"
 )
 
 //网络层的client

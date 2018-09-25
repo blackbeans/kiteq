@@ -3,6 +3,11 @@
 	"ignore": "test",
 	"package": [
 		{
+			"path": "github.com/blackbeans",
+			"revision": "",
+			"version": "=master"
+		},
+		{
 			"path": "github.com/blackbeans/",
 			"revision": "=master",
 			"version": "=master"
@@ -112,10 +117,16 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "2yNAiAWaOauRI91/DpMc91qfPQ4=",
+			"checksumSHA1": "w1GMRnHBb2GpE8Jd/3+gOjUaMZo=",
+			"path": "github.com/blackbeans/pool",
+			"revision": "36216c1c83508694af4c563ed31c1e416e698d99",
+			"revisionTime": "2018-09-25T06:41:45Z"
+		},
+		{
+			"checksumSHA1": "oKX7kV6aszA3bVD+x3G8tatp1U0=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "82a253d2195e94a9bd7269fb8d10c893c940c43a",
-			"revisionTime": "2018-09-14T08:41:30Z",
+			"revision": "fb4cfe21ff8fe880852cee1c91610ba00fbcc1e4",
+			"revisionTime": "2018-09-24T17:27:17Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
