@@ -1,4 +1,4 @@
-package bind
+package registry
 
 import (
 	"encoding/json"

@@ -8,13 +8,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/blackbeans/kiteq-common/exchange"
-	"github.com/blackbeans/kiteq-common/stat"
-	"github.com/blackbeans/kiteq-common/store"
 	"github.com/blackbeans/kiteq-common/protocol"
-	"github.com/blackbeans/kiteq-common/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/exchange"
+	"kiteq/store"
+	"kiteq/store/parser"
 )
 
 type KiteQServer struct {
@@ -43,7 +42,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	kiteqName, _ := os.Hostname()
 
 	kitedb := parser.ParseDB(kc.so.db, kiteqName)
-	kc.flowstat.Kitestore = kitedb
+	//kc.flowstat.Kitestore = kitedb
 	kitedb.Start()
 
 	//重连管理器
@@ -56,7 +55,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
-	registry := stat.NewDeliveryRegistry(10 * 10000)
+	registry := handler.NewDeliveryRegistry(kc.rc.TW, 10*10000)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
@@ -110,12 +109,12 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 
 func (self *KiteQServer) Start() {
 
-	codec:= protocol.KiteQBytesCodec{MaxFrameLength:turbo.MAX_PACKET_BYTES}
+	codec := protocol.KiteQBytesCodec{MaxFrameLength: turbo.MAX_PACKET_BYTES}
 	self.remotingServer = turbo.NewTServerWithCodec(self.kc.so.bindHost, self.kc.rc,
-		func() turbo.ICodec{
+		func() turbo.ICodec {
 			return codec
 		},
-		func(ctx *turbo.TContext) error{
+		func(ctx *turbo.TContext) error {
 			c := ctx.Client
 			p := ctx.Message
 			event := turbo.NewPacketEvent(c, p)

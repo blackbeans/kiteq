@@ -3,9 +3,9 @@ package handler
 import (
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
-	"github.com/blackbeans/kiteq-common/store"
-	"github.com/blackbeans/kiteq-common/registry/bind"
+	"github.com/blackbeans/kiteq-common/registry"
 	"github.com/blackbeans/turbo"
+	"kiteq/store"
 	"time"
 )
 
@@ -112,13 +112,13 @@ type deliverEvent struct {
 	header *protocol.Header
 	// fly            bool           //是否为fly模式的消息
 	packet         *turbo.Packet //消息包
-	succGroups     []string       //已经投递成功的分组
-	deliverGroups  []string       //需要投递的群组
+	succGroups     []string      //已经投递成功的分组
+	deliverGroups  []string      //需要投递的群组
 	deliverLimit   int32
 	deliverCount   int32 //已经投递的次数
 	attemptDeliver chan []string
 	limiters       map[string]*turbo.BurstyLimiter
-	groupBinds     map[string]bind.Binding //本次投递的订阅关系
+	groupBinds     map[string]registry.Binding //本次投递的订阅关系
 }
 
 //创建投递事件
@@ -164,7 +164,7 @@ func newDeliverResultEvent(deliverEvent *deliverEvent, futures map[string]*turbo
 }
 
 //等待响应
-func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[string]bind.Binding) bool {
+func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[string]registry.Binding) bool {
 	istimeout := false
 	latch := make(chan time.Time, 1)
 	t := time.AfterFunc(timeout, func() {
@@ -178,7 +178,7 @@ func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[strin
 	for g, f := range self.futures {
 		resp, err := f.Get(tch)
 
-		if err == turbo.ERR_TIMEOUT{
+		if err == turbo.ERR_TIMEOUT {
 			istimeout = true
 		} else if nil != resp {
 			ack, ok := resp.(*protocol.DeliverAck)

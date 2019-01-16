@@ -1,13 +1,12 @@
 package handler
 
 import (
-	// log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/protocol"
-	"github.com/blackbeans/kiteq-common/registry/bind"
+	"github.com/blackbeans/kiteq-common/registry"
 	"github.com/blackbeans/kiteq-common/stat"
-	"github.com/blackbeans/kiteq-common/store"
 	"github.com/blackbeans/turbo"
+	"kiteq/exchange"
+	"kiteq/store"
 	"sync/atomic"
 	"time"
 )
@@ -21,13 +20,13 @@ type DeliverPreHandler struct {
 	conditions       int32
 	deliverTimeout   time.Duration
 	flowstat         *stat.FlowStat
-	deliveryRegistry *stat.DeliveryRegistry
+	deliveryRegistry *DeliveryRegistry
 }
 
 //------创建deliverpre
 func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	exchanger *exchange.BindExchanger, flowstat *stat.FlowStat,
-	maxDeliverWorker int, deliveryRegistry *stat.DeliveryRegistry) *DeliverPreHandler {
+	maxDeliverWorker int, deliveryRegistry *DeliveryRegistry) *DeliverPreHandler {
 	phandler := &DeliverPreHandler{}
 	phandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
@@ -146,7 +145,7 @@ func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *
 //填充订阅分组
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
 	binds, limiters := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
-		func(b *bind.Binding) bool {
+		func(b *registry.Binding) bool {
 			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
 			//过滤掉已经投递成功的分组
 			for _, sg := range entity.SuccGroups {
@@ -159,7 +158,7 @@ func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.
 
 	//合并本次需要投递的分组
 	groupIds := make([]string, 0, 10)
-	groupBinds := make(map[string]bind.Binding, 10)
+	groupBinds := make(map[string]registry.Binding, 10)
 	//按groupid归并
 	for _, bind := range binds {
 		//获取group对应的limiter

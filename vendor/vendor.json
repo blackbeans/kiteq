@@ -4,7 +4,7 @@
 	"package": [
 		{
 			"path": "github.com/blackbeans",
-			"revision": "",
+			"revision": "=master",
 			"version": "=master"
 		},
 		{
@@ -31,78 +31,46 @@
 		{
 			"checksumSHA1": "M389o28biSXw32l14Tu2TWaVPpo=",
 			"path": "github.com/blackbeans/kiteq-common/exchange",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
+			"revision": "8333a767e608aac65d7d71a64e7e73350d234a26",
+			"revisionTime": "2019-01-16T08:52:15Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "fEiTkthSBq1LT487uW06X5g2kcA=",
 			"path": "github.com/blackbeans/kiteq-common/protocol",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
+			"revision": "ab02514c416e3e93dbe20cbec47987a9b1b22740",
+			"revisionTime": "2019-01-16T09:09:41Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "ZF9uPhQL44IcE6U9o6HC9vl/H9E=",
+			"checksumSHA1": "xKVOOYvL2wbVctewVhi0K8ipgnI=",
 			"path": "github.com/blackbeans/kiteq-common/registry",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
+			"revision": "ab02514c416e3e93dbe20cbec47987a9b1b22740",
+			"revisionTime": "2019-01-16T09:09:41Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "YZZbtcuns6dMZCJ6hkzEImv1Mi4=",
 			"path": "github.com/blackbeans/kiteq-common/registry/bind",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
+			"revision": "863b7d1ef6fe5de433d470fd0ad6950173821530",
+			"revisionTime": "2019-01-16T08:38:52Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "MaYnsbzjanjUOleAk2/D3m9Juj0=",
+			"checksumSHA1": "jO4jwOPKxftEipd0O20xgcTirCI=",
 			"path": "github.com/blackbeans/kiteq-common/stat",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
+			"revision": "ab02514c416e3e93dbe20cbec47987a9b1b22740",
+			"revisionTime": "2019-01-16T09:09:41Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "A7pqP79HsEp0rS+g+lwWETHZ6Ms=",
 			"path": "github.com/blackbeans/kiteq-common/store",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "lzP5M0xMVBRDgSVNSQ01zOyBSms=",
-			"path": "github.com/blackbeans/kiteq-common/store/file",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "6Ae1j6ppod2gNvSDrWjc+W4mCMk=",
-			"path": "github.com/blackbeans/kiteq-common/store/memory",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "xyxZT7JSCHPaXu0BQigbQoobwzE=",
-			"path": "github.com/blackbeans/kiteq-common/store/mysql",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "EYwRN4wf0CsmIe00PMJlJrZMYao=",
-			"path": "github.com/blackbeans/kiteq-common/store/parser",
 			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
 			"revisionTime": "2018-06-13T10:12:11Z",
 			"version": "=master",
@@ -120,7 +88,9 @@
 			"checksumSHA1": "w1GMRnHBb2GpE8Jd/3+gOjUaMZo=",
 			"path": "github.com/blackbeans/pool",
 			"revision": "36216c1c83508694af4c563ed31c1e416e698d99",
-			"revisionTime": "2018-09-25T06:41:45Z"
+			"revisionTime": "2018-09-25T06:41:45Z",
+			"version": "=master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "oKX7kV6aszA3bVD+x3G8tatp1U0=",
@@ -147,6 +117,13 @@
 			"path": "github.com/coreos/etcd/pkg/types",
 			"revision": "5d60482357904a8273a53b001e37f949f208463a",
 			"revisionTime": "2016-12-01T03:49:55Z"
+		},
+		{
+			"checksumSHA1": "butr+Orbf1fd1hcLqNXYwUDAjcI=",
+			"origin": "go.etcd.io/etcd/vendor/github.com/coreos/go-semver/semver",
+			"path": "github.com/coreos/go-semver/semver",
+			"revision": "a00bff7848db1dcead692e2bea1d7c87e8a2c157",
+			"revisionTime": "2019-01-16T03:40:34Z"
 		},
 		{
 			"checksumSHA1": "VCKsz7001qwfA2bHLo/AOn0xos0=",
@@ -191,6 +168,34 @@
 			"revisionTime": "2016-11-30T06:17:42Z"
 		},
 		{
+			"path": "go.etcd.io/etcd/client",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "Q4ZZnZeTbMHrXKZxTd6EQjSf4uY=",
+			"path": "go.etcd.io/etcd/pkg/pathutil",
+			"revision": "a00bff7848db1dcead692e2bea1d7c87e8a2c157",
+			"revisionTime": "2019-01-16T03:40:34Z"
+		},
+		{
+			"checksumSHA1": "f0XHkJGhyhBIlx+AuLyv2lc519w=",
+			"path": "go.etcd.io/etcd/pkg/srv",
+			"revision": "a00bff7848db1dcead692e2bea1d7c87e8a2c157",
+			"revisionTime": "2019-01-16T03:40:34Z"
+		},
+		{
+			"checksumSHA1": "VL9HsNKbbCb1Ntj9VcFCfiTmjmM=",
+			"path": "go.etcd.io/etcd/pkg/types",
+			"revision": "a00bff7848db1dcead692e2bea1d7c87e8a2c157",
+			"revisionTime": "2019-01-16T03:40:34Z"
+		},
+		{
+			"checksumSHA1": "Vyt9fFWEV2/sagq9KmkVbPn+LFM=",
+			"path": "go.etcd.io/etcd/version",
+			"revision": "a00bff7848db1dcead692e2bea1d7c87e8a2c157",
+			"revisionTime": "2019-01-16T03:40:34Z"
+		},
+		{
 			"checksumSHA1": "9jjO5GjLa0XF/nfWihF02RoH4qc=",
 			"path": "golang.org/x/net/context",
 			"revision": "f2499483f923065a842d38eb4c7f1927e6fc6e6d",
@@ -209,5 +214,5 @@
 			"revisionTime": "2016-08-23T19:35:13Z"
 		}
 	],
-	"rootPath": "kiteq.github"
+	"rootPath": "kiteq"
 }

@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"github.com/blackbeans/kiteq-common/registry/bind"
 	"log"
 	"strings"
 )
@@ -29,7 +28,7 @@ type IWatcher interface {
 	//当断开链接时
 	OnSessionExpired()
 
-	DataChange(path string, binds []*bind.Binding)
+	DataChange(path string, binds []*Binding)
 	NodeChange(path string, eventType RegistryEvent, children []string)
 }
 
@@ -50,13 +49,13 @@ type Registry interface {
 	PublishTopics(topics []string, groupId string, hostport string) error
 
 	//发布订阅关系
-	PublishBindings(groupId string, bindings []*bind.Binding) error
+	PublishBindings(groupId string, bindings []*Binding) error
 
 	//获取QServer并添加watcher
 	GetQServerAndWatch(topic string) ([]string, error)
 
 	//获取订阅关系并添加watcher
-	GetBindAndWatch(topic string) (map[string][]*bind.Binding, error)
+	GetBindAndWatch(topic string) (map[string][]*Binding, error)
 
 	Close()
 }
@@ -68,7 +67,7 @@ func (self *MockWatcher) OnSessionExpired() {
 
 }
 
-func (self *MockWatcher) DataChange(path string, binds []*bind.Binding) {
+func (self *MockWatcher) DataChange(path string, binds []*Binding) {
 
 	//订阅关系变更才处理
 	if strings.HasPrefix(path, KITEQ_SUB) {

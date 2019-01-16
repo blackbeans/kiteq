@@ -1,7 +1,6 @@
 package registry
 
 import (
-	"github.com/blackbeans/kiteq-common/registry/bind"
 	"strings"
 )
 
@@ -74,7 +73,7 @@ func (self *RegistryCenter) PublishTopics(topics []string, groupId string, hostp
 }
 
 //发布订阅关系
-func (self *RegistryCenter) PublishBindings(groupId string, bindings []*bind.Binding) error {
+func (self *RegistryCenter) PublishBindings(groupId string, bindings []*Binding) error {
 	return self.registry.PublishBindings(groupId, bindings)
 }
 
@@ -84,7 +83,7 @@ func (self *RegistryCenter) GetQServerAndWatch(topic string) ([]string, error) {
 }
 
 //获取订阅关系并添加watcher
-func (self *RegistryCenter) GetBindAndWatch(topic string) (map[string][]*bind.Binding, error) {
+func (self *RegistryCenter) GetBindAndWatch(topic string) (map[string][]*Binding, error) {
 	return self.registry.GetBindAndWatch(topic)
 }
 

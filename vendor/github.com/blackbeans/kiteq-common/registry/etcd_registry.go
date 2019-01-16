@@ -2,10 +2,9 @@ package registry
 
 import (
 	"container/list"
-	"github.com/blackbeans/kiteq-common/registry/bind"
+	"context"
 	log "github.com/blackbeans/log4go"
-	"github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
+	"go.etcd.io/etcd/client"
 	"strings"
 	"time"
 )
@@ -128,10 +127,10 @@ func (self *EtcdRegistry) PublishTopics(topics []string, groupId string, hostpor
 	// PublishTopics   []string
 	// Hostport        string
 	// GroupId         string
-	// Bindings        []*bind.Binding
+	// Bindings        []*Binding
 	// KeepalivePeriod time.Duration
 	worker := &QClientWorker{Api: self.api, PublishTopics: topics, Hostport: hostport,
-		GroupId: groupId, Bindings: []*bind.Binding{}, KeepalivePeriod: 5 * time.Second}
+		GroupId: groupId, Bindings: []*Binding{}, KeepalivePeriod: 5 * time.Second}
 
 	self.workerlink.PushBack(worker)
 	return nil
@@ -167,12 +166,12 @@ func (self *EtcdRegistry) GetQServerAndWatch(topic string) ([]string, error) {
 }
 
 //发布订阅关系
-func (self *EtcdRegistry) PublishBindings(groupId string, bindings []*bind.Binding) error {
+func (self *EtcdRegistry) PublishBindings(groupId string, bindings []*Binding) error {
 	// Api             client.KeysAPI
 	// PublishTopics   []string
 	// Hostport        string
 	// GroupId         string
-	// Bindings        []*bind.Binding
+	// Bindings        []*Binding
 	// KeepalivePeriod time.Duration
 	worker := &QClientWorker{Api: self.api, PublishTopics: []string{},
 		GroupId: groupId, Bindings: bindings, KeepalivePeriod: 1 * time.Hour}
@@ -183,7 +182,7 @@ func (self *EtcdRegistry) PublishBindings(groupId string, bindings []*bind.Bindi
 }
 
 //获取订阅关系并添加watcher
-func (self *EtcdRegistry) GetBindAndWatch(topic string) (map[string][]*bind.Binding, error) {
+func (self *EtcdRegistry) GetBindAndWatch(topic string) (map[string][]*Binding, error) {
 
 	path := KITEQ_SUB + "/" + topic
 
@@ -209,7 +208,7 @@ func (self *EtcdRegistry) GetBindAndWatch(topic string) (map[string][]*bind.Bind
 	}
 
 	//get bind group
-	hps := make(map[string][]*bind.Binding, resp.Node.Nodes.Len())
+	hps := make(map[string][]*Binding, resp.Node.Nodes.Len())
 	//获取topic对应的所有groupId下的订阅关系
 	for _, n := range resp.Node.Nodes {
 		binds, err := self.getBindData(n.Key)
@@ -227,7 +226,7 @@ func (self *EtcdRegistry) GetBindAndWatch(topic string) (map[string][]*bind.Bind
 }
 
 // //获取绑定对象的数据
-func (self *EtcdRegistry) getBindData(path string) ([]*bind.Binding, error) {
+func (self *EtcdRegistry) getBindData(path string) ([]*Binding, error) {
 	resp, err := self.api.Get(context.Background(), path, &client.GetOptions{Recursive: false})
 	if nil != err {
 		log.ErrorLog("kite_bind", "EtcdRegistry|getBindData|Binding|FAIL|%s|%s\n", err, path)
@@ -235,9 +234,9 @@ func (self *EtcdRegistry) getBindData(path string) ([]*bind.Binding, error) {
 	}
 
 	if len(resp.Node.Value) <= 0 {
-		return []*bind.Binding{}, nil
+		return []*Binding{}, nil
 	} else {
-		binding, err := bind.UmarshalBinds([]byte(resp.Node.Value))
+		binding, err := UmarshalBinds([]byte(resp.Node.Value))
 		if nil != err {
 			log.ErrorLog("kite_bind", "EtcdRegistry|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, resp.Node.Value)
 

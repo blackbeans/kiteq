@@ -2,7 +2,6 @@ package registry
 
 import (
 	"github.com/blackbeans/go-zookeeper/zk"
-	"github.com/blackbeans/kiteq-common/registry/bind"
 	log "github.com/blackbeans/log4go"
 	_ "net"
 	"strings"
@@ -212,14 +211,14 @@ func (self *ZKManager) PublishTopics(topics []string, groupId string, hostport s
 }
 
 //发布订阅关系
-func (self *ZKManager) PublishBindings(groupId string, bindings []*bind.Binding) error {
+func (self *ZKManager) PublishBindings(groupId string, bindings []*Binding) error {
 
 	//按topic分组
-	groupBind := make(map[string][]*bind.Binding, 10)
+	groupBind := make(map[string][]*Binding, 10)
 	for _, b := range bindings {
 		g, ok := groupBind[b.Topic]
 		if !ok {
-			g = make([]*bind.Binding, 0, 2)
+			g = make([]*Binding, 0, 2)
 		}
 		b.GroupId = groupId
 		g = append(g, b)
@@ -227,7 +226,7 @@ func (self *ZKManager) PublishBindings(groupId string, bindings []*bind.Binding)
 	}
 
 	for topic, binds := range groupBind {
-		data, err := bind.MarshalBinds(binds)
+		data, err := MarshalBinds(binds)
 		if nil != err {
 			log.ErrorLog("kiteq_registry", "ZKManager|PublishBindings|MarshalBind|FAIL|%s|%s|%t\n", err, groupId, binds)
 			return err
@@ -340,14 +339,14 @@ func (self *ZKManager) GetQServerAndWatch(topic string) ([]string, error) {
 }
 
 //获取订阅关系并添加watcher
-func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*bind.Binding, error) {
+func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*Binding, error) {
 
 	path := KITEQ_SUB + "/" + topic
 
 	exist, _, _, err := self.session.ExistsW(path)
 	if !exist {
 		//不存在订阅关系的时候需要创建该topic和
-		return make(map[string][]*bind.Binding, 0), err
+		return make(map[string][]*Binding, 0), err
 	}
 
 	//获取topic下的所有qserver
@@ -357,7 +356,7 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*bind.Binding
 		return nil, err
 	}
 
-	hps := make(map[string][]*bind.Binding, len(groupIds))
+	hps := make(map[string][]*Binding, len(groupIds))
 	//获取topic对应的所有groupId下的订阅关系
 	for _, groupId := range groupIds {
 		tmppath := path + "/" + groupId
@@ -376,7 +375,7 @@ func (self *ZKManager) GetBindAndWatch(topic string) (map[string][]*bind.Binding
 }
 
 //获取绑定对象的数据
-func (self *ZKManager) getBindData(path string) ([]*bind.Binding, error) {
+func (self *ZKManager) getBindData(path string) ([]*Binding, error) {
 	bindData, _, _, err := self.session.GetW(path)
 	if nil != err {
 		log.ErrorLog("kiteq_registry", "ZKManager|getBindData|Binding|FAIL|%s|%s\n", err, path)
@@ -385,9 +384,9 @@ func (self *ZKManager) getBindData(path string) ([]*bind.Binding, error) {
 
 	// log.Printf("ZKManager|getBindData|Binding|SUCC|%s|%s\n", path, string(bindData))
 	if nil == bindData || len(bindData) <= 0 {
-		return []*bind.Binding{}, nil
+		return []*Binding{}, nil
 	} else {
-		binding, err := bind.UmarshalBinds(bindData)
+		binding, err := UmarshalBinds(bindData)
 		if nil != err {
 			log.ErrorLog("kiteq_registry", "ZKManager|getBindData|UmarshalBind|FAIL|%s|%s|%s\n", err, path, string(bindData))
 

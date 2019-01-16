@@ -2,7 +2,6 @@ package exchange
 
 import (
 	"github.com/blackbeans/kiteq-common/registry"
-	"github.com/blackbeans/kiteq-common/registry/bind"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"math"
@@ -21,7 +20,7 @@ const (
 
 //用于管理订阅关系，对接zookeeper的订阅关系变更
 type BindExchanger struct {
-	exchanger      map[string] /*topic*/ map[string] /*groupId*/ []*bind.Binding      //保存的订阅关系
+	exchanger      map[string] /*topic*/ map[string] /*groupId*/ []*registry.Binding  //保存的订阅关系
 	limiters       map[string] /*topic*/ map[string] /*groupId*/ *turbo.BurstyLimiter //group->topic->limiter
 	topics         []string                                                           //当前服务器可投递的topic类型
 	lock           sync.RWMutex
@@ -33,7 +32,7 @@ type BindExchanger struct {
 func NewBindExchanger(zkhost string,
 	kiteQServer string) *BindExchanger {
 	ex := &BindExchanger{
-		exchanger: make(map[string]map[string][]*bind.Binding, 100),
+		exchanger: make(map[string]map[string][]*registry.Binding, 100),
 		limiters:  make(map[string]map[string]*turbo.BurstyLimiter, 100),
 		topics:    make([]string, 0, 50)}
 	center := registry.NewRegistryCenter(zkhost)
@@ -169,18 +168,18 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 }
 
 //根据topic和messageType 类型获取订阅关系
-func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *bind.Binding) bool) ([]*bind.Binding, map[string]*turbo.BurstyLimiter) {
+func (self *BindExchanger) FindBinds(topic string, messageType string, filter func(b *registry.Binding) bool) ([]*registry.Binding, map[string]*turbo.BurstyLimiter) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	groups, ok := self.exchanger[topic]
 	if !ok {
-		return []*bind.Binding{}, nil
+		return []*registry.Binding{}, nil
 	}
 
 	topicLimiters, ok := self.limiters[topic]
 	limiters := make(map[string]*turbo.BurstyLimiter, 10)
 	//符合规则的binds
-	validBinds := make([]*bind.Binding, 0, 10)
+	validBinds := make([]*registry.Binding, 0, 10)
 	for _, binds := range groups {
 		for _, b := range binds {
 			//匹配并且不被过滤
@@ -254,7 +253,7 @@ func (self *BindExchanger) NodeChange(path string, eventType registry.RegistryEv
 	}
 }
 
-func (self *BindExchanger) DataChange(path string, binds []*bind.Binding) {
+func (self *BindExchanger) DataChange(path string, binds []*registry.Binding) {
 
 	//订阅关系变更才处理
 	if strings.HasPrefix(path, registry.KITEQ_SUB) {
@@ -275,7 +274,7 @@ func (self *BindExchanger) DataChange(path string, binds []*bind.Binding) {
 }
 
 //订阅关系改变
-func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*bind.Binding) {
+func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*registry.Binding) {
 
 	if len(groupId) <= 0 {
 		delete(self.exchanger, topic)
@@ -291,7 +290,7 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*bind
 	v, ok := self.exchanger[topic]
 
 	if !ok {
-		v = make(map[string][]*bind.Binding, 10)
+		v = make(map[string][]*registry.Binding, 10)
 		self.exchanger[topic] = v
 	}
 

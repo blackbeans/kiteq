@@ -2,10 +2,9 @@ package handler
 
 import (
 	"fmt"
-	"github.com/blackbeans/kiteq-common/stat"
-	"github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/store"
 	"sort"
 	"time"
 )
@@ -52,12 +51,12 @@ type DeliverResultHandler struct {
 	deliverTimeout   time.Duration
 	updateChan       chan store.MessageEntity
 	deleteChan       chan string
-	deliveryRegistry *stat.DeliveryRegistry
+	deliveryRegistry *DeliveryRegistry
 }
 
 //------创建投递结果处理器
 func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestore store.IKiteStore,
-	rw []RedeliveryWindow, deliveryRegistry *stat.DeliveryRegistry) *DeliverResultHandler {
+	rw []RedeliveryWindow, deliveryRegistry *DeliveryRegistry) *DeliverResultHandler {
 	dhandler := &DeliverResultHandler{}
 	dhandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, dhandler)
 	dhandler.kitestore = kitestore

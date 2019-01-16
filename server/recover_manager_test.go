@@ -1,18 +1,18 @@
 package server
 
 import (
-	"github.com/blackbeans/kiteq-common/exchange"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
-	"github.com/blackbeans/kiteq-common/store"
-	"github.com/blackbeans/kiteq-common/store/memory"
 	"github.com/blackbeans/turbo"
+	"github.com/golang/protobuf/proto"
+	"kiteq/exchange"
 	"kiteq/handler"
+	"kiteq/store"
+	"kiteq/store/memory"
 	"log"
 	"os"
 	"testing"
 	"time"
-	"github.com/golang/protobuf/proto"
 )
 
 func buildStringMessage(id string) *protocol.StringMessage {
@@ -81,7 +81,10 @@ func TestRecoverManager(t *testing.T) {
 
 	// 临时在这里创建的BindExchanger
 	exchanger := exchange.NewBindExchanger("zk://localhost:2181", "127.0.0.1:13800")
-	deliveryRegistry := stat.NewDeliveryRegistry(10)
+
+	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
+
+	deliveryRegistry := handler.NewDeliveryRegistry(tw, 10)
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100, deliveryRegistry))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()

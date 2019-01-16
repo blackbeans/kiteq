@@ -1,7 +1,6 @@
 package stat
 
 import (
-	"github.com/blackbeans/kiteq-common/store"
 	"github.com/blackbeans/turbo"
 	"sync"
 )
@@ -12,7 +11,6 @@ type MessageFlow struct {
 }
 
 type FlowStat struct {
-	Kitestore   store.IKiteStore
 	DeliverFlow *turbo.Flow
 	RecieveFlow *turbo.Flow
 	DeliverGo   *turbo.Flow

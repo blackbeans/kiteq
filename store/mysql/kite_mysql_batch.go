@@ -3,8 +3,8 @@ package mysql
 import (
 	"database/sql"
 	"encoding/json"
-	. "github.com/blackbeans/kiteq-common/store"
 	log "github.com/blackbeans/log4go"
+	. "kiteq/store"
 	"time"
 )
 

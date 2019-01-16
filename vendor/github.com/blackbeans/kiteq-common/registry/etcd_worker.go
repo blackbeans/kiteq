@@ -1,10 +1,9 @@
 package registry
 
 import (
-	"github.com/blackbeans/kiteq-common/registry/bind"
+	"context"
 	log "github.com/blackbeans/log4go"
-	"github.com/coreos/etcd/client"
-	"golang.org/x/net/context"
+	"go.etcd.io/etcd/client"
 	"strings"
 	"sync"
 	"time"
@@ -150,7 +149,7 @@ type QClientWorker struct {
 	PublishTopics   []string
 	Hostport        string
 	GroupId         string
-	Bindings        []*bind.Binding
+	Bindings        []*Binding
 	KeepalivePeriod time.Duration
 	lastKeepalive   time.Time
 }
@@ -159,11 +158,11 @@ func (self *QClientWorker) Start() {
 
 	//初始化订阅关系
 	//按topic分组
-	groupBind := make(map[string][]*bind.Binding, 10)
+	groupBind := make(map[string][]*Binding, 10)
 	for _, b := range self.Bindings {
 		g, ok := groupBind[b.Topic]
 		if !ok {
-			g = make([]*bind.Binding, 0, 2)
+			g = make([]*Binding, 0, 2)
 		}
 		b.GroupId = self.GroupId
 		g = append(g, b)
@@ -171,7 +170,7 @@ func (self *QClientWorker) Start() {
 	}
 
 	for topic, binds := range groupBind {
-		data, err := bind.MarshalBinds(binds)
+		data, err := MarshalBinds(binds)
 		if nil != err {
 			log.ErrorLog("kiteq_registry", "QClientWorker|Start|MarshalBind|FAIL|%s|%s|%v\n", err, self.GroupId, binds)
 			continue
@@ -216,7 +215,7 @@ type BindWatcher struct {
 	Api         client.KeysAPI
 	Topics      []string
 	Watcher     IWatcher
-	binds       map[string] /*topic*/ map[string] /*groupId*/ []*bind.Binding
+	binds       map[string] /*topic*/ map[string] /*groupId*/ []*Binding
 	cancelWatch bool
 	lock        sync.Mutex
 }
@@ -224,7 +223,7 @@ type BindWatcher struct {
 //watch QServer Change
 func (self *BindWatcher) Watch() {
 
-	self.binds = make(map[string]map[string][]*bind.Binding, 5)
+	self.binds = make(map[string]map[string][]*Binding, 5)
 
 	for _, topic := range self.Topics {
 
@@ -269,7 +268,7 @@ func (self *BindWatcher) Watch() {
 						log.InfoLog("kiteq_registry", "BindWatcher|Watch|Bind GROUP LEVEL |SUCC|%s|%s|%v", path, resp.Node.Key, children)
 					} else if resp.Action == "set" {
 						//set bind data
-						binds, err := bind.UmarshalBinds([]byte(resp.Node.Value))
+						binds, err := UmarshalBinds([]byte(resp.Node.Value))
 						if nil != err {
 							log.ErrorLog("kiteq_registry", "BindWatcher|Watch|Bind|UmarshalBinds|FAIL|%s|%v", resp.Node.Key, resp.Node.Value)
 							continue
@@ -281,7 +280,7 @@ func (self *BindWatcher) Watch() {
 						self.lock.Lock()
 						gb, ok := self.binds[tmpTopic]
 						if !ok {
-							gb = make(map[string][]*bind.Binding, 2)
+							gb = make(map[string][]*Binding, 2)
 							self.binds[tmpTopic] = gb
 						}
 						gb[groupId] = binds
@@ -294,7 +293,7 @@ func (self *BindWatcher) Watch() {
 				} else if strings.Index(resp.Node.Key, "-bind") >= 0 {
 					//bind data level
 					if resp.Action == "set" || resp.Action == "update" {
-						binds, err := bind.UmarshalBinds([]byte(resp.Node.Value))
+						binds, err := UmarshalBinds([]byte(resp.Node.Value))
 						if nil != err {
 							log.ErrorLog("kiteq_registry", "BindWatcher|Watch|Bind|UmarshalBinds|FAIL|%s|%v", resp.Node.Key, resp.Node.Value)
 							continue
@@ -306,7 +305,7 @@ func (self *BindWatcher) Watch() {
 						self.lock.Lock()
 						gb, ok := self.binds[tmpTopic]
 						if !ok {
-							gb = make(map[string][]*bind.Binding, 2)
+							gb = make(map[string][]*Binding, 2)
 							self.binds[tmpTopic] = gb
 						}
 						gb[groupId] = binds
