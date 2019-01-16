@@ -10,7 +10,7 @@
 [clusters]
 	[clusters.default]
 		env="online" #env=dev/online
-		topics=["relation","message","profile"]
+		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
 		logxml="/home/deploy/kiteq/log/log.xml"
@@ -22,7 +22,7 @@
 	
 	[clusters.file_dev]
 		env="dev" #env=dev/online
-		topics=["relation","message","profile"]
+		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
 		logxml="./log/log_test.xml"
@@ -34,7 +34,7 @@
 		
 	[clusters.mysql_dev]
 		env="dev" #env=dev/online
-		topics=["relation","message","profile"]
+		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
 		logxml="./log/log_test.xml"
@@ -46,7 +46,7 @@
 		
 	[clusters.memory_dev]
 		env="dev" #env=dev/online
-		topics=["relation","message","profile"]
+		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
 		logxml="./log/log_test.xml"
