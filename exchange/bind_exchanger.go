@@ -48,7 +48,7 @@ func NewBindExchanger(zkhost string,
 	return ex
 }
 
-//topics limiter
+// Topic2Limiters: topics limiter
 func (self *BindExchanger) Topic2Limiters() map[string]map[string][]int {
 	wrapper := make(map[string]map[string][]int, 2)
 	self.lock.RLock()

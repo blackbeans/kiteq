@@ -348,7 +348,7 @@ func (self *MessageStore) indexSegment(cid int64) *Segment {
 	return curr
 }
 
-//append log
+// Update: append log
 func (self *MessageStore) Update(c *command) {
 	s := self.indexSegment(c.id)
 	if nil != s {
@@ -360,7 +360,7 @@ func (self *MessageStore) Update(c *command) {
 	}
 }
 
-//mark delete
+// Delete: mark delete
 func (self *MessageStore) Delete(c *command) bool {
 	s := self.indexSegment(c.id)
 	if nil != s {
@@ -384,7 +384,7 @@ func (self *MessageStore) Delete(c *command) bool {
 	}
 }
 
-//mark data expired
+// Expired: mark data expired
 func (self *MessageStore) Expired(c *command) bool {
 
 	s := self.indexSegment(c.id)
@@ -406,7 +406,7 @@ func (self *MessageStore) Expired(c *command) bool {
 	}
 }
 
-//write
+// Append: write
 func (self *MessageStore) Append(cmd *command) chan int64 {
 
 	if self.running {
