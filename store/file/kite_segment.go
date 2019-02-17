@@ -392,7 +392,7 @@ func (self *Segment) Expired(cid int64) bool {
 	return true
 }
 
-//release chunk
+// Truncate: release chunk
 func (self *Segment) Truncate() {
 	self.Lock()
 	defer self.Unlock()
@@ -449,7 +449,7 @@ func (self *Segment) loadChunk(c *Chunk) {
 	c.data = data
 }
 
-//apend data
+// Append: apend data
 func (self *Segment) Append(chunks []*Chunk) error {
 
 	//if closed

@@ -21,7 +21,7 @@ type kiteqstat struct {
 	KiteServerLimter []int                         `json:"accept_limiter"`
 }
 
-//handler monitor
+// HandleStat: handler monitor
 func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request) {
 
 	defer func() {
@@ -56,7 +56,7 @@ type BindInfo struct {
 	Topics2Limiters map[string]map[string][]int `json:"topic_limiters"`
 }
 
-//handler monitor
+// HandleBindings: handler monitor
 func (self *KiteQServer) HandleBindings(resp http.ResponseWriter, req *http.Request) {
 
 	binds := self.exchanger.Topic2Groups()

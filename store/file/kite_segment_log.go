@@ -76,7 +76,7 @@ func (self *SegmentLog) Open() error {
 	return nil
 }
 
-//traverse oplog
+// Replay: traverse oplog
 func (self *SegmentLog) Replay(do func(l *oplog)) {
 
 	self.Open()
@@ -129,7 +129,7 @@ func (self *SegmentLog) Replay(do func(l *oplog)) {
 	self.offset = int64(offset)
 }
 
-//apend data
+// Appends: apend data
 func (self *SegmentLog) Appends(logs []*oplog) error {
 
 	//if closed
@@ -165,7 +165,7 @@ func (self *SegmentLog) Appends(logs []*oplog) error {
 	return nil
 }
 
-//apend data
+// Append: apend data
 func (self *SegmentLog) Append(ol *oplog) error {
 
 	//if closed

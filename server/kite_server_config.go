@@ -73,7 +73,7 @@ type ServerOption struct {
 
 }
 
-//only for test
+// MockServerOption: only for test
 func MockServerOption() ServerOption {
 	so := ServerOption{}
 	so.registryUri = "zk://localhost:2181"
