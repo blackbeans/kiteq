@@ -3,20 +3,6 @@
 	"ignore": "test",
 	"package": [
 		{
-			"path": "=master",
-			"revision": ""
-		},
-		{
-			"path": "github.com/blackbeans",
-			"revision": "=master",
-			"version": "=master"
-		},
-		{
-			"path": "github.com/blackbeans/",
-			"revision": "=master",
-			"version": "=master"
-		},
-		{
 			"checksumSHA1": "QCnFFMejpXAC3ph6GM4bk6j2gKc=",
 			"path": "github.com/blackbeans/go-uuid",
 			"revision": "daf03445521218cc55613e799c1c68c0cedfdd7a",
@@ -57,26 +43,10 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "YZZbtcuns6dMZCJ6hkzEImv1Mi4=",
-			"path": "github.com/blackbeans/kiteq-common/registry/bind",
-			"revision": "863b7d1ef6fe5de433d470fd0ad6950173821530",
-			"revisionTime": "2019-01-16T08:38:52Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
 			"checksumSHA1": "jO4jwOPKxftEipd0O20xgcTirCI=",
 			"path": "github.com/blackbeans/kiteq-common/stat",
 			"revision": "143956d3203931b9a4e227b1d1b85a512c315af4",
 			"revisionTime": "2019-01-18T07:41:28Z",
-			"version": "=master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "A7pqP79HsEp0rS+g+lwWETHZ6Ms=",
-			"path": "github.com/blackbeans/kiteq-common/store",
-			"revision": "bae11c09a69cff8ebaea731ce2b0e6139ec3da26",
-			"revisionTime": "2018-06-13T10:12:11Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -97,10 +67,10 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "oKX7kV6aszA3bVD+x3G8tatp1U0=",
+			"checksumSHA1": "bfIm0RJXDbrRoiuzgKnifCkHNec=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "fb4cfe21ff8fe880852cee1c91610ba00fbcc1e4",
-			"revisionTime": "2018-09-24T17:27:17Z",
+			"revision": "64a28204829a7e707f3cc2fe24e2b595c4001606",
+			"revisionTime": "2019-03-19T07:38:07Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -149,20 +119,8 @@
 			"path": "golang.org/x/time/rate",
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
-		},
-		{
-			"path": "m",
-			"revision": ""
-		},
-		{
-			"path": "master",
-			"revision": "=master",
-			"version": "=master"
-		},
-		{
-			"path": "v",
-			"revision": ""
 		}
+
 	],
 	"rootPath": "kiteq"
 }

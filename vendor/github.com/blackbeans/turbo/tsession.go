@@ -3,13 +3,12 @@ package turbo
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"net"
 	"time"
 
 	log "github.com/blackbeans/log4go"
 )
-
-
 
 //turbo session
 type TSession struct {
@@ -21,10 +20,11 @@ type TSession struct {
 	lasttime   uint32
 	config     *TConfig
 	onMessage  IOHandler
+	closeFunc  context.CancelFunc
 }
 
 func NewSession(conn *net.TCPConn, config *TConfig,
-	onMsg IOHandler) *TSession {
+	onMsg IOHandler, closeFunc context.CancelFunc) *TSession {
 
 	conn.SetKeepAlive(true)
 	conn.SetKeepAlivePeriod(config.IdleTime * 2)
@@ -34,13 +34,14 @@ func NewSession(conn *net.TCPConn, config *TConfig,
 	conn.SetWriteBuffer(config.WriteBufferSize)
 
 	session := &TSession{
-		conn:         conn,
-		br:           bufio.NewReaderSize(conn, config.ReadBufferSize),
-		bw:           bufio.NewWriterSize(conn, config.WriteBufferSize),
-		isClose:      false,
-		remoteAddr:   conn.RemoteAddr().String(),
-		onMessage: onMsg,
-		config:    config}
+		conn:       conn,
+		br:         bufio.NewReaderSize(conn, config.ReadBufferSize),
+		bw:         bufio.NewWriterSize(conn, config.WriteBufferSize),
+		isClose:    false,
+		remoteAddr: conn.RemoteAddr().String(),
+		onMessage:  onMsg,
+		config:     config,
+		closeFunc:  closeFunc}
 	//连接数计数
 	config.FlowStat.Connections.Incr(1)
 	return session
@@ -52,8 +53,8 @@ func (self *TSession) RemotingAddr() string {
 
 func (self *TSession) Idle() bool {
 	//当前时间如果大于 最后一次发包时间+2倍的idletime 则认为空心啊
-	if uint32(time.Now().Unix()) -
-			(self.lasttime+uint32(self.config.IdleTime / time.Second))>0{
+	if uint32(time.Now().Unix())-
+		(self.lasttime+uint32(self.config.IdleTime/time.Second)) > 0 {
 		return true
 	}
 	return false
@@ -61,7 +62,6 @@ func (self *TSession) Idle() bool {
 
 //读取
 func (self *TSession) Open() {
-
 
 	go func() {
 		//缓存本次包的数据
@@ -132,7 +132,7 @@ func (self *TSession) read0(br *bufio.Reader, len int) ([]byte, error) {
 	for {
 		l, err := br.Read(buff[idx:])
 		if nil != err {
-			log.ErrorLog("stderr","TSession|Open|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
+			log.ErrorLog("stderr", "TSession|Open|%s|FAIL|CLOSE SESSION|%s", self.remoteAddr, err)
 			return nil, err
 		}
 		idx += l
@@ -144,16 +144,15 @@ func (self *TSession) read0(br *bufio.Reader, len int) ([]byte, error) {
 
 }
 
-
 //写数据
-func(self *TSession) Write(tlv ...*Packet) error{
+func (self *TSession) Write(tlv ...*Packet) error {
 
 	self.lasttime = uint32(time.Now().Unix())
 	batch := make([]byte, 0, len(tlv)*128)
 	for _, t := range tlv {
 		p := t.Marshal()
 		if nil == p || len(p) <= 0 {
-			log.ErrorLog("stderr","TSession|asyncWrite|MarshalPayload|FAIL|EMPTY PACKET|%s|%v", t)
+			log.ErrorLog("stderr", "TSession|asyncWrite|MarshalPayload|FAIL|EMPTY PACKET|%s|%v", t)
 			if nil != t.OnComplete {
 				t.OnComplete(ERR_MARSHAL_PACKET)
 			}
@@ -164,12 +163,12 @@ func(self *TSession) Write(tlv ...*Packet) error{
 		//如果大小超过了最大值那么久写入失败
 		if t.Header.BodyLen > MAX_PACKET_BYTES {
 			if nil != t.OnComplete {
-				log.ErrorLog("stderr","TSession|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
-					t.Header.BodyLen,MAX_PACKET_BYTES)
+				log.ErrorLog("stderr", "TSession|asyncWrite|MarshalPayload|FAIL|MAX_PACKET_BYTES|%s|%d/%d",
+					t.Header.BodyLen, MAX_PACKET_BYTES)
 				t.OnComplete(ERR_TOO_LARGE_PACKET)
 			}
 			continue
-		}else{
+		} else {
 			//成功写出去了
 			t.OnComplete(nil)
 		}
@@ -185,7 +184,7 @@ func(self *TSession) Write(tlv ...*Packet) error{
 	for {
 		length, err := self.bw.Write(tmp)
 		if nil != err {
-			log.ErrorLog("stderr","TSession|asyncWrite|conn|%s|FAIL|%s|%d/%d", self.remoteAddr, err, length, len(tmp))
+			log.ErrorLog("stderr", "TSession|asyncWrite|conn|%s|FAIL|%s|%d/%d", self.remoteAddr, err, length, len(tmp))
 			return err
 		}
 
@@ -217,8 +216,9 @@ func (self *TSession) Close() error {
 		//flush
 		self.bw.Flush()
 		self.conn.Close()
+		self.closeFunc()
 		self.config.FlowStat.Connections.Incr(-1)
-		log.InfoLog("stdout","TSession|Close|%s...", self.remoteAddr)
+		log.InfoLog("stdout", "TSession|Close|%s...", self.remoteAddr)
 	}
 
 	return nil

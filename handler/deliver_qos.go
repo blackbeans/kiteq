@@ -70,7 +70,7 @@ func (self *DeliverQosHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 			groups = append(groups, g)
 		} else {
 			//too fast overflow
-			overflow[g] = turbo.NewErrFuture(-1, g, turbo.ERR_OVER_FLOW)
+			overflow[g] = turbo.NewErrFuture(-1, g, turbo.ERR_OVER_FLOW, nil)
 		}
 	}
 

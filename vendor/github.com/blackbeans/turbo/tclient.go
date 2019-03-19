@@ -1,12 +1,13 @@
 package turbo
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/pool"
 	"net"
 	"time"
-	log "github.com/blackbeans/log4go"
-	"errors"
-	"github.com/blackbeans/pool"
 )
 
 //网络层的client
@@ -21,6 +22,7 @@ type TClient struct {
 	codec      func() ICodec
 	config     *TConfig
 	authSecond int64 //授权成功时间
+	ctx        context.Context
 }
 
 func NewTClient(conn *net.TCPConn, codec func() ICodec, dis THandler,
@@ -58,7 +60,7 @@ func (self *TClient) onMessage(msg Packet, err error) {
 		ctx := &TContext{
 			Message: &msg,
 			Client:  self,
-			Err:err,
+			Err:     err,
 		}
 		err = self.dis(ctx)
 		if nil != err {
@@ -68,49 +70,50 @@ func (self *TClient) onMessage(msg Packet, err error) {
 		p := &msg
 		self.config.dispool.Queue(
 			func(wu pool.WorkUnit) (interface{}, error) {
-			//解析包
-			message, err := self.codec().UnmarshalPayload(p)
-			if nil != err {
-				// 构造一个error的响应包
-				log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
-					self.remoteAddr, err, msg.Header.BodyLen)
+				//解析包
+				message, err := self.codec().UnmarshalPayload(p)
+				if nil != err {
+					// 构造一个error的响应包
+					log.ErrorLog("stderr", "TSession|UnmarshalPayload|%s|FAIL|%v|bodyLen:%d",
+						self.remoteAddr, err, msg.Header.BodyLen)
+					ctx := &TContext{
+						Message: p,
+						Client:  self,
+						Err:     err,
+					}
+					err = self.dis(ctx)
+					return nil, nil
+				}
+
+				//强制设置payload
+				p.PayLoad = message
+				//创建上下文
 				ctx := &TContext{
 					Message: p,
 					Client:  self,
-					Err:err,
 				}
+				//处理一下包
 				err = self.dis(ctx)
-				return nil,nil
-			}
-
-			//强制设置payload
-			p.PayLoad = message
-			//创建上下文
-			ctx := &TContext{
-				Message: p,
-				Client:  self,
-			}
-			//处理一下包
-			err = self.dis(ctx)
-			if nil != err {
-				log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
-			}
-			return nil,err
-		})
+				if nil != err {
+					log.ErrorLog("stderr", "TSession|onMessage|dis|FAIL|%v", self.remoteAddr, err)
+				}
+				return nil, err
+			})
 	}
 }
 
 //启动当前的client
 func (self *TClient) Start() {
 
+	ctx, closeFunc := context.WithCancel(context.Background())
 	//启动session
-	self.s = NewSession(self.conn, self.config, self.onMessage)
-
+	self.s = NewSession(self.conn, self.config, self.onMessage, closeFunc)
 	//重新初始化
 	laddr := self.conn.LocalAddr().(*net.TCPAddr)
 	raddr := self.conn.RemoteAddr().(*net.TCPAddr)
 	self.localAddr = fmt.Sprintf("%s:%d", laddr.IP, laddr.Port)
 	self.remoteAddr = fmt.Sprintf("%s:%d", raddr.IP, raddr.Port)
+	self.ctx = ctx
 
 	//启动读取
 	self.s.Open()
@@ -129,10 +132,12 @@ func (self *TClient) reconnect() (bool, error) {
 		return false, err
 	}
 
+	//创建session
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	self.ctx = ctx
+	self.s = NewSession(conn, self.config, self.onMessage, cancelFunc)
 	//重新设置conn
 	self.conn = conn
-	//创建session
-	self.s = NewSession(self.conn, self.config, self.onMessage)
 	//再次启动remoteClient
 	self.Start()
 	return true, nil
@@ -193,7 +198,7 @@ func (self *TClient) WriteAndGet(p Packet,
 
 	pp := &p
 	opaque := self.fillOpaque(pp)
-	future := NewFuture(opaque, timeout,self.localAddr)
+	future := NewFuture(opaque, timeout, self.localAddr, self.ctx)
 	tchan := self.config.RequestHolder.Attach(opaque, future)
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
@@ -202,9 +207,9 @@ func (self *TClient) WriteAndGet(p Packet,
 			future.Error(err)
 			//生成一个错误的转发
 			ctx := &TContext{
-				Client:self,
-				Message:pp,
-				Err:err}
+				Client:  self,
+				Message: pp,
+				Err:     err}
 			self.dis(ctx)
 		}
 	}
@@ -224,7 +229,7 @@ func (self *TClient) Write(p Packet) (*Future, error) {
 
 	pp := &p
 	opaque := self.fillOpaque(pp)
-	future := NewFuture(opaque, -1,self.localAddr)
+	future := NewFuture(opaque, -1, self.localAddr, self.ctx)
 	self.config.RequestHolder.Attach(opaque, future)
 	//写入完成之后的操作
 	pp.OnComplete = func(err error) {
@@ -233,9 +238,9 @@ func (self *TClient) Write(p Packet) (*Future, error) {
 			future.Error(err)
 			//生成一个错误的转发
 			ctx := &TContext{
-				Client:self,
-				Message:pp,
-				Err:err}
+				Client:  self,
+				Message: pp,
+				Err:     err}
 			self.dis(ctx)
 		}
 	}
@@ -255,7 +260,7 @@ func (self *TClient) asyncWrite() {
 	go func() {
 		for !self.IsClosed() {
 
-			tid,timeout := self.config.TW.AddTimer(1 * time.Second,nil,nil)
+			tid, timeout := self.config.TW.AddTimer(1*time.Second, nil, nil)
 			select {
 			case p := <-self.wchan:
 				//先读到数据，则取消定时
@@ -293,7 +298,7 @@ func (self *TClient) asyncWrite() {
 						continue
 					}
 				}
-				case <-timeout:
+			case <-timeout:
 				//超时了
 			}
 		}
