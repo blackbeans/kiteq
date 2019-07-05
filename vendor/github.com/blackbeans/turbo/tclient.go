@@ -224,22 +224,51 @@ func (self *TClient) WriteAndGet(p Packet,
 	return resp, err
 }
 
-//只是写出去
-func (self *TClient) Write(p Packet) (*Future, error) {
+//分组写入
+func (self *TClient) GroupWriteAndGet(timeout time.Duration, packets ...Packet) ([]*Future, error) {
 
-	pp := &p
-	opaque := self.fillOpaque(pp)
-	future := NewFuture(opaque, -1, self.localAddr, self.ctx)
-	self.config.RequestHolder.Attach(opaque, future)
+	futures := make([]*Future, 0, len(packets))
+	for i := range packets {
+		pp := &(packets[i])
+		opaque := self.fillOpaque(pp)
+		future := NewFuture(opaque, timeout, self.localAddr, self.ctx)
+
+		self.config.RequestHolder.Attach(opaque, future)
+		//写入完成之后的操作
+		pp.OnComplete = func(err error) {
+			if nil != err {
+				log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
+				future.Error(err)
+				//生成一个错误的转发
+				ctx := &TContext{
+					Client:  self,
+					Message: pp,
+					Err:     err}
+				self.dis(ctx)
+			}
+		}
+		//写入队列
+		select {
+		case self.wchan <- pp:
+		default:
+			future.Error(errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr)))
+		}
+		futures = append(futures, future)
+	}
+	return futures, nil
+}
+
+//只是写出去
+func (self *TClient) Write(p Packet) error {
+
 	//写入完成之后的操作
-	pp.OnComplete = func(err error) {
+	p.OnComplete = func(err error) {
 		if nil != err {
-			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(pp.Data))
-			future.Error(err)
+			log.ErrorLog("stderr", "TClient|Write|OnComplete|ERROR|FAIL|%v|%s\n", err, string(p.Data))
 			//生成一个错误的转发
 			ctx := &TContext{
 				Client:  self,
-				Message: pp,
+				Message: &p,
 				Err:     err}
 			self.dis(ctx)
 		}
@@ -247,10 +276,10 @@ func (self *TClient) Write(p Packet) (*Future, error) {
 
 	//写入队列
 	select {
-	case self.wchan <- pp:
-		return future, nil
+	case self.wchan <- &p:
+		return nil
 	default:
-		return nil, errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+		return errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
 	}
 }
 

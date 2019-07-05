@@ -73,11 +73,11 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 			rclient := self.clientManager.FindTClient(host)
 			if nil != rclient && !rclient.IsClosed() {
 				//写到响应的channel中
-				f, err := rclient.Write(packet)
+				f, err := rclient.GroupWriteAndGet(-1, packet)
 				if nil != err {
 					futures[host] = NewErrFuture(0, rclient.RemoteAddr(), err, rclient.ctx)
 				} else {
-					futures[host] = f
+					futures[host] = f[0]
 				}
 
 			} else {
@@ -104,12 +104,12 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 			}
 			idx := rand.Intn(len(c))
 			//克隆一份
-			f, err := c[idx].Write(packet)
+			f, err := c[idx].GroupWriteAndGet(-1, packet)
 			if nil != err {
 				futures[gid] = NewErrFuture(0, c[idx].RemoteAddr(), err, c[idx].ctx)
 			} else {
-				f.TargetHost = c[idx].RemoteAddr()
-				futures[gid] = f
+				f[0].TargetHost = c[idx].RemoteAddr()
+				futures[gid] = f[0]
 			}
 		}
 	}

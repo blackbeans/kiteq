@@ -25,7 +25,8 @@ func main() {
 		"remoting",
 		1000, 16*1024,
 		16*1024, 10000, 10000,
-		10*time.Second)
+		10*time.Second,
+		100*10000)
 
 	kc := server.NewKiteQConfig(so, rc)
 

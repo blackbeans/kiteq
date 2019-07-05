@@ -101,13 +101,14 @@ func NewTConfig(name string,
 	writebuffersize,
 	writechannlesize,
 	readchannelsize int,
-	idletime time.Duration) *TConfig {
+	idletime time.Duration,
+	maxOpaque int) *TConfig {
 
 	tw := NewTimerWheel(100*time.Millisecond, 50)
 
 	rh := &ReqHolder{
 		opaque:   0,
-		holder:   NewLRUCache(50*10000, tw, nil),
+		holder:   NewLRUCache(maxOpaque, tw, nil),
 		tw:       tw,
 		idleTime: idletime}
 
