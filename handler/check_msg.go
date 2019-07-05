@@ -80,12 +80,12 @@ func (self *CheckMessageHandler) Process(ctx *turbo.DefaultPipelineContext, even
 			//不存在该消息的处理则直接返回存储失败
 			remoteEvent := turbo.NewRemotingEvent(
 				storeAck(pevent.opaque,
-				pevent.entity.Header.GetMessageId(), false, "UnSupport Topic Message!"),
+					pevent.entity.Header.GetMessageId(), false, "UnSupport Topic Message!"),
 				[]string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
 		} else if !isUUID(pevent.entity.Header.GetMessageId()) {
 			//不存在该消息的处理则直接返回存储失败
-			remoteEvent :=turbo.NewRemotingEvent(storeAck(pevent.opaque,
+			remoteEvent := turbo.NewRemotingEvent(storeAck(pevent.opaque,
 				pevent.entity.Header.GetMessageId(), false, "Invalid MessageId For UUID!"),
 				[]string{pevent.remoteClient.RemoteAddr()})
 			ctx.SendForward(remoteEvent)
@@ -132,7 +132,7 @@ func isUUID(id string) bool {
 	return true
 }
 
-func storeAck(opaque int32, messageid string, succ bool, feedback string) *turbo.Packet {
+func storeAck(opaque uint32, messageid string, succ bool, feedback string) *turbo.Packet {
 
 	storeAck := protocol.MarshalMessageStoreAck(messageid, succ, feedback)
 	//响应包

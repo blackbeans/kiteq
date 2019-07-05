@@ -26,12 +26,12 @@ func NewPacketEvent(remoteClient *TClient, packet *Packet) *PacketEvent {
 type HeartbeatEvent struct {
 	IForwardEvent
 	RemoteClient *TClient
-	Opaque       int32
+	Opaque       uint32
 	Version      int64
 }
 
 //心跳事件
-func NewHeartbeatEvent(remoteClient *TClient, opaque int32, version int64) *HeartbeatEvent {
+func NewHeartbeatEvent(remoteClient *TClient, opaque uint32, version int64) *HeartbeatEvent {
 	return &HeartbeatEvent{
 		Version:      version,
 		Opaque:       opaque,
@@ -44,9 +44,9 @@ type RemotingEvent struct {
 	Event      IForwardEvent
 	futures    chan map[string]*Future //所有的回调的future
 	errFutures map[string]*Future      //错误的回调future
-	TargetHost []string                      //发送的特定hostport
-	GroupIds   []string                      //本次发送的分组
-	Packet     *Packet                //tlv的packet数据
+	TargetHost []string                //发送的特定hostport
+	GroupIds   []string                //本次发送的分组
+	Packet     *Packet                 //tlv的packet数据
 
 }
 

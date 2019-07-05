@@ -5,17 +5,15 @@ import (
 	"encoding/binary"
 )
 
-
-
 type Compress int8
 
 //packet的包头部分
 type PacketHeader struct {
-	Opaque    int32 //请求的seqId
-	CmdType   uint8 //类型
-	Version   int16 //协议的版本号
-	Extension int64 //扩展预留字段
-	BodyLen   int32 //body的长度
+	Opaque    uint32 //请求的seqId
+	CmdType   uint8  //类型
+	Version   int16  //协议的版本号
+	Extension int64  //扩展预留字段
+	BodyLen   int32  //body的长度
 }
 
 func MarshalHeader(header PacketHeader, bodyLen int32) *bytes.Buffer {
@@ -60,8 +58,6 @@ func UnmarshalHeader(r *bytes.Reader) (PacketHeader, error) {
 	return header, nil
 }
 
-
-
 //-----------请求的packet
 type Packet struct {
 	Header  PacketHeader
@@ -72,16 +68,16 @@ type Packet struct {
 }
 
 func NewPacket(cmdtype uint8, data []byte) *Packet {
-	h := PacketHeader{Opaque: -1, CmdType: cmdtype, BodyLen: int32(len(data))}
+	h := PacketHeader{Opaque: 0, CmdType: cmdtype, BodyLen: int32(len(data))}
 	return &Packet{Header: h,
 		Data: data}
 }
 
 func (self *Packet) Reset() {
-	self.Header.Opaque = -1
+	self.Header.Opaque = 0
 }
 
-func NewRespPacket(opaque int32, cmdtype uint8, data []byte) *Packet {
+func NewRespPacket(opaque uint32, cmdtype uint8, data []byte) *Packet {
 	p := NewPacket(cmdtype, data)
 	p.Header.Opaque = opaque
 	return p
@@ -98,17 +94,16 @@ func (self *Packet) Marshal() []byte {
 	return buff.Bytes()
 }
 
-
 // TContext 处理的上下文
 
 //处理器
 type THandler func(ctx *TContext) error
 
 //接受消息
-type IOHandler func(message Packet,err error)
+type IOHandler func(message Packet, err error)
 
-type TContext struct{
-	Client *TClient
+type TContext struct {
+	Client  *TClient
 	Message *Packet
-	Err error //上下文的错误
+	Err     error //上下文的错误
 }

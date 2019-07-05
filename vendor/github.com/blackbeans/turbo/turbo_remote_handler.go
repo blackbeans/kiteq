@@ -75,7 +75,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 				//写到响应的channel中
 				f, err := rclient.Write(packet)
 				if nil != err {
-					futures[host] = NewErrFuture(-1, rclient.RemoteAddr(), err, rclient.ctx)
+					futures[host] = NewErrFuture(0, rclient.RemoteAddr(), err, rclient.ctx)
 				} else {
 					futures[host] = f
 				}
@@ -83,7 +83,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 			} else {
 				//记为失败的下次需要重新发送
 				// log.Debug("RemotingHandler|%s|invokeGroup|NO RemoteClient|%s\n", self.GetName(), host)
-				futures[host] = NewErrFuture(-1, "no remoteclient", ERR_NO_HOSTS, nil)
+				futures[host] = NewErrFuture(0, "no remoteclient", ERR_NO_HOSTS, nil)
 			}
 		}
 	}
@@ -106,7 +106,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 			//克隆一份
 			f, err := c[idx].Write(packet)
 			if nil != err {
-				futures[gid] = NewErrFuture(-1, c[idx].RemoteAddr(), err, c[idx].ctx)
+				futures[gid] = NewErrFuture(0, c[idx].RemoteAddr(), err, c[idx].ctx)
 			} else {
 				f.TargetHost = c[idx].RemoteAddr()
 				futures[gid] = f
@@ -127,7 +127,7 @@ func (self *RemotingHandler) invokeGroup(event *RemotingEvent) map[string]*Futur
 	for _, g := range event.GroupIds {
 		_, ok := futures[g]
 		if !ok {
-			futures[g] = NewErrFuture(-1, g, ERR_NO_HOSTS, nil)
+			futures[g] = NewErrFuture(0, g, ERR_NO_HOSTS, nil)
 		}
 	}
 

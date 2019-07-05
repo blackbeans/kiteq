@@ -59,18 +59,18 @@
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "w1GMRnHBb2GpE8Jd/3+gOjUaMZo=",
+			"checksumSHA1": "JO3OMmeH+OJJBIcSeeEKBA6hNy8=",
 			"path": "github.com/blackbeans/pool",
-			"revision": "36216c1c83508694af4c563ed31c1e416e698d99",
-			"revisionTime": "2018-09-25T06:41:45Z",
+			"revision": "db4ba28e77ff2eb9e683383e23a8ebd56caadfeb",
+			"revisionTime": "2019-05-29T14:31:38Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "bfIm0RJXDbrRoiuzgKnifCkHNec=",
+			"checksumSHA1": "+qzXealjSNRutwq8DdLsOjhe+lU=",
 			"path": "github.com/blackbeans/turbo",
-			"revision": "64a28204829a7e707f3cc2fe24e2b595c4001606",
-			"revisionTime": "2019-03-19T07:38:07Z",
+			"revision": "1921e5efc24e1ed1e9ca0b9f2a0063a5a1d60675",
+			"revisionTime": "2019-07-05T03:24:11Z",
 			"version": "=master",
 			"versionExact": "master"
 		},
@@ -120,7 +120,6 @@
 			"revision": "f51c12702a4d776e4c1fa9b0fabab841babae631",
 			"revisionTime": "2016-10-28T04:02:39Z"
 		}
-
 	],
 	"rootPath": "kiteq"
 }

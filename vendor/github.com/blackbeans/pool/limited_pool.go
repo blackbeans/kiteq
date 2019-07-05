@@ -81,15 +81,13 @@ func(p *limitedPool) IncompleteTasks() uint{
 
 func (p *limitedPool) initialize() {
 
-	p.work = make(chan *workUnit, p.qsize)
+	p.work = make(chan *workUnit, p.workers*2)
 	p.cancel = make(chan struct{})
 	p.closed = false
 
-	p.currworkers = 0
-	// fire up min workers here
-	for i := 0; i < int(p.minWorkers); i++ {
+	// fire up workers here
+	for i := 0; i < int(p.workers); i++ {
 		p.newWorker(p.work, p.cancel)
-		p.currworkers++
 	}
 }
 
@@ -103,8 +101,9 @@ func (p *limitedPool) newWorker(work chan *workUnit, cancel chan struct{}) {
 		defer func(p *limitedPool) {
 			if err := recover(); err != nil {
 
-				trace := make([]byte, 1<<8)
-				n := runtime.Stack(trace, false)
+				trace := make([]byte, 1<<16)
+				n := runtime.Stack(trace, true)
+
 				s := fmt.Sprintf(errRecovery, err, string(trace[:int(math.Min(float64(n), float64(7000)))]))
 
 				iwu := wu
@@ -120,81 +119,36 @@ func (p *limitedPool) newWorker(work chan *workUnit, cancel chan struct{}) {
 		var err error
 
 		for {
+			select {
+			case wu = <-work:
 
-			if p.timeToLive <= 0 {
-
-				select {
-				case wu = <-work:
-
-					// possible for one more nilled out value to make it
-					// through when channel closed, don't quite understad the why
-					if wu == nil {
-						continue
-					}
-
-					// support for individual WorkUnit cancellation
-					// and batch job cancellation
-					if wu.cancelled.Load() == nil {
-						value, err = wu.fn(wu)
-
-						wu.writing.Store(struct{}{})
-
-						// need to check again in case the WorkFunc cancelled this unit of work
-						// otherwise we'll have a race condition
-						if wu.cancelled.Load() == nil && wu.cancelling.Load() == nil {
-							wu.value, wu.err = value, err
-
-							// who knows where the Done channel is being listened to on the other end
-							// don't want this to block just because caller is waiting on another unit
-							// of work to be done first so we use close
-							close(wu.done)
-						}
-					}
-				case <-cancel:
-					return
+				// possible for one more nilled out value to make it
+				// through when channel closed, don't quite understad the why
+				if wu == nil {
+					continue
 				}
 
-			}else{
-				select {
-				case wu = <-work:
+				// support for individual WorkUnit cancellation
+				// and batch job cancellation
+				if wu.cancelled.Load() == nil {
+					value, err = wu.fn(wu)
 
-					// possible for one more nilled out value to make it
-					// through when channel closed, don't quite understad the why
-					if wu == nil {
-						continue
+					wu.writing.Store(struct{}{})
+
+					// need to check again in case the WorkFunc cancelled this unit of work
+					// otherwise we'll have a race condition
+					if wu.cancelled.Load() == nil && wu.cancelling.Load() == nil {
+						wu.value, wu.err = value, err
+
+						// who knows where the Done channel is being listened to on the other end
+						// don't want this to block just because caller is waiting on another unit
+						// of work to be done first so we use close
+						close(wu.done)
 					}
-
-					// support for individual WorkUnit cancellation
-					// and batch job cancellation
-					if wu.cancelled.Load() == nil {
-						value, err = wu.fn(wu)
-
-						wu.writing.Store(struct{}{})
-
-						// need to check again in case the WorkFunc cancelled this unit of work
-						// otherwise we'll have a race condition
-						if wu.cancelled.Load() == nil && wu.cancelling.Load() == nil {
-							wu.value, wu.err = value, err
-
-							// who knows where the Done channel is being listened to on the other end
-							// don't want this to block just because caller is waiting on another unit
-							// of work to be done first so we use close
-							close(wu.done)
-						}
-					}
-				case <-time.After(p.timeToLive):
-					//too long idle exit
-					p.m.Lock()
-					if p.currworkers >= p.minWorkers{
-						p.currworkers --
-						p.m.Unlock()
-						return
-					}
-					p.m.Unlock()
-
-				case <-cancel:
-					return
 				}
+
+			case <-cancel:
+				return
 			}
 		}
 
@@ -220,33 +174,9 @@ func (p *limitedPool) Queue(fn WorkFunc) WorkUnit {
 			return
 		}
 
-		needMoreWorks := false
-		//
-		workLen := len(p.work)
-		if  workLen >0{
-			// need more work
-			if  p.currworkers < p.workers{
-				needMoreWorks = true
-			}
-		}
-
 		p.work <- w
 
 		p.m.RUnlock()
-
-		p.m.Lock()
-		if needMoreWorks{
-			//
-			workLen = len(p.work)
-			if  workLen >0 {
-				// create work
-				if p.currworkers < p.workers{
-					p.newWorker(p.work,p.cancel)
-					p.currworkers++
-				}
-			}
-		}
-		p.m.Unlock()
 	}()
 
 	return w

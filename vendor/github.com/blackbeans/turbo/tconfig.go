@@ -14,14 +14,14 @@ const (
 //-----------响应的future
 type Future struct {
 	timeout    time.Duration
-	opaque     int32
+	opaque     uint32
 	response   chan interface{}
 	TargetHost string
 	Err        error
 	ctx        context.Context
 }
 
-func NewFuture(opaque int32, timeout time.Duration, targetHost string, ctx context.Context) *Future {
+func NewFuture(opaque uint32, timeout time.Duration, targetHost string, ctx context.Context) *Future {
 
 	return &Future{
 		timeout:    timeout,
@@ -33,7 +33,7 @@ func NewFuture(opaque int32, timeout time.Duration, targetHost string, ctx conte
 }
 
 //创建有错误的future
-func NewErrFuture(opaque int32, targetHost string, err error, ctx context.Context) *Future {
+func NewErrFuture(opaque uint32, targetHost string, err error, ctx context.Context) *Future {
 	return &Future{
 		timeout:    0,
 		opaque:     opaque,
@@ -78,14 +78,7 @@ func (self *Future) Get(timeout <-chan time.Time) (interface{}, error) {
 			return resp, nil
 		}
 	case <-self.ctx.Done():
-		//当前请求已经被中断
-		select {
-		case resp := <-self.response:
-			return resp, nil
-		default:
-			//返回链接中断
-			return nil, ERR_CONNECTION_BROKEN
-		}
+		return nil, ERR_CONNECTION_BROKEN
 	}
 }
 
@@ -108,17 +101,15 @@ func NewTConfig(name string,
 	writebuffersize,
 	writechannlesize,
 	readchannelsize int,
-	idletime time.Duration,
-	maxOpaque uint32) *TConfig {
+	idletime time.Duration) *TConfig {
 
 	tw := NewTimerWheel(100*time.Millisecond, 50)
 
 	rh := &ReqHolder{
-		opaque:    0,
-		holder:    NewLRUCache(int(maxOpaque), tw, nil),
-		tw:        tw,
-		idleTime:  idletime,
-		maxOpaque: maxOpaque}
+		opaque:   0,
+		holder:   NewLRUCache(50*10000, tw, nil),
+		tw:       tw,
+		idleTime: idletime}
 
 	qsize := uint(maxdispatcherNum) * 2
 	if uint(maxdispatcherNum)*2 < 1000 {
@@ -146,19 +137,18 @@ func NewTConfig(name string,
 }
 
 type ReqHolder struct {
-	maxOpaque uint32
-	opaque    uint32
-	tw        *TimerWheel
-	holder    *LRUCache
-	idleTime  time.Duration //连接空闲时间
+	opaque   uint32
+	tw       *TimerWheel
+	holder   *LRUCache
+	idleTime time.Duration //连接空闲时间
 }
 
-func (self *ReqHolder) CurrentOpaque() int32 {
-	return int32(atomic.AddUint32(&self.opaque, 1) % uint32(self.maxOpaque))
+func (self *ReqHolder) CurrentOpaque() uint32 {
+	return uint32(atomic.AddUint32(&self.opaque, 1))
 }
 
 //从requesthold中移除
-func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
+func (self *ReqHolder) Detach(opaque uint32, obj interface{}) {
 
 	future := self.holder.Remove(opaque)
 	if nil != future {
@@ -166,6 +156,6 @@ func (self *ReqHolder) Detach(opaque int32, obj interface{}) {
 	}
 }
 
-func (self *ReqHolder) Attach(opaque int32, future *Future) chan time.Time {
+func (self *ReqHolder) Attach(opaque uint32, future *Future) chan time.Time {
 	return self.holder.Put(opaque, future, future.timeout)
 }

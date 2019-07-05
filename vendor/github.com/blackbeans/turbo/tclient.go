@@ -164,14 +164,14 @@ func (self *TClient) updateHeartBeat(version int64) {
 	}
 }
 
-func (self *TClient) Pong(opaque int32, version int64) {
+func (self *TClient) Pong(opaque uint32, version int64) {
 	self.updateHeartBeat(version)
 }
 
-func (self *TClient) fillOpaque(p *Packet) int32 {
+func (self *TClient) fillOpaque(p *Packet) uint32 {
 	tid := p.Header.Opaque
 	//只有在默认值没有赋值的时候才去赋值
-	if tid < 0 {
+	if tid <= 0 {
 		id := self.config.RequestHolder.CurrentOpaque()
 		p.Header.Opaque = id
 		tid = id
@@ -181,7 +181,7 @@ func (self *TClient) fillOpaque(p *Packet) int32 {
 }
 
 //将结果attach到当前的等待回调chan
-func (self *TClient) Attach(opaque int32, obj interface{}) {
+func (self *TClient) Attach(opaque uint32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
 			log.ErrorLog("stderr", "TClient|Attach|FAIL|%s|%s\n", err, obj)

@@ -17,7 +17,7 @@ type iauth interface {
 type accessEvent struct {
 	iauth
 	connMeta     protocol.ConnMeta
-	opaque       int32
+	opaque       uint32
 	remoteClient *turbo.TClient
 }
 
@@ -25,7 +25,7 @@ func (self *accessEvent) getClient() *turbo.TClient {
 	return self.remoteClient
 }
 
-func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *turbo.TClient, opaque int32) *accessEvent {
+func newAccessEvent(connMeta protocol.ConnMeta, remoteClient *turbo.TClient, opaque uint32) *accessEvent {
 	access := &accessEvent{
 		connMeta:     connMeta,
 		opaque:       opaque,
@@ -38,7 +38,7 @@ type acceptEvent struct {
 	iauth
 	msgType uint8
 	msg     interface{} //attach的数据message
-	opaque  int32
+	opaque  uint32
 	client  *turbo.TClient
 }
 
@@ -47,7 +47,7 @@ func (self *acceptEvent) getClient() *turbo.TClient {
 }
 
 func newAcceptEvent(msgType uint8, msg interface{},
-	remoteClient *turbo.TClient, opaque int32) *acceptEvent {
+	remoteClient *turbo.TClient, opaque uint32) *acceptEvent {
 	ae := &acceptEvent{
 		msgType: msgType,
 		msg:     msg,
@@ -59,7 +59,7 @@ func newAcceptEvent(msgType uint8, msg interface{},
 type txAckEvent struct {
 	iauth
 	txPacket     *protocol.TxACKPacket
-	opaque       int32
+	opaque       uint32
 	remoteClient *turbo.TClient
 }
 
@@ -67,7 +67,7 @@ func (self *txAckEvent) getClient() *turbo.TClient {
 	return self.remoteClient
 }
 
-func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque int32, remoteClient *turbo.TClient) *txAckEvent {
+func newTxAckEvent(txPacket *protocol.TxACKPacket, opaque uint32, remoteClient *turbo.TClient) *txAckEvent {
 	tx := &txAckEvent{
 		txPacket:     txPacket,
 		opaque:       opaque,
@@ -80,10 +80,10 @@ type persistentEvent struct {
 	turbo.IForwardEvent
 	entity       *store.MessageEntity
 	remoteClient *turbo.TClient
-	opaque       int32
+	opaque       uint32
 }
 
-func newPersistentEvent(entity *store.MessageEntity, remoteClient *turbo.TClient, opaque int32) *persistentEvent {
+func newPersistentEvent(entity *store.MessageEntity, remoteClient *turbo.TClient, opaque uint32) *persistentEvent {
 	return &persistentEvent{entity: entity, remoteClient: remoteClient, opaque: opaque}
 
 }
