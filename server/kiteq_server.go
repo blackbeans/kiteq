@@ -1,7 +1,7 @@
 package server
 
 import (
-	"kiteq/handler"
+	"github.com/blackbeans/kiteq/handler"
 	"net"
 	"net/http"
 	"os"
@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
+	"github.com/blackbeans/kiteq/exchange"
+	"github.com/blackbeans/kiteq/store"
+	"github.com/blackbeans/kiteq/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	"kiteq/exchange"
-	"kiteq/store"
-	"kiteq/store/parser"
 )
 
 type KiteQServer struct {

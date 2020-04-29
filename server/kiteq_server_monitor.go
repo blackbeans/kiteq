@@ -120,7 +120,7 @@ func (self *KiteQServer) startFlow() {
 				KiteServerLimter: []int{used, total}}
 
 			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
-				ns.WriteBytes, ns.WriteCount, ns.DispatcherGo, self.clientManager.ConnNum())
+				ns.WriteBytes, ns.WriteCount, ns.DisPoolSize, self.clientManager.ConnNum())
 
 			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d", line, ks.DeliverCount,
 				ks.DeliverGo)

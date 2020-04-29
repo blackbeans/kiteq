@@ -3,12 +3,12 @@ package server
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
+	"github.com/blackbeans/kiteq/exchange"
+	"github.com/blackbeans/kiteq/handler"
+	"github.com/blackbeans/kiteq/store"
+	"github.com/blackbeans/kiteq/store/memory"
 	"github.com/blackbeans/turbo"
 	"github.com/golang/protobuf/proto"
-	"kiteq/exchange"
-	"kiteq/handler"
-	"kiteq/store"
-	"kiteq/store/memory"
 	"log"
 	"os"
 	"testing"
@@ -88,7 +88,6 @@ func TestRecoverManager(t *testing.T) {
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100, deliveryRegistry))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
-	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
 	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb, tw)
 	rm.Start()
 	select {

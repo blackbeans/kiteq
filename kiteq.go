@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/blackbeans/kiteq/server"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
-	"kiteq/server"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"

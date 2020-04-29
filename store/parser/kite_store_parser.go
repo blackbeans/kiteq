@@ -1,11 +1,11 @@
 package parser
 
 import (
+	"github.com/blackbeans/kiteq/store"
+	smf "github.com/blackbeans/kiteq/store/file"
+	sm "github.com/blackbeans/kiteq/store/memory"
+	smq "github.com/blackbeans/kiteq/store/mysql"
 	log "github.com/blackbeans/log4go"
-	"kiteq/store"
-	smf "kiteq/store/file"
-	sm "kiteq/store/memory"
-	smq "kiteq/store/mysql"
 	"strconv"
 	"strings"
 	"time"
