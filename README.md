@@ -3,7 +3,7 @@ KiteQ ![image](./doc/logo.jpg)
 
 基于go+protobuff实现的多种持久化方案的mq框架
 
-#### WIKI(https://github.com/blackbeans/kiteq/wiki)
+#### WIKI(https://kiteq/wiki)
 
 #### 简介
     * 基于zk/etcd维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
@@ -115,7 +115,7 @@ KiteQ ![image](./doc/logo.jpg)
 
 #####  QuickStart
 
-    1. Download the latest release version from release[https://github.com/blackbeans/kiteq/releases]
+    1. Download the latest release version from release[https://kiteq/releases]
 
     2. Install the latest release version Zookeeper from http://www.apache.org/dyn/closer.cgi/zookeeper/
 

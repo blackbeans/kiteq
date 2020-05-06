@@ -1,4 +1,4 @@
-module github.com/blackbeans/kiteq
+module kiteq
 
 go 1.13
 

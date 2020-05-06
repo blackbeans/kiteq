@@ -4,9 +4,9 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/registry"
 	"github.com/blackbeans/kiteq-common/stat"
-	"github.com/blackbeans/kiteq/exchange"
-	"github.com/blackbeans/kiteq/store"
 	"github.com/blackbeans/turbo"
+	"kiteq/exchange"
+	"kiteq/store"
 	"sync/atomic"
 	"time"
 )

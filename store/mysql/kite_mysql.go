@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
-	. "github.com/blackbeans/kiteq/store"
 	log "github.com/blackbeans/log4go"
+	. "kiteq/store"
 	"strings"
 	"sync"
 	"time"
@@ -78,29 +78,33 @@ func (self *KiteMysqlStore) Length() map[string] /*topic*/ int {
 	stat := make(map[string]int, 10)
 	//开始查询Mysql中的堆积消息数量
 	for i := 0; i < self.RecoverNum(); i++ {
-		hashKey := fmt.Sprintf("%x", i)
-		s := self.sqlwrapper.hashMessageStatSQL(hashKey)
-		// log.Println(s)
-		rows, err := self.dbshard.FindSlave(hashKey).Query(s, self.serverName, time.Now().Unix())
-		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|Length|Query|FAIL|%s|%s|%s", err, hashKey, s)
-			continue
-		}
-		defer rows.Close()
-		if rows.Next() {
-			topic := ""
-			num := 0
-			err = rows.Scan(&topic, &num)
-			if nil != err {
-				log.ErrorLog("kite_store", "KiteMysqlStore|Length|Scan|FAIL|%s|%s|%s\n", err, hashKey, s)
-			} else {
-				v, ok := stat[topic]
-				if !ok {
-					v = 0
-				}
-				stat[topic] = (v + num)
+		func() error {
+			hashKey := fmt.Sprintf("%x", i)
+			s := self.sqlwrapper.hashMessageStatSQL(hashKey)
+			// log.Println(s)
+			rows, err := self.dbshard.FindSlave(hashKey).Query(s, self.serverName, time.Now().Unix())
+			if err != nil {
+				log.ErrorLog("kite_store", "KiteMysqlStore|Length|Query|FAIL|%s|%s|%s", err, hashKey, s)
+				return err
 			}
-		}
+			defer rows.Close()
+			if rows.Next() {
+				topic := ""
+				num := 0
+				err = rows.Scan(&topic, &num)
+				if nil != err {
+					log.ErrorLog("kite_store", "KiteMysqlStore|Length|Scan|FAIL|%s|%s|%s\n", err, hashKey, s)
+					return err
+				} else {
+					v, ok := stat[topic]
+					if !ok {
+						v = 0
+					}
+					stat[topic] = v + num
+				}
+			}
+			return nil
+		}()
 	}
 
 	return stat

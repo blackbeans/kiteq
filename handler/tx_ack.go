@@ -2,9 +2,9 @@ package handler
 
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
-	"github.com/blackbeans/kiteq/store"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/store"
 )
 
 //----------------持久化的handler

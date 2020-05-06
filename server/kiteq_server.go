@@ -1,7 +1,8 @@
 package server
 
 import (
-	"github.com/blackbeans/kiteq/handler"
+	"encoding/json"
+	"kiteq/handler"
 	"net"
 	"net/http"
 	"os"
@@ -9,11 +10,11 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	"github.com/blackbeans/kiteq/exchange"
-	"github.com/blackbeans/kiteq/store"
-	"github.com/blackbeans/kiteq/store/parser"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/exchange"
+	"kiteq/store"
+	"kiteq/store/parser"
 )
 
 type KiteQServer struct {
@@ -151,17 +152,13 @@ func (self *KiteQServer) Start() {
 	//启动DLQ的时间
 	self.startDLQ()
 
-	//检查配置更新
-	if len(self.kc.so.configPath) > 0 {
-		self.startCheckConf()
-	}
-
+	http.HandleFunc("/stat", self.HandleStat)
+	http.HandleFunc("/binds", self.HandleBindings)
+	http.HandleFunc("/reload", self.HandleReloadConf)
 	//启动pprof
 	host, _, _ := net.SplitHostPort(self.kc.so.bindHost)
 	go func() {
 		if self.kc.so.pprofPort > 0 {
-			http.HandleFunc("/stat", self.HandleStat)
-			http.HandleFunc("/binds", self.HandleBindings)
 			log.Error(http.ListenAndServe(host+":"+strconv.Itoa(self.kc.so.pprofPort), nil))
 		}
 	}()
@@ -190,35 +187,40 @@ func (self *KiteQServer) startDLQ() {
 	log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
 }
 
-func (self *KiteQServer) startCheckConf() {
-	go func() {
-		t := time.NewTicker(1 * time.Minute)
-		for !self.stop {
-			so := ServerOption{}
-			err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.bindHost, self.kc.so.pprofPort, &so)
-			if nil != err {
-				log.ErrorLog("kite_server", "KiteQServer|startCheckConf|FAIL|%s", err)
-			}
+//处理reload配置
+func (self *KiteQServer) HandleReloadConf(resp http.ResponseWriter, req *http.Request) {
+	so := ServerOption{}
+	err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.bindHost, self.kc.so.pprofPort, &so)
+	if nil != err {
+		log.ErrorLog("kite_server", "KiteQServer|HandleReloadConf|FAIL|%s", err)
+	}
 
-			//新增或者减少topics
-			if len(so.topics) != len(self.kc.so.topics) {
-				//推送可发送的topic列表并且获取了对应topic下的订阅关系
-				succ := self.exchanger.PushQServer(self.kc.so.bindHost, so.topics)
-				if !succ {
-					log.ErrorLog("kite_server", "KiteQServer|startCheckConf|PushQServer|FAIL|%s|%s\n", err, so.topics)
-				} else {
-					log.InfoLog("kite_server", "KiteQServer|startCheckConf|PushQServer|SUCC|%s\n", so.topics)
-				}
-				//重置数据
-				self.kc.so = so
-				//下发变化的数据
-				self.topicNotify <- so.topics
-			}
-
-			<-t.C
+	//新增或者减少topics
+	if len(so.topics) != len(self.kc.so.topics) {
+		//推送可发送的topic列表并且获取了对应topic下的订阅关系
+		succ := self.exchanger.PushQServer(self.kc.so.bindHost, so.topics)
+		if !succ {
+			log.ErrorLog("kite_server", "KiteQServer|HandleReloadConf|PushQServer|FAIL|%s|%s\n", err, so.topics)
+		} else {
+			log.InfoLog("kite_server", "KiteQServer|HandleReloadConf|PushQServer|SUCC|%s\n", so.topics)
 		}
-		t.Stop()
-	}()
+		//重置数据
+		self.kc.so = so
+		//下发变化的数据
+		self.topicNotify <- so.topics
+	}
+
+	var result struct {
+		Status int      `json:"status"`
+		Topics []string `json:"topics"`
+	}
+	result.Status = http.StatusOK
+	result.Topics = so.topics
+
+	rawJson, _ := json.Marshal(result)
+	resp.Header().Set("content-type", "text/json")
+	resp.WriteHeader(http.StatusOK)
+	resp.Write(rawJson)
 }
 
 func (self *KiteQServer) Shutdown() {

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/blackbeans/kiteq/server"
 	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	"kiteq/server"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -34,11 +34,11 @@ func main() {
 	qserver.Start()
 
 	var s = make(chan os.Signal, 1)
-	signal.Notify(s, syscall.SIGKILL, syscall.SIGUSR1)
+	signal.Notify(s, syscall.SIGKILL, syscall.SIGUSR1, syscall.SIGTERM)
 	//是否收到kill的命令
 	for {
 		cmd := <-s
-		if cmd == syscall.SIGKILL {
+		if cmd == syscall.SIGKILL || cmd == syscall.SIGTERM {
 			break
 		} else if cmd == syscall.SIGUSR1 {
 			//如果为siguser1则进行dump内存

@@ -3,8 +3,8 @@ package memory
 import (
 	"container/list"
 	"fmt"
-	. "github.com/blackbeans/kiteq/store"
 	log "github.com/blackbeans/log4go"
+	. "kiteq/store"
 	"strconv"
 	"sync"
 )

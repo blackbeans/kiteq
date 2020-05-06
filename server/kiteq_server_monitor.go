@@ -47,6 +47,8 @@ func (self *KiteQServer) HandleStat(resp http.ResponseWriter, req *http.Request)
 
 	data, _ := json.Marshal(result)
 
+	resp.Header().Set("content-type", "text/json")
+	resp.WriteHeader(http.StatusOK)
 	//write monitor
 	resp.Write(data)
 }
@@ -65,7 +67,9 @@ func (self *KiteQServer) HandleBindings(resp http.ResponseWriter, req *http.Requ
 		Topic2Groups:    binds,
 		Topics2Limiters: limters}
 	data, _ := json.Marshal(bi)
-	//write monitor
+
+	resp.Header().Set("content-type", "text/json")
+	resp.WriteHeader(http.StatusOK)
 	resp.Write(data)
 }
 

@@ -3,8 +3,8 @@ package server
 import (
 	// "encoding/json"
 	"fmt"
-	"github.com/blackbeans/kiteq/handler"
-	"github.com/blackbeans/kiteq/store"
+	"kiteq/handler"
+	"kiteq/store"
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"

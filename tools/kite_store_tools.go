@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/blackbeans/kiteq/store/parser"
+	"kiteq/store/parser"
 	"time"
 )
 
