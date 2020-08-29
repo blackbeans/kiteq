@@ -8,7 +8,7 @@ require (
 	github.com/blackbeans/kiteq-common v0.0.0-20190118074128-143956d32039
 	github.com/blackbeans/log4go v0.0.0-20171230160053-a20c293261cf
 	github.com/blackbeans/pool v3.1.2-0.20190529143138-db4ba28e77ff+incompatible // indirect
-	github.com/blackbeans/turbo v0.0.0-20200429095543-b8a904e544d0
+	github.com/blackbeans/turbo v0.0.0-20200829101315-14f70b1cf838
 	github.com/go-sql-driver/mysql v1.3.1-0.20170703061436-bf7f34fef176
 	github.com/golang/protobuf v0.0.0-20161117033126-8ee79997227b
 	github.com/naoina/go-stringutil v0.1.0 // indirect

@@ -12,6 +12,10 @@ github.com/blackbeans/turbo v0.0.0-20190705082158-5ff1565511f6 h1:eKDKCRftLopL0S
 github.com/blackbeans/turbo v0.0.0-20190705082158-5ff1565511f6/go.mod h1:PXAR+CFwIaDwp9qwjRhYSw6aLSgd00pfQpFPlNSey/Y=
 github.com/blackbeans/turbo v0.0.0-20200429095543-b8a904e544d0 h1:hmFKphBO4JfWgg8wW6HMf8bOn/jVsaHeYeFGzEq1nDU=
 github.com/blackbeans/turbo v0.0.0-20200429095543-b8a904e544d0/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
+github.com/blackbeans/turbo v0.0.0-20200829094942-946b9ec038b4 h1:BL4dfG4g7X2LuBPR3rRdjjhvKqIdDqF8rd3/LKYYiIc=
+github.com/blackbeans/turbo v0.0.0-20200829094942-946b9ec038b4/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
+github.com/blackbeans/turbo v0.0.0-20200829101315-14f70b1cf838 h1:7weoZ/kqS7gVYjBECIUFb7NNWE9L7dkjPg/H2MAFeUA=
+github.com/blackbeans/turbo v0.0.0-20200829101315-14f70b1cf838/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
 github.com/go-sql-driver/mysql v1.3.1-0.20170703061436-bf7f34fef176 h1:jGaH6t4+NEonMOLQA/HQdW4kL7YLcTsotk9AwiGTdkc=
 github.com/go-sql-driver/mysql v1.3.1-0.20170703061436-bf7f34fef176/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/golang/protobuf v0.0.0-20161117033126-8ee79997227b h1:fE/yi9pibxGEc0gSJuEShcsBXE2d5FW3OudsjE9tKzQ=
