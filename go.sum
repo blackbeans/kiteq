@@ -18,6 +18,8 @@ github.com/blackbeans/log4go v0.0.0-20200623070814-a92daca2f0bb h1:xaBOBBsSv1pah
 github.com/blackbeans/log4go v0.0.0-20200623070814-a92daca2f0bb/go.mod h1:aVGIz1ITiF8izhVteTEoiKPCicK3IHezk2U6X2JYQWo=
 github.com/blackbeans/turbo v0.0.0-20200830050831-d218aacd4f23 h1:aOxcksOfaWliym+ShLP9xv0bmIKkfcWMfQpbNaApXc4=
 github.com/blackbeans/turbo v0.0.0-20200830050831-d218aacd4f23/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
+github.com/blackbeans/turbo v0.0.0-20210219044503-73b92b907523 h1:0nnzDxAEK00DW/dE0L8fNCdAi6gRvnyQnhBSYAIPSZI=
+github.com/blackbeans/turbo v0.0.0-20210219044503-73b92b907523/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
 github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
