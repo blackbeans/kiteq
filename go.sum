@@ -22,6 +22,8 @@ github.com/blackbeans/turbo v0.0.0-20210219044503-73b92b907523 h1:0nnzDxAEK00DW/
 github.com/blackbeans/turbo v0.0.0-20210219044503-73b92b907523/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
 github.com/blackbeans/turbo v0.0.0-20210302074909-ee56915aab8b h1:0UCCxSX8frBVnGI9RJnfBzkbbJhEuKrvmEFJDM+6cec=
 github.com/blackbeans/turbo v0.0.0-20210302074909-ee56915aab8b/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
+github.com/blackbeans/turbo v0.0.0-20210517044026-be07a6b2630c h1:A2lm1i9HiohzQCX1c92ltaam043zxfr5erHYgo7BmE8=
+github.com/blackbeans/turbo v0.0.0-20210517044026-be07a6b2630c/go.mod h1:d8ZVF8h7ZBnUvQXUwRGlXLXJmNNyIWi8TNDxvzJ5CX4=
 github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

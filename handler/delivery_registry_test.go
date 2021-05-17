@@ -1,16 +1,18 @@
 package handler
 
 import (
-	"github.com/blackbeans/turbo"
+	"context"
 	"kiteq/store"
 	"testing"
 	"time"
+
+	"github.com/blackbeans/turbo"
 )
 
 func BenchmarkDeliveryRegistry(t *testing.B) {
 	t.StopTimer()
 	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
-	registry := NewDeliveryRegistry(tw, 10*10000)
+	registry := NewDeliveryRegistry(context.TODO(), tw, 10*10000)
 
 	t.SetParallelism(8)
 	t.StartTimer()
@@ -27,7 +29,7 @@ func BenchmarkDeliveryRegistry(t *testing.B) {
 
 func TestDeliveryRegistry(t *testing.T) {
 	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
-	registry := NewDeliveryRegistry(tw, 10*10000)
+	registry := NewDeliveryRegistry(context.TODO(), tw, 10*10000)
 
 	msgId := store.MessageId()
 	succ := registry.Registe(msgId, 5*time.Second)

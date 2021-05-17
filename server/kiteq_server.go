@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"kiteq/handler"
 	"net"
@@ -9,12 +10,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/turbo"
 	"kiteq/exchange"
 	"kiteq/store"
 	"kiteq/store/parser"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 )
 
 type KiteQServer struct {
@@ -56,7 +58,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
-	registry := handler.NewDeliveryRegistry(kc.rc.TW, 10*10000)
+	registry := handler.NewDeliveryRegistry(context.TODO(), kc.rc.TW, 10*10000)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)

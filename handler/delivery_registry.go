@@ -1,8 +1,10 @@
 package handler
 
 import (
-	"github.com/blackbeans/turbo"
+	"context"
 	"time"
+
+	"github.com/blackbeans/turbo"
 )
 
 //投递注册器
@@ -10,8 +12,8 @@ type DeliveryRegistry struct {
 	registry *turbo.LRUCache //key为messageId-->value为过期时间
 }
 
-func NewDeliveryRegistry(tw *turbo.TimerWheel, capacity int) *DeliveryRegistry {
-	registry := turbo.NewLRUCache(capacity, tw, nil)
+func NewDeliveryRegistry(ctx context.Context, tw *turbo.TimerWheel, capacity int) *DeliveryRegistry {
+	registry := turbo.NewLRUCache(ctx, capacity, tw, nil)
 	return &DeliveryRegistry{registry: registry}
 }
 

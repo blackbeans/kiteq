@@ -4,12 +4,13 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
-	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	log "github.com/blackbeans/log4go"
 )
 
 //delvier tags
@@ -18,8 +19,8 @@ type opBody struct {
 	MessageId       string     `json:"mid"`
 	Topic           string     `json:"topic"`
 	Commit          bool       `json:"commit"`
-	FailGroups      []string   `json:"fg",omitempty`
-	SuccGroups      []string   `json:"sg",omitempty`
+	FailGroups      []string   `json:"fg,omitempty"`
+	SuccGroups      []string   `json:"sg,omitempty"`
 	NextDeliverTime int64      `json:"ndt"`
 	DeliverCount    int32      `json:"dc"`
 	saveDone        chan int64 //save done
