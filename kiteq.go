@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/turbo"
 	"kiteq/server"
 	_ "net/http/pprof"
 	"os"
@@ -12,6 +10,9 @@ import (
 	"runtime/debug"
 	"syscall"
 	"time"
+
+	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 )
 
 func main() {
