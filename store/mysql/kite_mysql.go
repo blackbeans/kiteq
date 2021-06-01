@@ -1,14 +1,16 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	log "github.com/blackbeans/log4go"
 )
 
 //mysql的参数
@@ -39,7 +41,7 @@ type KiteMysqlStore struct {
 	serverName   string
 }
 
-func NewKiteMysql(options MysqlOptions, serverName string) *KiteMysqlStore {
+func NewKiteMysql(ctx context.Context, options MysqlOptions, serverName string) *KiteMysqlStore {
 
 	shard := newDbShard(options)
 
@@ -54,7 +56,6 @@ func NewKiteMysql(options MysqlOptions, serverName string) *KiteMysqlStore {
 		flushPeriod:  options.FlushPeriod,
 		serverName:   serverName,
 		stop:         false}
-	ins.Start()
 
 	log.InfoLog("kite_store", "NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	return ins

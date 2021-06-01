@@ -2,11 +2,13 @@ package memory
 
 import (
 	"container/list"
+	"context"
 	"fmt"
-	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"strconv"
 	"sync"
+
+	log "github.com/blackbeans/log4go"
 )
 
 const (
@@ -20,7 +22,7 @@ type KiteMemoryStore struct {
 	maxcap    int
 }
 
-func NewKiteMemoryStore(initcap, maxcap int) *KiteMemoryStore {
+func NewKiteMemoryStore(ctx context.Context, initcap, maxcap int) *KiteMemoryStore {
 
 	//定义holder
 	datalinks := make([]*list.List, 0, CONCURRENT_LEVEL)
@@ -73,7 +75,9 @@ func (self *KiteMemoryStore) Monitor() string {
 	return fmt.Sprintf("memory-length:%v\n", self.Length())
 }
 
-func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool {
+	return self.UpdateEntity(entity)
+}
 func (self *KiteMemoryStore) AsyncDelete(topic, messageId string) bool {
 	return self.Delete(topic, messageId)
 }

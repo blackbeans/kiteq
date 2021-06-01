@@ -1,23 +1,22 @@
 package parser
 
 import (
-	"github.com/blackbeans/turbo"
-	"os"
+	"context"
 	"testing"
-	"time"
 )
 
 func TestParse(t *testing.T) {
 
-	rc := turbo.NewRemotingConfig(
-		"remoting-localhost:13800",
-		2000, 16*1024,
-		16*1024, 10000, 10000,
-		10*time.Second, 160000)
-	so := MockServerOption()
-	so.db = "mysql://localhost:3306,localhost:3306?db=kite&username=root"
-	kc := NewKiteQConfig(MockServerOption(), rc)
-	kiteqName, _ := os.Hostname()
-	store := parseDB(kc, kiteqName)
-	store.Delete("", "123456")
+	storeUrls := []string{
+		"mock://",
+		"memory://?initcap=1000&maxcap=2000",
+		"mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1",
+		"file:///path?cap=10000000&checkSeconds=60&flushBatchSize=1000",
+		"rocksdb:///data/rocksdb/",
+	}
+	ctx := context.TODO()
+	for _, store := range storeUrls {
+		ParseDB(ctx, store, "kiteq001")
+	}
+
 }

@@ -40,11 +40,11 @@ func handshake(ga *turbo.GroupAuth, remoteClient *turbo.TClient) (bool, error) {
 	return false, nil
 }
 
-func NewKiteQServer(kc KiteQConfig) *KiteQServer {
+func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 
 	kiteqName, _ := os.Hostname()
 
-	kitedb := parser.ParseDB(kc.so.db, kiteqName)
+	kitedb := parser.ParseDB(ctx, kc.so.db, kiteqName)
 	//kc.flowstat.Kitestore = kitedb
 	kitedb.Start()
 
@@ -58,7 +58,7 @@ func NewKiteQServer(kc KiteQConfig) *KiteQServer {
 	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
-	registry := handler.NewDeliveryRegistry(context.TODO(), kc.rc.TW, 10*10000)
+	registry := handler.NewDeliveryRegistry(ctx, kc.rc.TW, 10*10000)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)

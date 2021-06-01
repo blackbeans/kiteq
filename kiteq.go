@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"kiteq/server"
 	_ "net/http/pprof"
@@ -20,7 +21,7 @@ func main() {
 	//加载启动参数
 	so := server.Parse()
 
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU()*2 + 1)
 
 	rc := turbo.NewTConfig(
 		"remoting",
@@ -30,8 +31,8 @@ func main() {
 		100*10000)
 
 	kc := server.NewKiteQConfig(so, rc)
-
-	qserver := server.NewKiteQServer(kc)
+	ctx, cancel := context.WithCancel(context.Background())
+	qserver := server.NewKiteQServer(ctx, kc)
 	qserver.Start()
 
 	var s = make(chan os.Signal, 1)
@@ -53,8 +54,8 @@ func main() {
 			}
 		}
 	}
-
 	qserver.Shutdown()
+	cancel()
 	log.InfoLog("kite_server", "KiteQServer IS STOPPED!")
 
 }

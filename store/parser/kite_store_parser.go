@@ -1,40 +1,41 @@
 package parser
 
 import (
-	log "github.com/blackbeans/log4go"
+	"context"
 	"kiteq/store"
 	smf "kiteq/store/file"
 	sm "kiteq/store/memory"
 	smq "kiteq/store/mysql"
+	"kiteq/store/rocksdb"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/blackbeans/log4go"
 )
 
 // storage schema
 //  mock    mock://
-//  memory  memory://initcap=1000&maxcap=2000
+//  memory  memory://?initcap=1000&maxcap=2000
 //  mysql   mysql://master:3306,slave:3306?db=kite&username=root&password=root&maxConn=500&batchUpdateSize=1000&batchDelSize=1000&flushSeconds=1
 //  file    file:///path?cap=10000000&checkSeconds=60&flushBatchSize=1000
+// rocksdb rocksdb://path?
 
-func ParseDB(db string, serverName string) store.IKiteStore {
+func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore {
 	var kitedb store.IKiteStore
-	if strings.HasPrefix(db, "mock://") {
+	parsed, err := url.Parse(db)
+	if nil != err {
+		panic(err)
+	}
+	switch parsed.Scheme {
+	case "mock":
 		kitedb = &store.MockKiteStore{}
-	} else if strings.HasPrefix(db, "memory://") {
-		url := strings.TrimPrefix(db, "memory://")
-		split := strings.Split(url, "&")
-		params := make(map[string]string, len(split))
-		for _, v := range split {
-			p := strings.SplitN(v, "=", 2)
-			if len(p) >= 2 {
-				params[p[0]] = p[1]
-			}
-		}
-
+	case "memory":
+		params := parsed.Query()
 		initval := 10 * 10000
-		initcap, ok := params["initcap"]
-		if ok {
+
+		if initcap := params.Get("initcap"); len(initcap) > 0 {
 			v, e := strconv.ParseInt(initcap, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|INIT CAP|%s\n", db)
@@ -42,31 +43,19 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 			initval = int(v)
 		}
 		max := 50 * 10000
-		maxcap, ok := params["maxcap"]
-		if ok {
+		if maxcap := params.Get("maxcap"); len(maxcap) > 0 {
 			v, e := strconv.ParseInt(maxcap, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|MAX CAP|%s\n", db)
 			}
 			max = int(v)
 		}
-		kitedb = sm.NewKiteMemoryStore(initval, max)
-	} else if strings.HasPrefix(db, "mysql://") {
-		url := strings.TrimPrefix(db, "mysql://")
-		mp := strings.Split(url, "?")
-		params := make(map[string]string, 5)
-		if len(mp) > 1 {
-			split := strings.Split(mp[1], "&")
-			for _, v := range split {
-				p := strings.SplitN(v, "=", 2)
-				params[p[0]] = p[1]
-			}
-		}
-
+		kitedb = sm.NewKiteMemoryStore(ctx, initval, max)
+	case "mysql":
+		params := parsed.Query()
 		bus := 100
-		u, ok := params["batchUpdateSize"]
-		if ok {
-			v, e := strconv.ParseInt(u, 10, 32)
+		if batchUpdateSize := params.Get("batchUpdateSize"); len(batchUpdateSize) > 0 {
+			v, e := strconv.ParseInt(batchUpdateSize, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|batchUpdateSize|%s\n", db)
 			}
@@ -74,9 +63,8 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 		}
 
 		bds := 100
-		d, ok := params["batchDelSize"]
-		if ok {
-			v, e := strconv.ParseInt(d, 10, 32)
+		if batchDelSize := params.Get("batchDelSize"); len(batchDelSize) > 0 {
+			v, e := strconv.ParseInt(batchDelSize, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
@@ -84,9 +72,8 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 		}
 
 		flushPeriod := 1 * time.Second
-		fp, ok := params["flushSeconds"]
-		if ok {
-			v, e := strconv.ParseInt(fp, 10, 32)
+		if flushSeconds := params.Get("flushSeconds"); len(flushSeconds) > 0 {
+			v, e := strconv.ParseInt(flushSeconds, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
 			}
@@ -94,8 +81,7 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 		}
 
 		maxConn := 20
-		mc, ok := params["maxConn"]
-		if ok {
+		if mc := params.Get("maxConn"); len(mc) > 0 {
 			v, e := strconv.ParseInt(mc, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
@@ -104,25 +90,21 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 		}
 
 		//解析Mysql的host
-		master := mp[0]
+		master := parsed.Host
 		slave := ""
-		mysqlHosts := strings.Split(mp[0], ",")
+		mysqlHosts := strings.Split(master, ",")
 		if len(mysqlHosts) > 1 {
 			master = mysqlHosts[0]
 			slave = mysqlHosts[1]
 		}
 
 		//解析用户名密码：
-		username, _ := params["username"]
-		password, pok := params["password"]
-		if !pok {
-			password = ""
-		}
+		username := params.Get("username")
+		password := params.Get("password")
 
 		//shard的数量
 		shardnum := 4
-		sd, sdok := params["shardnum"]
-		if sdok {
+		if sd := params.Get("shardnum"); len(sd) > 0 {
 			v, e := strconv.ParseInt(sd, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|ShardNum|%s\n", db)
@@ -134,7 +116,7 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 			Addr:         master,
 			SlaveAddr:    slave,
 			ShardNum:     shardnum,
-			DB:           params["db"],
+			DB:           params.Get("db"),
 			Username:     username,
 			Password:     password,
 			BatchUpSize:  bus,
@@ -142,26 +124,12 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 			FlushPeriod:  flushPeriod,
 			MaxIdleConn:  maxConn / 2,
 			MaxOpenConn:  maxConn}
-		kitedb = smq.NewKiteMysql(options, serverName)
-	} else if strings.HasPrefix(db, "file://") {
-		url := strings.TrimPrefix(db, "file://")
-		mp := strings.Split(url, "?")
-		params := make(map[string]string, 5)
-		if len(mp) > 1 {
-			split := strings.Split(mp[1], "&")
-			for _, v := range split {
-				p := strings.SplitN(v, "=", 2)
-				params[p[0]] = p[1]
-			}
-		}
-		if len(mp[0]) <= 0 {
-			log.Crashf("NewKiteQServer|INVALID|FilePath|%s\n", db)
-		}
-
+		kitedb = smq.NewKiteMysql(ctx, options, serverName)
+	case "file":
+		params := parsed.Query()
 		//最大消息容量
 		maxcap := 100 * 10000
-		d, ok := params["cap"]
-		if ok {
+		if d := params.Get("cap"); len(d) > 0 {
 			v, e := strconv.ParseInt(d, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|cap|%s\n", db)
@@ -171,8 +139,7 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 
 		//检查文件过期时间
 		checkPeriod := 1 * time.Second
-		cs, ok := params["checkSeconds"]
-		if ok {
+		if cs := params.Get("checkSeconds"); len(cs) > 0 {
 			v, e := strconv.ParseInt(cs, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
@@ -182,8 +149,7 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 
 		//批量flush的大小
 		fbsize := 1000
-		fbs, ok := params["flushBatchSize"]
-		if ok {
+		if fbs := params.Get("flushBatchSize"); len(fbs) > 0 {
 			v, e := strconv.ParseInt(fbs, 10, 32)
 			if nil != e {
 				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
@@ -191,9 +157,19 @@ func ParseDB(db string, serverName string) store.IKiteStore {
 			fbsize = int(v)
 		}
 
-		kitedb = smf.NewKiteFileStore(mp[0], fbsize, maxcap, checkPeriod)
-		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", mp[0], maxcap, int(checkPeriod.Seconds()))
-	} else {
+		kitedb = smf.NewKiteFileStore(ctx, parsed.Host, fbsize, maxcap, checkPeriod)
+		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", parsed.Host, maxcap, int(checkPeriod.Seconds()))
+	case "rocksdb":
+		options := make(map[string]string, len(parsed.Query()))
+		for k, v := range parsed.Query() {
+			if len(v) > 0 {
+				options[k] = v[0]
+			}
+		}
+		//获取到存储路径
+		kitedb = rocksdb.NewRocksDbStore(ctx, parsed.Host, options)
+
+	default:
 		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
 	}
 	return kitedb

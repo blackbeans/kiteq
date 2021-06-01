@@ -2,6 +2,7 @@ package file
 
 import (
 	"container/list"
+	"context"
 	"encoding/json"
 	"fmt"
 	. "kiteq/store"
@@ -43,7 +44,7 @@ type KiteFileStore struct {
 	running bool
 }
 
-func NewKiteFileStore(dir string, batchFlush int, maxcap int, checkPeriod time.Duration) *KiteFileStore {
+func NewKiteFileStore(ctx context.Context, dir string, batchFlush int, maxcap int, checkPeriod time.Duration) *KiteFileStore {
 
 	datalink := make([]*list.List, 0, CONCURRENT_LEVEL)
 	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)

@@ -1,0 +1,12 @@
+<logging>
+    <filter enabled="true">
+        <tag>stdout</tag>
+        <type>console</type>
+        <level>DEBUG</level>
+    </filter>
+    <filter enabled="true">
+        <tag>stderr</tag>
+        <type>console</type>
+        <level>DEBUG</level>
+    </filter>
+</logging>
