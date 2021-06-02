@@ -92,7 +92,7 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("deliver-result", handler.NewDeliverResultHandler("deliver-result", kc.so.deliveryTimeout, kitedb, rw, registry))
 	//以下是处理投递结果返回事件，即到了remoting端会backwark到future-->result-->record
 
-	recoverManager := NewRecoverManager(kiteqName, kc.so.recoverPeriod, pipeline, kitedb, kc.rc.TW)
+	recoverManager := NewRecoverManager(kiteqName, kc.so.recoverPeriod, pipeline, kitedb)
 
 	return &KiteQServer{
 		reconnManager:  reconnManager,

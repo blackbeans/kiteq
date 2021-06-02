@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+
 	"github.com/blackbeans/go-uuid"
 	"github.com/blackbeans/kiteq-common/protocol"
 )
@@ -80,8 +81,9 @@ type IKiteStore interface {
 	//recover数量
 	RecoverNum() int
 
-	//批量提交channel
-	AsyncUpdate(entity *MessageEntity) bool
+	//批量提交头题结果
+	AsyncUpdateDeliverResult(entity *MessageEntity) bool
+
 	AsyncDelete(topic, messageId string) bool
 	AsyncCommit(topic, messageId string) bool
 
@@ -93,5 +95,5 @@ type IKiteStore interface {
 	Expired(topic, messageId string) bool
 
 	//根据kiteServer名称查询需要重投的消息 返回值为 是否还有更多、和本次返回的数据结果
-	PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity)
+	PageQueryEntity(hashKey string, kiteServer string, nextDeliverySeconds int64, startIdx, limit int) (bool, []*MessageEntity)
 }

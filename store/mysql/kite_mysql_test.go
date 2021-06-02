@@ -70,7 +70,7 @@ func TestPageQuery(t *testing.T) {
 				FailGroups:   []string{"s-mts-test"},
 				//设置一下下一次投递时间
 				NextDeliverTime: time.Now().Add(1 * time.Minute).Unix()}
-			kiteMysql.AsyncUpdate(msg)
+			kiteMysql.AsyncUpdateDeliverResult(msg)
 
 		}
 
@@ -165,7 +165,7 @@ func TestBatch(t *testing.T) {
 			FailGroups:   []string{},
 			//设置一下下一次投递时间
 			NextDeliverTime: time.Now().Unix()}
-		kiteMysql.AsyncUpdate(msg)
+		kiteMysql.AsyncUpdateDeliverResult(msg)
 	}
 
 	time.Sleep(5 * time.Second)

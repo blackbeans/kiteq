@@ -2,11 +2,13 @@ package handler
 
 import (
 	"fmt"
-	log "github.com/blackbeans/log4go"
-	"github.com/blackbeans/turbo"
 	"kiteq/store"
 	"sort"
 	"time"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	log "github.com/blackbeans/log4go"
+	"github.com/blackbeans/turbo"
 )
 
 type redeliveryWindows []RedeliveryWindow
@@ -169,7 +171,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 	//并且消息的投递次数大于等于3那么就应该持久化投递结果
 	if !fevent.header.GetFly() && fevent.deliverCount >= 3 {
 		//存储投递结果
-		self.saveDeliverResult(fevent.header.GetMessageId(), fevent.deliverCount,
+		self.saveDeliverResult(fevent.header, fevent.deliverCount,
 			fevent.succGroups, fevent.deliverFailGroups)
 	}
 
@@ -177,17 +179,19 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 }
 
 //存储投递结果
-func (self *DeliverResultHandler) saveDeliverResult(messageId string, deliverCount int32, succGroups []string, failGroups []string) {
+func (self *DeliverResultHandler) saveDeliverResult(h *protocol.Header, deliverCount int32, succGroups []string, failGroups []string) {
 
 	entity := &store.MessageEntity{
-		MessageId:    messageId,
+		Topic:        h.GetTopic(),
+		MessageType:  h.GetMessageType(),
+		MessageId:    h.GetMessageId(),
 		DeliverCount: deliverCount,
 		SuccGroups:   succGroups,
 		FailGroups:   failGroups,
 		//设置一下下一次投递时间
 		NextDeliverTime: self.nextDeliveryTime(deliverCount)}
 	//异步更新当前消息的数据
-	self.kitestore.AsyncUpdate(entity)
+	self.kitestore.AsyncUpdateDeliverResult(entity)
 }
 
 func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {

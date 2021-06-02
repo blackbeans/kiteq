@@ -24,7 +24,7 @@ type RecoverManager struct {
 
 //------创建persitehandler
 func NewRecoverManager(serverName string, recoverPeriod time.Duration,
-	pipeline *turbo.DefaultPipeline, kitestore store.IKiteStore, tw *turbo.TimerWheel) *RecoverManager {
+	pipeline *turbo.DefaultPipeline, kitestore store.IKiteStore) *RecoverManager {
 
 	limter, _ := turbo.NewBurstyLimiter(2000, 2000)
 	rm := &RecoverManager{

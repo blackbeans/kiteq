@@ -96,7 +96,7 @@ func TestRocksDbStore_AsyncUpdate(t *testing.T) {
 	entity.NextDeliverTime = now
 
 	//更新失败了？
-	if succ := rocksstore.AsyncUpdate(entity); !succ {
+	if succ := rocksstore.AsyncUpdateDeliverResult(entity); !succ {
 		t.FailNow()
 	}
 
@@ -116,7 +116,7 @@ func TestRocksDbStore_AsyncUpdate(t *testing.T) {
 func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 	TestRocksDbStore_AsyncUpdate(t)
 
-	hasmore, entities := rocksstore.PageQueryEntity("", "", time.Now().Add(30*time.Minute).UnixNano()/int64(time.Millisecond), 0, 10)
+	hasmore, entities := rocksstore.PageQueryEntity("", "", time.Now().Add(30*time.Minute).Unix(), 0, 10)
 	if hasmore || len(entities) != 1 {
 		t.FailNow()
 	}

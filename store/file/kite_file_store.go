@@ -181,7 +181,9 @@ func (self *KiteFileStore) Monitor() string {
 	return fmt.Sprintf("\nmessage-length:%v\t writeChannel:%d \n", self.Length(), len(self.snapshot.writeChannel))
 }
 
-func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteFileStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
+	return self.UpdateEntity(entity)
+}
 func (self *KiteFileStore) AsyncDelete(topic, messageId string) bool {
 	return self.Delete(topic, messageId)
 }

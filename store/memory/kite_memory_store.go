@@ -75,7 +75,7 @@ func (self *KiteMemoryStore) Monitor() string {
 	return fmt.Sprintf("memory-length:%v\n", self.Length())
 }
 
-func (self *KiteMemoryStore) AsyncUpdate(entity *MessageEntity) bool {
+func (self *KiteMemoryStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
 	return self.UpdateEntity(entity)
 }
 func (self *KiteMemoryStore) AsyncDelete(topic, messageId string) bool {
