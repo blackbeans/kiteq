@@ -113,19 +113,23 @@ KiteQ ![image](./doc/logo.jpg)
         3. 直到Producer明确告诉Commit或者Rollback该消息
         4. Commit会走正常投递流程、Rollback会对当前消息回滚即删除操作。
 
-#####  QuickStart
+#####  Quickstart 
 
-    1. Download the latest release version from release[https://kiteq/releases]
+DockerHub
 
-    2. Install the latest release version Zookeeper from http://www.apache.org/dyn/closer.cgi/zookeeper/
-
-    3. Start Zookeeper $ZOOKEEPER_HOME/bin/zkServer.sh start (Dev Enviroment Using Single Node)
-
-    4. Extract KiteQ-xxx-xxxx.tar.gz to your deploy path
-
-    5. Run sh kiteq.sh 
-
-    KiteServer Cluster has been start ...
+```shell
+ 
+  #install zookeeper
+  docker pull zookeeper 
+  #start zookeeper
+  docker run --name zk001 --network=host  -t zookeeper
+  #start kiteq server
+  docker run --name kiteq001 --network=host  -d hubean/kiteq:v1.0.1  -clusterName=rocksdb_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
+  
+  #start your client 
+    
+  code with kiteq-client-go(https://github.com/blackbeans/kiteq-client-go)
+```
 
 
 * Note :
