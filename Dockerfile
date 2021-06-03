@@ -39,7 +39,6 @@ FROM scratch
 
 COPY --from=builder /go/src/app/bootstrap /go/src/app/bootstrap
 COPY --from=builder /go/src/app/conf  /go/src/app/conf
-COPY --from=builder /go/src/app/log  /go/src/app/log
 
 
 WORKDIR /go/src/app/
