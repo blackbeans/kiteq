@@ -124,7 +124,7 @@ DockerHub
   #start zookeeper
   docker run --name zk001 --network=host  -t zookeeper
   #start kiteq server
-  docker run --name kiteq001 --network=host  -d hubean/kiteq:v1.0.1  -clusterName=rocksdb_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
+  docker run --name kiteq001 --network=host  -d hubean/kiteq:v1.0.0  -clusterName=rocksdb_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
   
   #start your client 
     
