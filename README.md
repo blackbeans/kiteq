@@ -8,7 +8,7 @@ KiteQ ![image](./doc/logo.jpg)
 #### 简介
     * 基于zk/etcd维护发送方、订阅方、broker订阅发送关系、支持水平、垂直方面的扩展
     * 基于与topic以及第二级messageType订阅消息
-    * 基于mysql、文件存储方式多重持久层消息存储
+    * 基于mysql、文件存储方式(file、rocksdb)多重持久层消息存储
     * 保证可靠异步投递
     * 支持两阶段提交分布式事务
     * 自定义group内的Topic级别的流控措施，保护订阅方安全
@@ -146,17 +146,13 @@ KiteQ ![image](./doc/logo.jpg)
 
 [Go-Client](https://github.com/blackbeans/kiteq-client-go)
 
-[Java-Client](https://github.com/blackbeans/kiteq-client-java)
+[Java-Client](https://github.com/blackbeans/kiteq-client-java) 
 
-[PHP-Client](https://github.com/blackbeans/kiteq-client-php)
+[PHP-Client](https://github.com/blackbeans/kiteq-client-php) (Deprecated)
 
-[CPP-Client](https://github.com/quguangjie/kiteq-client-cpp)
+[CPP-Client](https://github.com/quguangjie/kiteq-client-cpp) (Deprecated)
 
-#### Contact us 
-
-Mail: blackbeans.zc@gmail.com
-
-QQ: 136448723
+#### Contact us
 
 QQ Group: 139685004(Kiteq实战群)
 
