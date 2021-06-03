@@ -1,6 +1,7 @@
 package rocksdb
 
 import (
+	"bytes"
 	"container/heap"
 	"context"
 	"encoding/json"
@@ -12,13 +13,13 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	log "github.com/blackbeans/log4go"
 	"github.com/cockroachdb/pebble"
+	"github.com/golang/protobuf/proto"
 )
 
 //delvier tags
 type opBody struct {
 	Topic           string   `json:"topic"`
 	MessageId       string   `json:"mid"`
-	Commit          bool     `json:"commit"`
 	FailGroups      []string `json:"fg,omitempty"`
 	SuccGroups      []string `json:"sg,omitempty"`
 	NextDeliverTime int64    `json:"ndt"`
@@ -112,8 +113,12 @@ func NewRocksDbStore(ctx context.Context, rocksDbDir string, options map[string]
 	}
 }
 
-func msgKey(topic, messageid string) string {
-	return "m:" + topic + ":" + messageid
+func msgKeyForHeader(topic, messageid string) string {
+	return "mh:" + topic + ":" + messageid
+}
+
+func msgKeyForBody(topic, messageid string) string {
+	return "mb:" + topic + ":" + messageid
 }
 
 func opLogKey(topic, messageid string) string {
@@ -160,49 +165,88 @@ func (self *RocksDbStore) Start() {
 	}
 
 	//开始遍历下所有的数据，按照下一次投递时间排序
-	iter := rocksdb.NewSnapshot().NewIter(prefixIterOptions([]byte("o:")))
+
+	iter := rocksdb.NewSnapshot().NewIter(prefixIterOptions([]byte("op:")))
 	for iter.First(); iter.Valid(); iter.Next() {
 		var item recoverItem
 		err := json.Unmarshal(iter.Value(), &item)
 		if nil != err {
 			continue
 		}
-		if _, loaded := self.recoverMap.LoadOrStore(item.MessageId, &item); !loaded {
-			self.addChan <- &item
-			self.recoverNum++
-		}
+		self.addChan <- &item
 	}
 	//关闭遍历
 	iter.Close()
 
+	//异步再去查看header没有提交的消息
+	go func() {
+		iter := rocksdb.NewSnapshot().NewIter(prefixIterOptions([]byte("mh:")))
+		for iter.First(); iter.Valid(); iter.Next() {
+			var header protocol.Header
+			err := protocol.UnmarshalPbMessage(iter.Value()[1:], &header)
+			if nil != err {
+				log.ErrorLog("kite_store", "KiteFileStore|Start.ReloadUnCommit|%v", err)
+				continue
+			}
+
+			item := &recoverItem{
+				index:     -1,
+				Topic:     header.GetTopic(),
+				MessageId: header.GetMessageId(),
+			}
+			if _, loaded := self.recoverMap.Load(msgKeyForHeader(header.GetTopic(), header.GetMessageId())); !loaded {
+				self.addChan <- item
+			}
+
+		}
+		//关闭遍历
+		iter.Close()
+	}()
+
 }
 
 func (self *RocksDbStore) heapProcess() {
-	lastCheck := time.Now()
 	for {
 		select {
 		case <-self.ctx.Done():
 			return
 		case item := <-self.addChan:
-			heap.Push(&self.recoverHeap, item)
+			if _, loaded := self.recoverMap.LoadOrStore(msgKeyForHeader(item.Topic, item.MessageId), item); !loaded {
+				heap.Push(&self.recoverHeap, item)
+				self.recoverNum++
+			}
 		case update := <-self.upChan:
-			//更新数据
-			heap.Fix(&self.recoverHeap, update.index)
+			if actual, loaded := self.recoverMap.LoadOrStore(msgKeyForHeader(update.Topic, update.MessageId), update); loaded {
+				actual.(*recoverItem).NextDeliverTime = update.NextDeliverTime
+				actual.(*recoverItem).DeliverCount = update.DeliverCount
+				//更新数据
+				heap.Fix(&self.recoverHeap, update.index)
+			} else {
+				//没有则写入堆数据中
+				heap.Push(&self.recoverHeap, update)
+				self.recoverNum++
+			}
 		case del := <-self.delChan:
-			heap.Remove(&self.recoverHeap, del.index)
+			if _, loaded := self.recoverMap.LoadAndDelete(msgKeyForHeader(del.Topic, del.MessageId)); loaded {
+				//更新数据
+				heap.Remove(&self.recoverHeap, del.index)
+				self.recoverNum--
+			}
 		case pageQuery := <-self.pageQueryChan:
 			//recover items
 			recoverItems := make([]*recoverItem, 0, 10)
 			for self.recoverHeap.Len() > 0 {
 				if self.recoverHeap[0].NextDeliverTime <= pageQuery.nextDeliveryTime {
 					min := heap.Pop(&self.recoverHeap)
-					if min.(*recoverItem).NextDeliverTime <= pageQuery.nextDeliveryTime && len(recoverItems) < pageQuery.limit {
-						recoverItems = append(recoverItems, min.(*recoverItem))
-					} else {
-						//没有比这个更小的了
-						break
+					if _, loaded := self.recoverMap.LoadAndDelete(msgKeyForHeader(min.(*recoverItem).Topic, min.(*recoverItem).MessageId)); loaded {
+						self.recoverNum--
+						if min.(*recoverItem).NextDeliverTime <= pageQuery.nextDeliveryTime && len(recoverItems) < pageQuery.limit {
+							recoverItems = append(recoverItems, min.(*recoverItem))
+						} else {
+							//没有比这个更小的了
+							break
+						}
 					}
-
 				} else {
 					break
 				}
@@ -219,11 +263,6 @@ func (self *RocksDbStore) heapProcess() {
 				items:   recoverItems,
 			}
 		}
-		//超过5分钟那么就需要计算下recover的数量
-		if time.Now().Sub(lastCheck) > 5*time.Second {
-			lastCheck = time.Now()
-			self.recoverNum = uint32(len(self.recoverHeap))
-		}
 	}
 }
 
@@ -233,7 +272,7 @@ func (self *RocksDbStore) Stop() {
 }
 
 func (self *RocksDbStore) Monitor() string {
-	return "Recover:" + strconv.FormatUint(uint64(self.recoverNum), 10)
+	return "RecoverNum:" + strconv.FormatUint(uint64(self.recoverNum), 10)
 }
 
 func (self *RocksDbStore) Length() map[string]int {
@@ -247,32 +286,7 @@ func (self *RocksDbStore) MoveExpired() {
 	self.recoverMap.Range(func(key, value interface{}) bool {
 		item := value.(*recoverItem)
 		if item.DeliverCount >= 100 || item.TTL <= now {
-			key := []byte(msgKey(item.Topic, item.MessageId))
-			data, r, err := self.rocksdb.Get(key)
-			if nil != err {
-				log.ErrorLog("kite_store", "KiteFileStore|MoveExpired.Get|FAIL|%v|%s", err, string(key))
-			} else {
-				//将数据搬迁到DLQ中
-				err = self.rockDLQ.Set(key, data, &pebble.WriteOptions{Sync: true})
-				if nil != err {
-					log.ErrorLog("kite_store", "KiteFileStore|MoveExpired.DataKey.Set|FAIL|%v|%s", err, string(key))
-				}
-				r.Close()
-			}
-
-			//查询投递操作日志
-			logKey := opLogKey(item.Topic, item.MessageId)
-			data, r, err = self.rocksdb.Get([]byte(logKey))
-			if nil == err {
-				err = self.rockDLQ.Set([]byte(logKey), data, &pebble.WriteOptions{Sync: true})
-				if nil != err {
-					log.ErrorLog("kite_store", "KiteFileStore|MoveExpired.LogKey.Set|FAIL|%v|%s", err, string(key))
-				}
-				r.Close()
-			}
-
-			//清理掉正常的队列中的数据
-			self.Delete(item.Topic, item.MessageId)
+			self.Expired(item.Topic, item.MessageId)
 		}
 		return true
 	})
@@ -290,7 +304,6 @@ func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) 
 		SuccGroups:      entity.SuccGroups,
 		NextDeliverTime: entity.NextDeliverTime,
 		DeliverCount:    entity.DeliverCount,
-		Commit:          true,
 	}
 	rawOpLog, err := json.Marshal(opLog)
 	if nil != err {
@@ -305,23 +318,14 @@ func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) 
 	}
 
 	item := &recoverItem{
+		index:           -1,
 		Topic:           entity.Topic,
 		MessageId:       entity.MessageId,
 		NextDeliverTime: entity.NextDeliverTime,
 		DeliverCount:    entity.DeliverCount,
 	}
 
-	//更新对应的数据recover数据
-	if actual, loaded := self.recoverMap.LoadOrStore(entity.MessageId, &item); loaded {
-		actual.(*recoverItem).NextDeliverTime = entity.NextDeliverTime
-		actual.(*recoverItem).DeliverCount = entity.DeliverCount
-		//推送更新
-		self.upChan <- actual.(*recoverItem)
-	} else {
-		//之前不存在那么久新增一个
-		self.addChan <- item
-	}
-
+	self.upChan <- item
 	return true
 }
 
@@ -330,127 +334,191 @@ func (self *RocksDbStore) AsyncDelete(topic, messageId string) bool {
 }
 
 func (self *RocksDbStore) AsyncCommit(topic, messageId string) bool {
-	return self.Delete(topic, messageId)
+	return self.Commit(topic, messageId)
 }
 
 func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
-	key := []byte(msgKey(topic, messageId))
-	data, r, err := self.rocksdb.Get(key)
+	batch := self.rocksdb.NewIndexedBatch()
+	key := []byte(msgKeyForHeader(topic, messageId))
+	data, r, err := batch.Get(key)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|QueryMsg|FAIL|%v", err, string(key))
+		log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+		batch.Close()
 		return nil
 	}
 
+	var header protocol.Header
+	err = protocol.UnmarshalPbMessage(data[1:], &header)
+	if nil != err {
+		batch.Close()
+		log.ErrorLog("kite_store", "KiteFileStore|Query.UnmarshalPbMessage|FAIL|%v", err, string(key))
+		return nil
+	}
+	r.Close()
 	var entity *store.MessageEntity
+	//构建body
 	switch data[0] {
 	case protocol.CMD_BYTES_MESSAGE:
-		var bms protocol.BytesMessage
-		if err = protocol.UnmarshalPbMessage(data[1:], &bms); nil == err {
-			entity = store.NewMessageEntity(protocol.NewQMessage(&bms))
+		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
+		if nil != err {
+			batch.Close()
+			log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+			return nil
 		}
 		r.Close()
+		entity = store.NewMessageEntity(protocol.NewQMessage(&protocol.BytesMessage{
+			Header: &header,
+			Body:   body,
+		}))
 	case protocol.CMD_STRING_MESSAGE:
-		var sms protocol.StringMessage
-		if err = protocol.UnmarshalPbMessage(data[1:], &sms); nil == err {
-			entity = store.NewMessageEntity(protocol.NewQMessage(&sms))
+
+		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
+		if nil != err {
+			batch.Close()
+			log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+			return nil
 		}
 		r.Close()
+		entity = store.NewMessageEntity(protocol.NewQMessage(&protocol.StringMessage{
+			Header: &header,
+			Body:   proto.String(string(body)),
+		}))
 	default:
 		log.ErrorLog("kite_store", "KiteFileStore|Query|INVALID|MSGTYPE|%d", data[0])
+		batch.Close()
 		return nil
 	}
 
 	//查询投递操作日志
-	data, r, err = self.rocksdb.Get([]byte(opLogKey(topic, messageId)))
+	data, r, err = batch.Get([]byte(opLogKey(topic, messageId)))
 	if nil != err {
+		batch.Close()
 		if err == pebble.ErrNotFound {
 			return entity
 		} else {
 			return entity
 		}
 	}
-	defer r.Close()
 	var opLog opBody
 	err = json.Unmarshal(data, &opLog)
 	if nil != err {
 		if err != pebble.ErrNotFound {
 			log.ErrorLog("kite_store", "KiteFileStore|QueryLog|FAIL|%v", err)
 		}
+		r.Close()
+		batch.Close()
 		return entity
 	}
-
+	r.Close()
 	//merge data
 	if nil != entity {
-		entity.Commit = opLog.Commit
 		entity.FailGroups = opLog.FailGroups
 		entity.SuccGroups = opLog.SuccGroups
 		entity.NextDeliverTime = opLog.NextDeliverTime
 		entity.DeliverCount = opLog.DeliverCount
 	}
+	batch.Close()
 	return entity
 
 }
 
 func (self *RocksDbStore) Save(entity *store.MessageEntity) bool {
-	data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
-	buff := make([]byte, len(data)+1)
-	buff[0] = entity.MsgType
-	copy(buff[1:], data)
-	err := self.rocksdb.Set([]byte(msgKey(entity.Topic, entity.MessageId)), buff, &pebble.WriteOptions{Sync: true})
+	return self.save0(self.rocksdb, entity)
+}
+
+var slicePool = &sync.Pool{New: func() interface{} {
+	return make([]byte, 0, 2*1024)
+}}
+
+//存储数据
+func (self *RocksDbStore) save0(rocksdb *pebble.DB, entity *store.MessageEntity) bool {
+	batch := rocksdb.NewBatch()
+	rawHeader, _ := protocol.MarshalPbMessage(entity.Header)
+
+	arr := slicePool.Get().([]byte)
+
+	buff := bytes.NewBuffer(arr)
+	buff.WriteByte(entity.MsgType)
+	buff.Write(rawHeader)
+	//header
+	err := batch.Set([]byte(msgKeyForHeader(entity.Topic, entity.MessageId)), buff.Bytes(), &pebble.WriteOptions{Sync: true})
 	if nil != err {
+		slicePool.Put(arr[:0])
+		batch.Close()
 		return false
 	}
+	slicePool.Put(arr[:0])
+	switch entity.MsgType {
+	case protocol.CMD_BYTES_MESSAGE:
+		//body
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), entity.GetBody().([]byte), pebble.Sync)
+		if nil != err {
+			batch.Close()
+			return false
+		}
+	case protocol.CMD_STRING_MESSAGE:
+		//body
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), []byte(entity.GetBody().(string)), pebble.Sync)
+		if nil != err {
+			batch.Close()
+			return false
+		}
+
+	}
+	batch.Commit(&pebble.WriteOptions{Sync: true})
+	//提交
 	return true
 }
 
 func (self *RocksDbStore) Commit(topic, messageId string) bool {
-	opLog := opBody{
-		MessageId:       messageId,
-		Topic:           topic,
-		Commit:          true,
-		NextDeliverTime: 0,
-		DeliverCount:    0,
-	}
-	rawOpLog, err := json.Marshal(opLog)
-	if nil != err {
-		return false
-	}
 	//存储消息已提交
-	err = self.rocksdb.Set([]byte(opLogKey(topic, messageId)), rawOpLog, pebble.Sync)
+	rawHeader, r, err := self.rocksdb.Get([]byte(msgKeyForHeader(topic, messageId)))
+	if nil != err {
+		r.Close()
+		return false
+	}
+
+	var header protocol.Header
+	err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
+	if nil != err {
+		r.Close()
+		log.ErrorLog("kite_store", "KiteFileStore|Commit.UnmarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
+		return false
+	}
+	r.Close()
+	header.Commit = proto.Bool(true)
+	newRawHeader, err := protocol.MarshalPbMessage(&header)
+	if nil != err {
+		log.ErrorLog("kite_store", "KiteFileStore|Commit.MarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
+		return false
+	}
+	rawHeader = append(append(rawHeader[:0], rawHeader[0]), newRawHeader...)
+	//body
+	err = self.rocksdb.Set([]byte(msgKeyForHeader(topic, messageId)), rawHeader, pebble.NoSync)
 	if nil != err {
 		return false
 	}
+
 	return true
 }
 
 func (self *RocksDbStore) Rollback(topic, messageId string) bool {
-
-	//清理掉内存中的索引及recover
-	if actual, loaded := self.recoverMap.LoadAndDelete(messageId); loaded {
-		//清理掉需要recover的数据
-		self.delChan <- actual.(*recoverItem)
-	}
-
-	batch := self.rocksdb.NewBatch()
-	batch.Delete([]byte(msgKey(topic, messageId)), pebble.NoSync)
-	batch.Delete([]byte(opLogKey(topic, messageId)), pebble.NoSync)
-	batch.Commit(pebble.Sync)
-
-	return true
+	return self.Delete(topic, messageId)
 }
 
 func (self *RocksDbStore) Delete(topic, messageId string) bool {
 
-	//清理掉内存中的索引及recover
-	if actual, loaded := self.recoverMap.LoadAndDelete(messageId); loaded {
-		//清理掉需要recover的数据
-		self.delChan <- actual.(*recoverItem)
+	//清理掉需要recover的数据
+	if _, loaded := self.recoverMap.Load(msgKeyForHeader(topic, messageId)); loaded {
+		self.delChan <- &recoverItem{Topic: topic, MessageId: messageId}
 	}
 
 	batch := self.rocksdb.NewBatch()
-	batch.Delete([]byte(msgKey(topic, messageId)), pebble.Sync)
-	batch.Delete([]byte(opLogKey(topic, messageId)), pebble.Sync)
-	batch.Commit(pebble.Sync)
+	batch.Delete([]byte(msgKeyForHeader(topic, messageId)), pebble.NoSync)
+	batch.Delete([]byte(msgKeyForBody(topic, messageId)), pebble.NoSync)
+	batch.Delete([]byte(opLogKey(topic, messageId)), pebble.NoSync)
+	batch.Commit(pebble.NoSync)
+
 	return true
 }
 
@@ -461,15 +529,19 @@ func (self *RocksDbStore) Expired(topic, messageId string) bool {
 	entity := self.Query(topic, messageId)
 	if nil != entity {
 		//将数据搬迁到DLQ中
-		data := protocol.MarshalMessage(entity.Header, entity.MsgType, entity.GetBody())
-		buff := make([]byte, len(data)+1)
-		buff[0] = entity.MsgType
-		copy(buff[1:], data)
-		err := self.rockDLQ.Set([]byte(entity.Topic+":"+entity.MessageId), buff, &pebble.WriteOptions{Sync: true})
-		if nil != err {
+		if succ := self.save0(self.rockDLQ, entity); !succ {
 			return false
 		}
-
+		//查询投递操作日志
+		logKey := opLogKey(topic, messageId)
+		data, r, err := self.rocksdb.Get([]byte(logKey))
+		if nil == err {
+			err = self.rockDLQ.Set([]byte(logKey), data, pebble.NoSync)
+			if nil != err {
+				log.ErrorLog("kite_store", "KiteFileStore|Expired.Set|FAIL|%v|%s", err, string(logKey))
+			}
+			r.Close()
+		}
 		//清理掉正常的队列中的数据
 		self.Delete(topic, messageId)
 	}
@@ -500,12 +572,32 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 
 	//获取对应的实体
 	entities := make([]*store.MessageEntity, 0, len(response.items))
+	batch := self.rocksdb.NewIndexedBatch()
 	for _, item := range response.items {
-		entity := &store.MessageEntity{}
-		entity.Topic = item.Topic
-		entity.MessageId = item.MessageId
+
+		key := msgKeyForHeader(item.Topic, item.MessageId)
+		rawHeader, hr, err := batch.Get([]byte(key))
+		if nil != err {
+			continue
+		}
+		var header protocol.Header
+		err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
+		if nil != err {
+			hr.Close()
+			log.ErrorLog("kite_store", "KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v", err, string(key))
+			continue
+		}
+		hr.Close()
+
+		//创建消息
+		entity := &store.MessageEntity{
+			Header:    &header,
+			MessageId: header.GetMessageId(),
+			Topic:     header.GetTopic(),
+			Commit:    header.GetCommit()}
+
 		//查询投递操作日志
-		data, r, err := self.rocksdb.Get([]byte(opLogKey(item.Topic, item.MessageId)))
+		data, r, err := batch.Get([]byte(opLogKey(item.Topic, item.MessageId)))
 		if nil != err {
 			if err == pebble.ErrNotFound {
 				continue
@@ -526,14 +618,12 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 		}
 
 		//merge data
-		entity.Commit = opLog.Commit
 		entity.FailGroups = opLog.FailGroups
 		entity.SuccGroups = opLog.SuccGroups
 		entity.NextDeliverTime = opLog.NextDeliverTime
 		entity.DeliverCount = opLog.DeliverCount
-		log.InfoLog("kite_store", "KiteFileStore|PageQueryEntity|%+v", opLog)
 		entities = append(entities, entity)
 	}
-
+	batch.Close()
 	return response.hasMore, entities
 }

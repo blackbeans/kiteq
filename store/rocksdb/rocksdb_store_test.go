@@ -76,19 +76,17 @@ func TestRocksDbStore_Expired(t *testing.T) {
 
 //更新消息
 func TestRocksDbStore_AsyncUpdate(t *testing.T) {
-	TestRocksDbStore_Save(t)
-
-	//创建消息
+	TestRocksDbStore_AsyncCommit(t)
 	msg := &protocol.BytesMessage{}
 	msg.Header = &protocol.Header{
 		MessageId:    proto.String("26c03f00665862591f696a980b5ac"),
 		Topic:        proto.String("trade"),
 		MessageType:  proto.String("pay-succ"),
-		ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+		ExpiredTime:  proto.Int64(time.Now().Add(24 * time.Hour).Unix()),
 		DeliverLimit: proto.Int32(100),
 	}
 
-	now := time.Now().Add(20*time.Minute).UnixNano() / int64(time.Millisecond)
+	now := time.Now().Add(20 * time.Minute).Unix()
 	entity := store.NewMessageEntity(protocol.NewQMessage(msg))
 	entity.FailGroups = []string{"s-vip-service"}
 	entity.SuccGroups = []string{"s-profile-service", "s-group-service"}
