@@ -125,10 +125,10 @@ KiteQ ![image](./doc/logo.jpg)
 
     5. Run sh kiteq.sh 
 
-    Amazing KiteServer Cluster has been start ...
+    KiteServer Cluster has been start ...
 
 
-*** Note :
+* Note :
     
         KiteQ's Config is conf/cluster.toml
             
@@ -136,11 +136,39 @@ KiteQ ![image](./doc/logo.jpg)
         
         Recommend Using supervisor to manager kiteq .
          
-*** Registry Of KiteQ :
+* Registry Of KiteQ :
 
         zk:    zk://localhost:2181,localhost:2181 (stable)
 
         etcd:  etcd://http://localhost:2379,http://localhost:2379 (unstable)
+
+#### KiteQ Start Mode
+
+- How to use Rocksdb for kiteq's message storage
+
+```shell
+
+ go run kiteq.go -clusterName=rocksdb_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
+ 
+```
+
+- How to use memory for kiteq's message storage
+
+```shell
+
+ go run kiteq.go -clusterName=memory_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
+ 
+```
+
+- How to use RDS/Mysql for kiteq's message storage
+
+```shell
+  
+  install mysql &  initial message table by running  store/mysql/table.sh 
+  
+  go run kiteq.go -clusterName=mysql_dev -configPath=./conf/cluster.toml -pport=13801 -bind=:13800
+ 
+```
 
 ##### Client Supported：
 
