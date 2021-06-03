@@ -1,14 +1,16 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/blackbeans/kiteq-common/protocol"
+	log "github.com/blackbeans/log4go"
 )
 
 //mysql的参数
@@ -39,7 +41,7 @@ type KiteMysqlStore struct {
 	serverName   string
 }
 
-func NewKiteMysql(options MysqlOptions, serverName string) *KiteMysqlStore {
+func NewKiteMysql(ctx context.Context, options MysqlOptions, serverName string) *KiteMysqlStore {
 
 	shard := newDbShard(options)
 
@@ -54,7 +56,6 @@ func NewKiteMysql(options MysqlOptions, serverName string) *KiteMysqlStore {
 		flushPeriod:  options.FlushPeriod,
 		serverName:   serverName,
 		stop:         false}
-	ins.Start()
 
 	log.InfoLog("kite_store", "NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
 	return ins
@@ -264,12 +265,12 @@ var filterbody = func(colname string) bool {
 }
 
 //没有body的entity
-func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliveryTime int64, startIdx, limit int) (bool, []*MessageEntity) {
+func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliverySeconds int64, startIdx, limit int) (bool, []*MessageEntity) {
 
 	s := self.sqlwrapper.hashPQSQL(hashKey)
 	// log.Println(s)
 	rows, err := self.dbshard.FindSlave(hashKey).
-		Query(s, kiteServer, time.Now().Unix(), nextDeliveryTime, startIdx, limit+1)
+		Query(s, kiteServer, time.Now().Unix(), nextDeliverySeconds, startIdx, limit+1)
 	if err != nil {
 		log.ErrorLog("kite_store", "KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
 		return false, nil
@@ -283,7 +284,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 		fc := self.convertor.convertFields(entity, filterbody)
 		err := rows.Scan(fc...)
 		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliveryTime, startIdx)
+			log.ErrorLog("kite_store", "KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliverySeconds, startIdx)
 		} else {
 
 			self.convertor.Convert2Entity(fc, entity, filterbody)

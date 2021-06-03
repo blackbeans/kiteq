@@ -2,6 +2,7 @@ package file
 
 import (
 	"container/list"
+	"context"
 	"encoding/json"
 	"fmt"
 	. "kiteq/store"
@@ -43,7 +44,7 @@ type KiteFileStore struct {
 	running bool
 }
 
-func NewKiteFileStore(dir string, batchFlush int, maxcap int, checkPeriod time.Duration) *KiteFileStore {
+func NewKiteFileStore(ctx context.Context, dir string, batchFlush int, maxcap int, checkPeriod time.Duration) *KiteFileStore {
 
 	datalink := make([]*list.List, 0, CONCURRENT_LEVEL)
 	oplogs := make([]map[string]*list.Element, 0, CONCURRENT_LEVEL)
@@ -180,7 +181,9 @@ func (self *KiteFileStore) Monitor() string {
 	return fmt.Sprintf("\nmessage-length:%v\t writeChannel:%d \n", self.Length(), len(self.snapshot.writeChannel))
 }
 
-func (self *KiteFileStore) AsyncUpdate(entity *MessageEntity) bool { return self.UpdateEntity(entity) }
+func (self *KiteFileStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
+	return self.UpdateEntity(entity)
+}
 func (self *KiteFileStore) AsyncDelete(topic, messageId string) bool {
 	return self.Delete(topic, messageId)
 }

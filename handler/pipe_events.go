@@ -2,11 +2,12 @@ package handler
 
 import (
 	"fmt"
+	"kiteq/store"
+	"time"
+
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/registry"
 	"github.com/blackbeans/turbo"
-	"kiteq/store"
-	"time"
 )
 
 type iauth interface {
@@ -176,6 +177,7 @@ func (self *deliverResultEvent) wait(timeout time.Duration, groupBinds map[strin
 
 	//等待回调结果
 	for g, f := range self.futures {
+
 		resp, err := f.Get(tch)
 
 		if err == turbo.ERR_TIMEOUT {

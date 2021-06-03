@@ -3,9 +3,10 @@ package mysql
 import (
 	"database/sql"
 	"encoding/json"
-	log "github.com/blackbeans/log4go"
 	. "kiteq/store"
 	"time"
+
+	log "github.com/blackbeans/log4go"
 )
 
 func (self *KiteMysqlStore) Start() {
@@ -165,7 +166,7 @@ func (self *KiteMysqlStore) AsyncCommit(topic, messageid string) bool {
 
 }
 
-func (self *KiteMysqlStore) AsyncUpdate(entity *MessageEntity) bool {
+func (self *KiteMysqlStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
 	idx := self.dbshard.HashId(entity.MessageId)
 	self.batchUpChan[idx] <- entity
 	return true

@@ -27,10 +27,10 @@ func (self *MockKiteStore) Length() map[string] /*topic*/ int {
 	return make(map[string] /*topic*/ int, 1)
 }
 
-func (self *MockKiteStore) AsyncUpdate(entity *MessageEntity) bool   { return true }
-func (self *MockKiteStore) AsyncDelete(topic, messgeid string) bool  { return true }
-func (self *MockKiteStore) AsyncCommit(topic, messageId string) bool { return true }
-func (self *MockKiteStore) Expired(topic, messageId string) bool     { return true }
+func (self *MockKiteStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool { return true }
+func (self *MockKiteStore) AsyncDelete(topic, messgeid string) bool             { return true }
+func (self *MockKiteStore) AsyncCommit(topic, messageId string) bool            { return true }
+func (self *MockKiteStore) Expired(topic, messageId string) bool                { return true }
 
 func (self *MockKiteStore) Query(topic, messageId string) *MessageEntity {
 	entity := NewMessageEntity(protocol.NewQMessage(buildBytesMessage(messageId)))
