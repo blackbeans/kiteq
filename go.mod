@@ -10,7 +10,7 @@ require (
 	github.com/blackbeans/turbo v0.0.0-20210601083033-45af22378098
 	github.com/cockroachdb/pebble v0.0.0-20210526183633-dd2a545f5d75
 	github.com/go-sql-driver/mysql v1.3.1-0.20170703061436-bf7f34fef176
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/naoina/toml v0.1.0
