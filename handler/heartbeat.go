@@ -3,7 +3,7 @@ package handler
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/turbo"
-	// 	log "github.com/blackbeans/log4go"
+	// 	log "github.com/sirupsen/logrus"
 )
 
 type HeartbeatHandler struct {
@@ -42,7 +42,7 @@ func (self *HeartbeatHandler) Process(ctx *turbo.DefaultPipelineContext, event t
 	//发起一个网络请求
 	remoteEvent := turbo.NewRemotingEvent(packet, []string{hevent.RemoteClient.RemoteAddr()})
 
-	// log.InfoLog("kite_handler", "HeartbeatHandler|%s|Process|Recieve|Ping|%s|%d\n", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
+	// log.Infof( "HeartbeatHandler|%s|Process|Recieve|Ping|%s|%d", self.GetName(), hevent.RemoteClient.RemoteAddr(), hevent.Version)
 	ctx.SendForward(remoteEvent)
 	return nil
 }

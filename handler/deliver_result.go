@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 )
 
 type redeliveryWindows []RedeliveryWindow
@@ -67,7 +67,7 @@ func NewDeliverResultHandler(name string, deliverTimeout time.Duration, kitestor
 	dhandler.deliveryRegistry = deliveryRegistry
 	//排好序
 	sort.Sort(dhandler.rw)
-	log.InfoLog("kite_handler", "RedeliveryWindows|%s\n ", dhandler.rw)
+	log.Infof("RedeliveryWindows|%s", dhandler.rw)
 	return dhandler
 }
 
@@ -110,11 +110,11 @@ func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, eve
 		close(fevent.attemptDeliver)
 	}
 
-	log.InfoLog("kite_handler", "%s|Process|SEND RESULT:\n"+
-		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d\n"+
-		"CreateTime:%d\nproperties:%v\n"+
-		"AttemptDeliver:%v\nFly:%v\n"+
-		"NextDeliverTime:%d\n"+
+	log.Infof("%s|Process|SEND RESULT:"+
+		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d"+
+		"CreateTime:%d\nproperties:%v"+
+		"AttemptDeliver:%v\nFly:%v"+
+		"NextDeliverTime:%d"+
 		"DeliverGroups:%v\nSUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
 		self.GetName(),
 		fevent.header.GetMessageId(), fevent.header.GetTopic(),
@@ -162,7 +162,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 	} else {
 		//如果投递次数大于3次并且失败了，那么需要持久化一下然后只能等待后续的recover重投了
 		//log deliver fail
-		// log.DebugLog("kite_handler", "DeliverResultHandler|checkRedelivery|messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
+		// log.Debugf( "DeliverResultHandler|checkRedelivery|messageId:%s|Topic:%s|MessageType:%s|DeliverCount:%d|SUCCGROUPS:%s|FAILGROUPS:%s|",
 		// 	fevent.deliverEvent.messageId, fevent.deliverEvent.topic, fevent.deliverEvent.messageType,
 		// 	fevent.deliverCount, fevent.deliverEvent.succGroups, fevent.deliverFailGroups)
 	}
@@ -204,7 +204,7 @@ func (self *DeliverResultHandler) nextDeliveryTime(deliverCount int32) int64 {
 		}
 	}
 
-	// log.InfoLog("kite_handler", "DeliverResultHandler|nextDeliveryTime|%d|%d\n", deliverCount, delayTime)
+	// log.Infof( "DeliverResultHandler|nextDeliveryTime|%d|%d", deliverCount, delayTime)
 	//总是返回一个区间的不然是个bug
 
 	//设置一下下次投递时间为当前时间+延时时间

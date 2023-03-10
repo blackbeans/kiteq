@@ -3,10 +3,13 @@ package server
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"github.com/blackbeans/kiteq-common/stat"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"github.com/naoina/toml"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"time"
@@ -107,10 +110,34 @@ func Parse() ServerOption {
 		if nil != err {
 			panic("loadTomlConf|FAIL|" + err.Error())
 		}
+	}
 
+	//加载log配置
+	raw, err := ioutil.ReadFile(so.logxml)
+	if nil != err {
+		panic(fmt.Errorf("read logxml fail %s ,%v", so.logxml, err))
+	}
+
+	var loggers []*lumberjack.Logger
+	err = yaml.Unmarshal(raw, &loggers)
+	if nil != err {
+		panic(fmt.Errorf("yaml.Unmarshal fail %s ,%v", so.logxml, err))
 	}
 	//加载log4go的配置
-	log.LoadConfiguration(so.logxml)
+
+	//&lumberjack.Logger{
+	//	// 日志输出文件路径
+	//	Filename: "./logs/kiteq.log",
+	//	// 日志文件最大 size, 单位是 MB
+	//	MaxSize: 500, // megabytes
+	//	// 最大过期日志保留的个数
+	//	MaxBackups: 3,
+	//	// 保留过期文件的最大时间间隔,单位是天
+	//	MaxAge: 28, //days
+	//	// 是否需要压缩滚动日志, 使用的 gzip 压缩
+	//	Compress: true, // disabled by default
+	//}
+	log.SetOutput(loggers[0])
 	return so
 }
 
@@ -124,7 +151,7 @@ func loadTomlConf(path, clusterName, bindAddr string, pprofPort int, so *ServerO
 	if nil != rerr {
 		return rerr
 	}
-	log.DebugLog("kite_server", "ServerConfig|Parse|toml:%s", string(buff))
+	log.Debugf("ServerConfig|Parse|toml:%s", string(buff))
 	//读取配置
 	var option Option
 	err = toml.Unmarshal(buff, &option)

@@ -119,6 +119,6 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("TestRocksDbStore_PageQueryEntity:%+v\n", entities)
+	t.Logf("TestRocksDbStore_PageQueryEntity:%+v", entities)
 
 }

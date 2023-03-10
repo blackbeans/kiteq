@@ -15,8 +15,8 @@ import (
 	"kiteq/store/parser"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 )
 
 type KiteQServer struct {
@@ -123,26 +123,26 @@ func (self *KiteQServer) Start() {
 			event := turbo.NewPacketEvent(c, p)
 			err := self.pipeline.FireWork(event)
 			if nil != err {
-				log.ErrorLog("kite_server", "RemotingServer|onPacketRecieve|FAIL|%s", err)
+				log.Errorf("RemotingServer|onPacketReceive|FAIL|%s", err)
 
 			} else {
-				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t\n", rclient.RemoteAddr(), packet)
+				// log.Debug("RemotingServer|onPacketRecieve|SUCC|%s|%t", rclient.RemoteAddr(), packet)
 			}
 			return err
 		})
 
 	err := self.remotingServer.ListenAndServer()
 	if nil != err {
-		log.Crashf("KiteQServer|RemotionServer|START|FAIL|%s|%s\n", err, self.kc.so.bindHost)
+		log.Fatalf("KiteQServer|RemotionServer|START|FAIL|%s|%s", err, self.kc.so.bindHost)
 	} else {
-		log.InfoLog("kite_server", "KiteQServer|RemotionServer|START|SUCC|%s\n", self.kc.so.bindHost)
+		log.Infof("KiteQServer|RemotionServer|START|SUCC|%s", self.kc.so.bindHost)
 	}
 	//推送可发送的topic列表并且获取了对应topic下的订阅关系
 	succ := self.exchanger.PushQServer(self.kc.so.bindHost, self.kc.so.topics)
 	if !succ {
-		log.Crashf("KiteQServer|PushQServer|FAIL|%s|%s\n", err, self.kc.so.topics)
+		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s", err, self.kc.so.topics)
 	} else {
-		log.InfoLog("kite_server", "KiteQServer|PushQServer|SUCC|%s\n", self.kc.so.topics)
+		log.Infof("kite_server", "KiteQServer|PushQServer|SUCC|%s", self.kc.so.topics)
 	}
 
 	//开启流量统计
@@ -177,16 +177,16 @@ func (self *KiteQServer) startDLQ() {
 			func() {
 				defer func() {
 					if err := recover(); nil != err {
-						log.ErrorLog("kite_server", "KiteQServer|startDLQ|FAIL|%s|%s", err, time.Now())
+						log.Errorf("KiteQServer|startDLQ|FAIL|%s|%s", err, time.Now())
 					}
 				}()
 				//开始做迁移
 				self.kitedb.MoveExpired()
 			}()
-			log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
+			log.Infof("KiteQServer|startDLQ|SUCC|%s", time.Now())
 		}
 	}()
-	log.InfoLog("kite_server", "KiteQServer|startDLQ|SUCC|%s", time.Now())
+	log.Infof("KiteQServer|startDLQ|SUCC|%s", time.Now())
 }
 
 //处理reload配置
@@ -194,7 +194,7 @@ func (self *KiteQServer) HandleReloadConf(resp http.ResponseWriter, req *http.Re
 	so := ServerOption{}
 	err := loadTomlConf(self.kc.so.configPath, self.kc.so.clusterName, self.kc.so.bindHost, self.kc.so.pprofPort, &so)
 	if nil != err {
-		log.ErrorLog("kite_server", "KiteQServer|HandleReloadConf|FAIL|%s", err)
+		log.Errorf("KiteQServer|HandleReloadConf|FAIL|%s", err)
 	}
 
 	//新增或者减少topics
@@ -202,9 +202,9 @@ func (self *KiteQServer) HandleReloadConf(resp http.ResponseWriter, req *http.Re
 		//推送可发送的topic列表并且获取了对应topic下的订阅关系
 		succ := self.exchanger.PushQServer(self.kc.so.bindHost, so.topics)
 		if !succ {
-			log.ErrorLog("kite_server", "KiteQServer|HandleReloadConf|PushQServer|FAIL|%s|%s\n", err, so.topics)
+			log.Errorf("KiteQServer|HandleReloadConf|PushQServer|FAIL|%s|%s", err, so.topics)
 		} else {
-			log.InfoLog("kite_server", "KiteQServer|HandleReloadConf|PushQServer|SUCC|%s\n", so.topics)
+			log.Infof("KiteQServer|HandleReloadConf|PushQServer|SUCC|%s", so.topics)
 		}
 		//重置数据
 		self.kc.so = so
@@ -233,6 +233,6 @@ func (self *KiteQServer) Shutdown() {
 	self.kitedb.Stop()
 	self.clientManager.Shutdown()
 	self.remotingServer.Shutdown()
-	log.InfoLog("kite_server", "KiteQServer|Shutdown...")
+	log.Infof("KiteQServer|Shutdown...")
 
 }

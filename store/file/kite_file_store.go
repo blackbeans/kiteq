@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //delvier tags
@@ -84,7 +84,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 		var body opBody
 		err := json.Unmarshal(ol.Body, &body)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteFileStore|replay|FAIL|%s|%v", err, ol)
+			log.Errorf("KiteFileStore|replay|FAIL|%s|%v", err, ol)
 			return
 		}
 
@@ -113,7 +113,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 		}
 		l.Unlock()
 	} else {
-		log.ErrorLog("kite_store", "KiteFileStore|replay|INVALID|%s|%s", ol.Body, ol.Op)
+		log.Errorf("KiteFileStore|replay|INVALID|%s|%s", ol.Body, ol.Op)
 	}
 
 }
@@ -129,7 +129,7 @@ func (self *KiteFileStore) Start() {
 		for i, ch := range self.delChan {
 			go self.delSync(fmt.Sprintf("%x", i), ch)
 		}
-		log.InfoLog("kite_store", "KiteFileStore|Start...\t%s", self.Monitor())
+		log.Infof("KiteFileStore|Start...\t%s", self.Monitor())
 	}
 
 }
@@ -146,7 +146,7 @@ func (self *KiteFileStore) Stop() {
 		}
 
 		self.snapshot.Destory()
-		log.InfoLog("kite_store", "KiteFileStore|Stop...")
+		log.Infof("KiteFileStore|Stop...")
 	}
 
 }
@@ -159,7 +159,7 @@ func (self *KiteFileStore) RecoverNum() int {
 func (self *KiteFileStore) Length() map[string]int {
 	defer func() {
 		if err := recover(); nil != err {
-			log.ErrorLog("kite_store", "KiteFileStore|Length|%s", err)
+			log.Errorf("KiteFileStore|Length|%s", err)
 		}
 	}()
 	stat := make(map[string]int, 10)
@@ -178,7 +178,7 @@ func (self *KiteFileStore) Length() map[string]int {
 }
 
 func (self *KiteFileStore) Monitor() string {
-	return fmt.Sprintf("\nmessage-length:%v\t writeChannel:%d \n", self.Length(), len(self.snapshot.writeChannel))
+	return fmt.Sprintf("\nmessage-length:%v\t writeChannel:%d ", self.Length(), len(self.snapshot.writeChannel))
 }
 
 func (self *KiteFileStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
@@ -197,13 +197,13 @@ func (self *KiteFileStore) hash(messageid string) (l *sync.RWMutex, link *list.L
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		log.Errorf("KiteFileStore|hash|INVALID MESSAGEID|%s", messageid)
 		hashId = 0
 	} else {
 		hashId = hashId % CONCURRENT_LEVEL
 	}
 
-	// log.Debug("KiteFileStore|hash|%s|%d\n", messageid, hashId)
+	// log.Debug("KiteFileStore|hash|%s|%d", messageid, hashId)
 
 	//hash part
 	l = self.locks[hashId]
@@ -252,7 +252,7 @@ func (self *KiteFileStore) Query(topic, messageId string) *MessageEntity {
 
 	data, err := self.snapshot.Query(v.Id)
 	if nil != err {
-		log.Error("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
+		log.Errorf("KiteFileStore|Query|Entity|FAIL|%s|%d", err, v.Id)
 		return nil
 	}
 
@@ -268,12 +268,12 @@ func (self *KiteFileStore) Query(topic, messageId string) *MessageEntity {
 		err = protocol.UnmarshalPbMessage(data[1:], &sms)
 		msg = &sms
 	default:
-		log.ErrorLog("kite_store", "KiteFileStore|Query|INVALID|MSGTYPE|%d", msgType)
+		log.Errorf("KiteFileStore|Query|INVALID|MSGTYPE|%d", msgType)
 		return nil
 	}
 
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|Query|UnmarshalPbMessage|Entity|FAIL|%s", err)
+		log.Errorf("KiteFileStore|Query|UnmarshalPbMessage|Entity|FAIL|%s", err)
 		return nil
 	} else {
 		entity := NewMessageEntity(protocol.NewQMessage(msg))
@@ -302,7 +302,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 		_, ok := ol[entity.MessageId]
 		if ok {
 			//duplicate messageId
-			log.ErrorLog("kite_store", "KiteFileStore|Save|Duplicate MessageId|%s", entity.Header)
+			log.Errorf("KiteFileStore|Save|Duplicate MessageId|%s", entity.Header)
 			return false
 		}
 		//value
@@ -324,7 +324,7 @@ func (self *KiteFileStore) Save(entity *MessageEntity) bool {
 
 		obd, err := json.Marshal(ob)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteFileStore|Save|Encode|Op|FAIL|%s", err)
+			log.Errorf("KiteFileStore|Save|Encode|Op|FAIL|%s", err)
 			return false
 		}
 
@@ -362,7 +362,7 @@ func (self *KiteFileStore) Commit(topic, messageId string) bool {
 		v.Commit = true
 		obd, err := json.Marshal(v)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
+			log.Errorf("KiteFileStore|Commit|Encode|Op|FAIL|%s", err)
 			return nil
 		}
 		//write oplog
@@ -407,7 +407,7 @@ func (self *KiteFileStore) UpdateEntity(entity *MessageEntity) bool {
 
 		obd, err := json.Marshal(v)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
+			log.Errorf("KiteFileStore|UpdateEntity|Encode|Op|FAIL|%s", err)
 			return nil
 		}
 		//append log
@@ -447,7 +447,7 @@ func (self *KiteFileStore) Delete(topic, messageId string) bool {
 
 	obd, err := json.Marshal(v)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|Delete|Encode|Op|FAIL|%s", err)
+		log.Errorf("KiteFileStore|Delete|Encode|Op|FAIL|%s", err)
 		return false
 	}
 	cmd := NewCommand(v.Id, messageId, nil, obd)
@@ -458,7 +458,7 @@ func (self *KiteFileStore) Delete(topic, messageId string) bool {
 		return false
 	}
 	return true
-	// log.Info("KiteFileStore|innerDelete|%s\n", messageId)
+	// log.Info("KiteFileStore|innerDelete|%s", messageId)
 
 }
 

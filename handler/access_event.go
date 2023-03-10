@@ -31,7 +31,7 @@ func (self *AccessHandler) cast(event turbo.IEvent) (val *accessEvent, ok bool) 
 
 func (self *AccessHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
-	// log.Debug("accessEvent|Process|%s|%t\n", self.GetName(), event)
+	// log.Debug("accessEvent|Process|%s|%t", self.GetName(), event)
 
 	aevent, ok := self.cast(event)
 	if !ok {

@@ -3,8 +3,8 @@ package handler
 import (
 	"errors"
 	"fmt"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 	"time"
 )
@@ -77,7 +77,7 @@ func (self *PersistentHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 func (self *PersistentHandler) sendUnFlyMessage(ctx *turbo.DefaultPipelineContext, pevent *persistentEvent) {
 	saveSucc := false
 
-	// log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
+	// log.Debugf( "PersistentHandler|sendUnFlyMessage|%s", pevent.entity)
 	var storeCostMs int64
 	//提交并且开启优化
 	if self.deliveryFirst &&
@@ -102,13 +102,13 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *turbo.DefaultPipelineContex
 			saveSucc = self.kitestore.Save(pevent.entity)
 			storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
 			if storeCostMs >= 200 {
-				log.WarnLog("kite_store", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
+				log.Warnf("PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
 			}
 
 			//再投递
 			self.send(ctx, pevent, nil)
 		} else {
-			log.DebugLog("kite_handler", "PersistentHandler|sendUnFlyMessage|FLY|%s", pevent.entity)
+			log.Debugf("PersistentHandler|sendUnFlyMessage|FLY|%s", pevent.entity)
 		}
 
 	} else {
@@ -117,7 +117,7 @@ func (self *PersistentHandler) sendUnFlyMessage(ctx *turbo.DefaultPipelineContex
 		saveSucc = self.kitestore.Save(pevent.entity)
 		storeCostMs = (time.Now().UnixNano() - now) / (1000 * 1000)
 		if storeCostMs >= 200 {
-			log.WarnLog("kite_store", "PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
+			log.Warnf("PersistentHandler|Save Too Long|cost:%d ms|%v", storeCostMs, pevent.entity.Header.String())
 		}
 
 		if saveSucc && pevent.entity.Commit {
@@ -144,5 +144,5 @@ func (self *PersistentHandler) send(ctx *turbo.DefaultPipelineContext, pevent *p
 	preDeliver.attemptDeliver = ch
 	ctx.SendForward(preDeliver)
 
-	// log.DebugLog("kite_handler", "PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
+	// log.Debugf( "PersistentHandler|send|FULL|TRY SEND BY CURRENT GO ....")
 }

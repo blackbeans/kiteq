@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 	"os"
 	"time"
@@ -44,7 +44,7 @@ func (self *AcceptHandler) cast(event turbo.IEvent) (val *acceptEvent, ok bool) 
 var INVALID_MSG_TYPE_ERROR = errors.New("INVALID MSG TYPE !")
 
 func (self *AcceptHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
-	// log.Debug("AcceptHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.Debug("AcceptHandler|Process|%s|%t", self.GetName(), event)
 
 	ae, ok := self.cast(event)
 	if !ok {
@@ -56,7 +56,7 @@ func (self *AcceptHandler) Process(ctx *turbo.DefaultPipelineContext, event turb
 	switch ae.msgType {
 	case protocol.CMD_DELIVER_ACK:
 		//收到投递结果直接attach响应
-		// log.DebugLog("kite_handler", "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
+		// log.Debugf( "AcceptHandler|DELIVER_ACK|%s|%t", ae.opaque, ae.msg)
 		ae.client.Attach(ae.opaque, ae.msg)
 		return nil
 	case protocol.CMD_HEARTBEAT:
@@ -71,7 +71,7 @@ func (self *AcceptHandler) Process(ctx *turbo.DefaultPipelineContext, event turb
 		msg = store.NewMessageEntity(protocol.NewQMessage(ae.msg.(*protocol.StringMessage)))
 	default:
 		//这只是一个bug不支持的数据类型能给你
-		log.WarnLog("kite_handler", "AcceptHandler|Process|%s|%t", INVALID_MSG_TYPE_ERROR, ae.msg)
+		log.Warnf("AcceptHandler|Process|%s|%t", INVALID_MSG_TYPE_ERROR, ae.msg)
 	}
 
 	//如果申请流量失败则放弃

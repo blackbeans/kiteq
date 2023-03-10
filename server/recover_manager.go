@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 )
 
 //-----------recover的handler
@@ -43,20 +43,20 @@ func (self *RecoverManager) Start() {
 		go self.startRecoverTask(fmt.Sprintf("%x", i))
 	}
 
-	log.InfoLog("kite_recover", "RecoverManager|Start|SUCC....")
+	log.Infof("RecoverManager|Start|SUCC....")
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
 	defer func() {
 
-		log.ErrorLog("kite_recover", "RecoverManager|startRecoverTask|STOPPED|%s|%v", hashKey)
+		log.Errorf("RecoverManager|startRecoverTask|STOPPED|%s|%v", hashKey)
 
 	}()
 	// log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
 	for !self.isClose {
 		//开始
 		count := self.redeliverMsg(hashKey, time.Now())
-		log.InfoLog("kite_recover", "RecoverManager|endRecoverTask|%s|count:%d....", hashKey, count)
+		log.Infof("RecoverManager|endRecoverTask|%s|count:%d....", hashKey, count)
 		time.Sleep(self.recoverPeriod)
 	}
 
@@ -78,7 +78,7 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 			break
 		}
 		// d, _ := json.Marshal(entities[0].Header)
-		// log.InfoLog("kite_recover", "RecoverManager|redeliverMsg|%d|%s", now.Unix(), string(d))
+		// log.Infof( "RecoverManager|redeliverMsg|%d|%s", now.Unix(), string(d))
 		succ := self.recoveLimiter.AcquireCount(len(entities))
 		if succ {
 			//开始发起重投

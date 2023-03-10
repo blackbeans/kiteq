@@ -2,8 +2,8 @@ package exchange
 
 import (
 	"github.com/blackbeans/kiteq-common/registry"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 	"math"
 	"sort"
 	"strings"
@@ -87,7 +87,7 @@ func (self *BindExchanger) Topic2Groups() map[string][]string {
 func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	err := self.registryCenter.PublishQServer(hostport, topics)
 	if nil != err {
-		log.ErrorLog("kite_bind", "BindExchanger|PushQServer|FAIL|%s|%s|%s", err, hostport, topics)
+		log.Errorf("BindExchanger|PushQServer|FAIL|%s|%s|%s", err, hostport, topics)
 		return false
 	}
 
@@ -108,7 +108,7 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	}
 	//存在需要删除的topics
 	if len(delTopics) > 0 {
-		self.registryCenter.UnpushlishQServer(hostport, delTopics)
+		self.registryCenter.UnpublishQServer(hostport, delTopics)
 		func() {
 			self.lock.Lock()
 			defer self.lock.Unlock()
@@ -117,7 +117,7 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 				delete(self.exchanger, t)
 			}
 		}()
-		log.InfoLog("kite_bind", "BindExchanger|UnpushlishQServer|SUCC|%s|%s", hostport, delTopics)
+		log.Infof("BindExchanger|UnpushlishQServer|SUCC|%s|%s", hostport, delTopics)
 	}
 
 	//处理新增topic
@@ -143,7 +143,7 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	}()
 	//订阅订阅关系变更
 	succ := self.subscribeBinds(addedTopics)
-	log.InfoLog("kite_bind", "BindExchanger|PushQServer|SUCC|%s|%s", hostport, topics)
+	log.Infof("BindExchanger|PushQServer|SUCC|%s|%s", hostport, topics)
 	return succ
 }
 
@@ -154,12 +154,12 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 	for _, topic := range topics {
 		binds, err := self.registryCenter.GetBindAndWatch(topic)
 		if nil != err {
-			log.ErrorLog("kite_bind", "BindExchanger|SubscribeBinds|FAIL|%s|%s", err, topic)
+			log.Errorf("BindExchanger|SubscribeBinds|FAIL|%s|%s", err, topic)
 			return false
 		} else {
 			for groupId, bs := range binds {
 				self.onBindChanged(topic, groupId, bs)
-				log.InfoLog("kite_bind", "BindExchanger|SubscribeBinds|SUCC|%s|%s", topic, binds)
+				log.Infof("BindExchanger|SubscribeBinds|SUCC|%s|%s", topic, binds)
 			}
 		}
 	}
@@ -212,7 +212,7 @@ func (self *BindExchanger) NodeChange(path string, eventType registry.RegistryEv
 		if len(split) < 4 {
 			if eventType == registry.Created {
 				//不合法的订阅璐姐
-				log.ErrorLog("kite_bind", "BindExchanger|NodeChange|INVALID SUB PATH |%s|%t", path, childNode)
+				log.Errorf("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t", path, childNode)
 			}
 			return
 		}
@@ -224,7 +224,7 @@ func (self *BindExchanger) NodeChange(path string, eventType registry.RegistryEv
 		//如果topic下无订阅分组节点，直接删除该topic
 		if len(childNode) <= 0 {
 			self.onBindChanged(topic, "", nil)
-			log.ErrorLog("kite_bind", "BindExchanger|NodeChange|无子节点|%s|%s", path, childNode)
+			log.Errorf("BindExchanger|NodeChange|无子节点|%s|%s", path, childNode)
 			return
 		}
 
@@ -234,7 +234,7 @@ func (self *BindExchanger) NodeChange(path string, eventType registry.RegistryEv
 
 			bm, err := self.registryCenter.GetBindAndWatch(topic)
 			if nil != err {
-				log.ErrorLog("kite_bind", "BindExchanger|NodeChange|获取订阅关系失败|%s|%s", path, childNode)
+				log.Errorf("BindExchanger|NodeChange|获取订阅关系失败|%s|%s", path, childNode)
 			}
 
 			//如果topic下没有订阅关系分组则青琉璃
@@ -268,7 +268,7 @@ func (self *BindExchanger) DataChange(path string, binds []*registry.Binding) {
 		self.onBindChanged(topic, groupId, binds)
 
 	} else {
-		log.WarnLog("kite_bind", "BindExchanger|DataChange|非SUB节点变更|%s", path)
+		log.Warnf("BindExchanger|DataChange|非SUB节点变更|%s", path)
 	}
 
 }
@@ -283,7 +283,7 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*regi
 
 	//不是当前服务可以处理的topic则直接丢地啊哦
 	if sort.SearchStrings(self.topics, topic) == len(self.topics) {
-		log.WarnLog("kite_bind", "BindExchanger|onBindChanged|UnAccept Bindings|%s|%s|%s", topic, self.topics, newbinds)
+		log.Warnf("BindExchanger|onBindChanged|UnAccept Bindings|%s|%s|%s", topic, self.topics, newbinds)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*regi
 		if !liok || ((int32)(li.PermitsPerSecond()) != waterMark) {
 			lim, err := turbo.NewBurstyLimiter(int(waterMark/2), int(waterMark))
 			if nil != err {
-				log.ErrorLog("kite_bind", "BindExchanger|onBindChanged|NewBurstyLimiter|FAIL|%v|%v|%v|%v", err, topic, groupId, waterMark)
+				log.Errorf("BindExchanger|onBindChanged|NewBurstyLimiter|FAIL|%v|%v|%v|%v", err, topic, groupId, waterMark)
 				lim = self.defaultLimiter
 			}
 			limiter[groupId] = lim
@@ -331,21 +331,21 @@ func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*regi
 func (self *BindExchanger) OnSessionExpired() {
 	err := self.registryCenter.PublishQServer(self.kiteqserver, self.topics)
 	if nil != err {
-		log.ErrorLog("kite_bind", "BindExchanger|OnSessionExpired|PushQServer|FAIL|%s|%s|%s", err, self.kiteqserver, self.topics)
+		log.Errorf("BindExchanger|OnSessionExpired|PushQServer|FAIL|%s|%s|%s", err, self.kiteqserver, self.topics)
 		return
 	}
 
 	//订阅订阅关系变更
 	succ := self.subscribeBinds(self.topics)
-	log.InfoLog("kite_bind", "BindExchanger|OnSessionExpired|SUCC|subscribeBinds|%v|%s|%s", succ, self.kiteqserver, self.topics)
+	log.Infof("BindExchanger|OnSessionExpired|SUCC|subscribeBinds|%v|%s|%s", succ, self.kiteqserver, self.topics)
 
 }
 
 //关闭掉exchanger
 func (self *BindExchanger) Shutdown() {
 	//删除掉当前的QServer
-	self.registryCenter.UnpushlishQServer(self.kiteqserver, self.topics)
+	self.registryCenter.UnpublishQServer(self.kiteqserver, self.topics)
 	time.Sleep(10 * time.Second)
 	self.registryCenter.Close()
-	log.InfoLog("kite_bind", "BindExchanger|Shutdown...")
+	log.Infof("BindExchanger|Shutdown...")
 }

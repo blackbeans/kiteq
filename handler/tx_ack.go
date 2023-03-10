@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 )
 
@@ -33,7 +33,7 @@ func (self *TxAckHandler) cast(event turbo.IEvent) (val *txAckEvent, ok bool) {
 
 func (self *TxAckHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
-	// log.DebugLog("kite_handler", "TxAckHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.Debugf( "TxAckHandler|Process|%s|%t", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {
@@ -54,13 +54,13 @@ func (self *TxAckHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo
 
 		} else {
 			//失败了等待下次recover询问
-			// log.DebugLog("kite_handler",  "TxAckHandler|%s|Process|Commit|FAIL|%s|%s\n", self.GetName(), h.GetMessageId(), succ)
+			// log.Debugf(  "TxAckHandler|%s|Process|Commit|FAIL|%s|%s", self.GetName(), h.GetMessageId(), succ)
 		}
 
 	} else if pevent.txPacket.GetStatus() == int32(protocol.TX_ROLLBACK) {
 		succ := self.kitestore.Rollback(h.GetTopic(), h.GetMessageId())
 		if !succ {
-			log.WarnLog("kite_handler", "TxAckHandler|%s|Process|Rollback|FAIL|%s|%s|%s",
+			log.Warnf("TxAckHandler|%s|Process|Rollback|FAIL|%s|%s|%s",
 				self.GetName(), h.GetMessageId(), pevent.txPacket.GetFeedback(), succ)
 		}
 

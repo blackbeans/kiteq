@@ -2,8 +2,8 @@ package handler
 
 import (
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 )
 
 //----------------鉴权handler
@@ -40,11 +40,11 @@ func (self *ValidateHandler) Process(ctx *turbo.DefaultPipelineContext, event tu
 	c := aevent.getClient()
 	//做权限校验.............
 	isAuth := self.clientManager.Validate(c)
-	// log.DebugLog("kite_handler",  "ValidateHandler|CONNETION|%s|%s\n", client.RemoteAddr(), isAuth)
+	// log.Debugf(  "ValidateHandler|CONNETION|%s|%s", client.RemoteAddr(), isAuth)
 	if isAuth {
 		ctx.SendForward(event)
 	} else {
-		log.Warn("ValidateHandler|UnAuth CONNETION|%s\n", c.RemoteAddr())
+		log.Warn("ValidateHandler|UnAuth CONNETION|%s", c.RemoteAddr())
 		cmd := protocol.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
 		//响应包
 		p := turbo.NewPacket(protocol.CMD_CONN_AUTH, cmd)

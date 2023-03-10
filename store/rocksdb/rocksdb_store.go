@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
 	"github.com/cockroachdb/pebble"
 	"github.com/golang/protobuf/proto"
+	log "github.com/sirupsen/logrus"
 )
 
 //delvier tags
@@ -185,7 +185,7 @@ func (self *RocksDbStore) Start() {
 			var header protocol.Header
 			err := protocol.UnmarshalPbMessage(iter.Value()[1:], &header)
 			if nil != err {
-				log.ErrorLog("kite_store", "KiteFileStore|Start.ReloadUnCommit|%v", err)
+				log.Errorf("KiteFileStore|Start.ReloadUnCommit|%v", err)
 				continue
 			}
 
@@ -307,13 +307,13 @@ func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) 
 	}
 	rawOpLog, err := json.Marshal(opLog)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|AsyncUpdateDeliverResult|MarshalFAIL|%v", err)
+		log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|MarshalFAIL|%v", err)
 		return false
 	}
 
 	err = self.rocksdb.Set([]byte(opLogKey(entity.Topic, entity.MessageId)), rawOpLog, pebble.Sync)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|AsyncUpdateDeliverResult|Set|FAIL|%v", err)
+		log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|Set|FAIL|%v", err)
 		return false
 	}
 
@@ -342,7 +342,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 	key := []byte(msgKeyForHeader(topic, messageId))
 	data, r, err := batch.Get(key)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+		log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
 		batch.Close()
 		return nil
 	}
@@ -351,7 +351,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 	err = protocol.UnmarshalPbMessage(data[1:], &header)
 	if nil != err {
 		batch.Close()
-		log.ErrorLog("kite_store", "KiteFileStore|Query.UnmarshalPbMessage|FAIL|%v", err, string(key))
+		log.Errorf("KiteFileStore|Query.UnmarshalPbMessage|FAIL|%v", err, string(key))
 		return nil
 	}
 	r.Close()
@@ -362,7 +362,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
 		if nil != err {
 			batch.Close()
-			log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+			log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
 			return nil
 		}
 		r.Close()
@@ -375,7 +375,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
 		if nil != err {
 			batch.Close()
-			log.ErrorLog("kite_store", "KiteFileStore|Query|FAIL|%v", err, string(key))
+			log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
 			return nil
 		}
 		r.Close()
@@ -384,7 +384,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 			Body:   proto.String(string(body)),
 		}))
 	default:
-		log.ErrorLog("kite_store", "KiteFileStore|Query|INVALID|MSGTYPE|%d", data[0])
+		log.Errorf("KiteFileStore|Query|INVALID|MSGTYPE|%d", data[0])
 		batch.Close()
 		return nil
 	}
@@ -403,7 +403,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 	err = json.Unmarshal(data, &opLog)
 	if nil != err {
 		if err != pebble.ErrNotFound {
-			log.ErrorLog("kite_store", "KiteFileStore|QueryLog|FAIL|%v", err)
+			log.Errorf("KiteFileStore|QueryLog|FAIL|%v", err)
 		}
 		r.Close()
 		batch.Close()
@@ -482,14 +482,14 @@ func (self *RocksDbStore) Commit(topic, messageId string) bool {
 	err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
 	if nil != err {
 		r.Close()
-		log.ErrorLog("kite_store", "KiteFileStore|Commit.UnmarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
+		log.Errorf("KiteFileStore|Commit.UnmarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
 		return false
 	}
 	r.Close()
 	header.Commit = proto.Bool(true)
 	newRawHeader, err := protocol.MarshalPbMessage(&header)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteFileStore|Commit.MarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
+		log.Errorf("KiteFileStore|Commit.MarshalPbMessage|FAIL|%v|%s|%s", err, topic, messageId)
 		return false
 	}
 	rawHeader = append(append(rawHeader[:0], rawHeader[0]), newRawHeader...)
@@ -538,7 +538,7 @@ func (self *RocksDbStore) Expired(topic, messageId string) bool {
 		if nil == err {
 			err = self.rockDLQ.Set([]byte(logKey), data, pebble.NoSync)
 			if nil != err {
-				log.ErrorLog("kite_store", "KiteFileStore|Expired.Set|FAIL|%v|%s", err, string(logKey))
+				log.Errorf("KiteFileStore|Expired.Set|FAIL|%v|%s", err, string(logKey))
 			}
 			r.Close()
 		}
@@ -584,7 +584,7 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 		err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
 		if nil != err {
 			hr.Close()
-			log.ErrorLog("kite_store", "KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v", err, string(key))
+			log.Errorf("KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v", err, string(key))
 			continue
 		}
 		hr.Close()
@@ -610,7 +610,7 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 		err = json.Unmarshal(data, &opLog)
 		if nil != err {
 			if err != pebble.ErrNotFound {
-				log.ErrorLog("kite_store", "KiteFileStore|QueryLog|FAIL|%v", err)
+				log.Errorf("KiteFileStore|QueryLog|FAIL|%v", err)
 			}
 			r.Close()
 		} else {

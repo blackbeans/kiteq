@@ -3,7 +3,7 @@ package file
 import (
 	"errors"
 	"fmt"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"
@@ -95,7 +95,7 @@ func (self *MessageStore) evict() {
 						s.RLock()
 						defer s.RUnlock()
 						total, normal, del, expired := s.stat()
-						stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|\n", s.name, total, normal, del, expired)
+						stat += fmt.Sprintf("|%s\t|%d\t|%d\t|%d\t|%d\t|", s.name, total, normal, del, expired)
 						if normal <= 0 {
 							remove = append(remove, s)
 						}
@@ -107,7 +107,7 @@ func (self *MessageStore) evict() {
 		}()
 
 		if len(stat) > 0 {
-			log.InfoLog("kite_store", "\n---------------MessageStore-Stat--------------\n"+
+			log.Infof("\n---------------MessageStore-Stat--------------"+
 				"|segment\t\t|total\t|normal\t|delete\t|expired\t|\n%s", stat)
 		}
 
@@ -152,34 +152,34 @@ func (self *MessageStore) remove(removes []*Segment) {
 		if _, err := os.Stat(s.path); nil == err {
 			err := os.Remove(s.path)
 			if nil != err {
-				log.WarnLog("kite_store", "MessageStore|Remove|Segment|FAIL|%s|%s", err, s.path)
+				log.Warnf("MessageStore|Remove|Segment|FAIL|%s|%s", err, s.path)
 			}
 
 		}
 		if _, err := os.Stat(s.slog.path); nil == err {
 			err = os.Remove(s.slog.path)
 			if nil != err {
-				log.WarnLog("kite_store", "MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
+				log.Warnf("MessageStore|Remove|SegmentLog|FAIL|%s|%s", err, s.slog.path)
 			}
 		}
-		log.InfoLog("kite_store", "MessageStore|Remove|Segment|%s", s.path)
+		log.Infof("MessageStore|Remove|Segment|%s", s.path)
 	}
 }
 
 func (self *MessageStore) load() {
-	log.InfoLog("kite_store", "MessageStore|Load Segments ...")
+	log.Infof("MessageStore|Load Segments ...")
 
 	if !dirExist(self.filePath) {
 		err := os.MkdirAll(self.filePath, os.ModePerm)
 		if nil != err {
-			log.ErrorLog("kite_store", "MessageStore|Load Segments|MKDIR|FAIL|%s|%s", err, self.filePath)
+			log.Errorf("MessageStore|Load Segments|MKDIR|FAIL|%s|%s", err, self.filePath)
 			panic(err)
 		}
 	}
 
 	bashDir, err := os.Open(self.filePath)
 	if nil != err {
-		log.ErrorLog("kite_store", "MessageStore|Load Segments|FAIL|%s|%s", err, self.filePath)
+		log.Errorf("MessageStore|Load Segments|FAIL|%s|%s", err, self.filePath)
 		panic(err)
 	}
 
@@ -196,7 +196,7 @@ func (self *MessageStore) load() {
 		if len(split) >= 2 {
 			id, err := strconv.ParseInt(split[1], 10, 64)
 			if nil != err {
-				log.ErrorLog("kite_store", "MessageStore|Load Segments|Parse SegmentId|FAIL|%s|%s", err, name)
+				log.Errorf("MessageStore|Load Segments|Parse SegmentId|FAIL|%s|%s", err, name)
 				return nil
 			}
 			sid = id
@@ -238,7 +238,7 @@ func (self *MessageStore) load() {
 
 	//load fixed num  segments into memory
 
-	log.InfoLog("kite_store", "MessageStore|Load|SUCC|%s", self)
+	log.Infof("MessageStore|Load|SUCC|%s", self)
 }
 
 func (self *MessageStore) recoverSnapshot() {
@@ -250,7 +250,7 @@ func (self *MessageStore) recoverSnapshot() {
 		for i, s := range self.segments {
 			err := s.Open(self.replay)
 			if nil != err {
-				log.ErrorLog("kite_store", "MessageStore|recoverSnapshot|Fail|%s", err, s.slog.path)
+				log.Errorf("MessageStore|recoverSnapshot|Fail|%s", err, s.slog.path)
 				panic(err)
 			}
 
@@ -275,7 +275,7 @@ func (self *MessageStore) recoverSnapshot() {
 				}
 			}
 
-			log.DebugLog("kite_store", "MessageStore|recoverSnapshot|%s", s.name)
+			log.Debugf("MessageStore|recoverSnapshot|%s", s.name)
 		}
 
 		if len(removes) > 0 {
@@ -379,7 +379,7 @@ func (self *MessageStore) Delete(c *command) bool {
 		return nil == err
 
 	} else {
-		// log.DebugLog("kite_store","MessageStore|Delete|chunkid:%d|%s\n", c.id, c.logicId)
+		// log.Debugf("MessageStore|Delete|chunkid:%d|%s", c.id, c.logicId)
 		return false
 	}
 }
@@ -401,7 +401,7 @@ func (self *MessageStore) Expired(c *command) bool {
 		return nil == err
 
 	} else {
-		// log.DebugLog("kite_store","MessageStore|Expired|chunkid:%d|%s\n", cid, s)
+		// log.Debugf("MessageStore|Expired|chunkid:%d|%s", cid, s)
 		return false
 	}
 }
@@ -501,7 +501,7 @@ func (self *MessageStore) createSegment(nextStart int64) (*Segment, error) {
 	news := newSegment(self.filePath+name, name, nextStart, sl)
 	err := news.Open(self.replay)
 	if nil != err {
-		log.ErrorLog("kite_store", "MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
+		log.Errorf("MessageStore|createSegment|Open Segment|FAIL|%s", news.path)
 		return nil, err
 	}
 	// log.Debug("MessageStore|createSegment|SUCC|%s", news.path)
@@ -531,7 +531,7 @@ func (self *MessageStore) sync() {
 
 			s, id := self.checkRoll()
 			if nil == s {
-				log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
+				log.Errorf("MessageStore|sync|checkRoll|FAIL...")
 				cmd.idchan <- -1
 				close(cmd.idchan)
 				continue
@@ -577,7 +577,7 @@ outter:
 				if nil == cmd.seg {
 					s, id := self.checkRoll()
 					if nil == s {
-						log.ErrorLog("kite_store", "MessageStore|sync|checkRoll|FAIL...")
+						log.Errorf("MessageStore|sync|checkRoll|FAIL...")
 						cmd.idchan <- -1
 						close(cmd.idchan)
 						continue
@@ -610,7 +610,7 @@ outter:
 
 	ticker.Stop()
 	self.waitSync.Done()
-	log.InfoLog("kite_store", "MessageStore|SYNC|CLOSE...")
+	log.Infof("MessageStore|SYNC|CLOSE...")
 }
 
 func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
@@ -638,7 +638,7 @@ func flush(s *Segment, chunks Chunks, logs []*oplog, cmds []*command) {
 		//complete
 		err := s.Append(chunks)
 		if nil != err {
-			log.ErrorLog("kite_store", "MessageStore|Append|FAIL|%s\n", err)
+			log.Errorf("MessageStore|Append|FAIL|%s", err)
 		}
 		s.Unlock()
 
@@ -664,12 +664,12 @@ func (self *MessageStore) Destory() {
 		for _, s := range self.segments {
 			err := s.Close()
 			if nil != err {
-				log.ErrorLog("kite_store", "MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
+				log.Errorf("MessageStore|Destory|Close|FAIL|%s|sid:%d", err, s.sid)
 			}
 		}
 		self.baseDir.Close()
 	}()
-	log.InfoLog("kite_store", "MessageStore|Destory...")
+	log.Infof("MessageStore|Destory...")
 }
 
 //chunk id

@@ -33,7 +33,7 @@ var INVALID_PACKET_ERROR = errors.New("INVALID PACKET ERROR")
 
 func (self *PacketHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
 
-	// log.DebugLog("kite_handler", "PacketHandler|Process|%s|%t\n", self.GetName(), event)
+	// log.Debugf( "PacketHandler|Process|%s|%t", self.GetName(), event)
 
 	pevent, ok := self.cast(event)
 	if !ok {

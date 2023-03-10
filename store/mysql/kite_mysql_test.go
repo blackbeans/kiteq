@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/golang/protobuf/proto"
@@ -24,7 +25,7 @@ func TestPageQuery(t *testing.T) {
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options, "localhost")
+	kiteMysql := NewKiteMysql(context.TODO(), options, "localhost")
 	truncate(kiteMysql)
 	hn := "localhost"
 	for i := 0; i < 10; i++ {
@@ -62,7 +63,7 @@ func TestPageQuery(t *testing.T) {
 		//开始发起重投
 		for _, entity := range entities {
 			count++
-			t.Logf("TestPageQuery|PageQueryEntity|%s\n", entity.MessageId)
+			t.Logf("TestPageQuery|PageQueryEntity|%s", entity.MessageId)
 			msg := &store.MessageEntity{
 				MessageId:    entity.MessageId,
 				DeliverCount: 1,
@@ -80,7 +81,7 @@ func TestPageQuery(t *testing.T) {
 	}
 	if count != 10 {
 		t.Fail()
-		t.Logf("TestPageQuery|IDX|FAIL|%d\n", count)
+		t.Logf("TestPageQuery|IDX|FAIL|%d", count)
 		return
 	}
 
@@ -91,7 +92,7 @@ func TestPageQuery(t *testing.T) {
 		more, entities := kiteMysql.PageQueryEntity("6c", hn,
 			time.Now().Add(8*time.Minute).Unix(), startIdx, 1)
 		if len(entities) <= 0 {
-			t.Logf("TestPageQuery|CHECK|NO DATA|%s\n", entities)
+			t.Logf("TestPageQuery|CHECK|NO DATA|%s", entities)
 			break
 		}
 
@@ -100,13 +101,13 @@ func TestPageQuery(t *testing.T) {
 			if entity.DeliverCount != 1 || entity.FailGroups[0] != "s-mts-test" {
 				t.Fail()
 			}
-			t.Logf("TestPageQuery|PageQueryEntity|CHECK|%s\n", entity.MessageId)
+			t.Logf("TestPageQuery|PageQueryEntity|CHECK|%s", entity.MessageId)
 		}
 		startIdx += len(entities)
 		hasMore = more
 	}
 
-	t.Logf("TestPageQuery|CHECK|%d\n", startIdx)
+	t.Logf("TestPageQuery|CHECK|%d", startIdx)
 	if startIdx != 10 {
 		t.Fail()
 	}
@@ -128,7 +129,7 @@ func TestBatch(t *testing.T) {
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options, "localhost")
+	kiteMysql := NewKiteMysql(context.TODO(), options, "localhost")
 
 	truncate(kiteMysql)
 
@@ -172,11 +173,11 @@ func TestBatch(t *testing.T) {
 	for _, v := range mids {
 		e := kiteMysql.Query("trade", v)
 		if nil == e || len(e.SuccGroups) < 1 {
-			t.Fatalf("TestBatch|Update FAIL|%s|%s\n", e, v)
+			t.Fatalf("TestBatch|Update FAIL|%s|%s", e, v)
 			t.Fail()
 			return
 		}
-		t.Logf("Query|%s\n", e)
+		t.Logf("Query|%s", e)
 	}
 
 	//测试批量删除
@@ -187,7 +188,7 @@ func TestBatch(t *testing.T) {
 	for _, v := range mids {
 		entity := kiteMysql.Query("trade", v)
 		if nil != entity {
-			t.Fatalf("TestBatch|AysncDelete FAIL|%s\n", entity)
+			t.Fatalf("TestBatch|AysncDelete FAIL|%s", entity)
 			t.Fail()
 
 		}
@@ -202,15 +203,15 @@ func truncate(k *KiteMysqlStore) {
 			m := k.dbshard.FindShardById(i*4 + j).master
 			_, err := m.Exec(fmt.Sprintf("truncate table kite_msg_%d", j))
 			if nil != err {
-				log.Printf("ERROR|truncate table kite_msg_%d.%s|%s\n", i, j, err)
+				log.Printf("ERROR|truncate table kite_msg_%d.%s|%s", i, j, err)
 			} else {
-				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s\n", i, j, err)
+				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s", i, j, err)
 			}
 			_, err = m.Exec(fmt.Sprintf("truncate table kite_msg_dlq"))
 			if nil != err {
-				log.Printf("ERROR|truncate table kite_msg_%d.kite_msg_dlq|%s\n", i, j, err)
+				log.Printf("ERROR|truncate table kite_msg_%d.kite_msg_dlq|%s", i, j, err)
 			} else {
-				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s\n", i, j, err)
+				// log.Printf("SUCC|truncate table kite_msg_%d.%s|%s", i, j, err)
 			}
 		}
 	}
@@ -230,7 +231,7 @@ func TestStringSave(t *testing.T) {
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options, "localhost")
+	kiteMysql := NewKiteMysql(context.TODO(), options, "localhost")
 	truncate(kiteMysql)
 	for i := 0; i < 16; i++ {
 		//创建消息
@@ -265,7 +266,7 @@ func TestBytesSave(t *testing.T) {
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options, "localhost")
+	kiteMysql := NewKiteMysql(context.TODO(), options, "localhost")
 	truncate(kiteMysql)
 	for i := 0; i < 16; i++ {
 		//创建消息
@@ -304,7 +305,7 @@ func TestExpiredDLQ(t *testing.T) {
 		MaxIdleConn:  10,
 		MaxOpenConn:  10}
 
-	kiteMysql := NewKiteMysql(options, "localhost")
+	kiteMysql := NewKiteMysql(context.TODO(), options, "localhost")
 	truncate(kiteMysql)
 	messageIds := make([]string, 0, 10)
 	for i := 0; i < 256; i++ {
@@ -333,7 +334,7 @@ func TestExpiredDLQ(t *testing.T) {
 		if !succ {
 			t.Fail()
 		} else {
-			// fmt.Printf("SAVE|SUCC|%s\n", entity)
+			// fmt.Printf("SAVE|SUCC|%s", entity)
 		}
 		messageIds = append(messageIds, msg.GetHeader().GetMessageId())
 	}
@@ -357,14 +358,14 @@ func TestExpiredDLQ(t *testing.T) {
 		if rows.Next() {
 			var count int
 			rows.Scan(&count)
-			t.Logf("TestExpiredDLQ|COUNT|%s|%d\n", fmt.Sprintf("%x", i), total)
+			t.Logf("TestExpiredDLQ|COUNT|%s|%d", fmt.Sprintf("%x", i), total)
 			total += count
 		}
 	}
 
 	if total != 256 {
 		t.Fail()
-		t.Logf("TestExpiredDLQ|TOTAL NOT EQUAL|%d\n", total)
+		t.Logf("TestExpiredDLQ|TOTAL NOT EQUAL|%d", total)
 	}
 
 	truncate(kiteMysql)
@@ -384,11 +385,11 @@ func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing
 	if !succ {
 		t.Fail()
 	} else {
-		t.Logf("SAVE|SUCC|%s\n", entity)
+		t.Logf("SAVE|SUCC|%s", entity)
 	}
 
 	ret := kiteMysql.Query("trade", msgid)
-	t.Logf("Query|%s|%s\n", msgid, ret)
+	t.Logf("Query|%s|%s", msgid, ret)
 	if nil == ret {
 		t.Fail()
 		return
@@ -400,7 +401,7 @@ func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing
 		if string(rb) != string(bb) {
 			t.Fail()
 		} else {
-			t.Logf("Query|SUCC|%s\n", ret)
+			t.Logf("Query|SUCC|%s", ret)
 		}
 	} else {
 		bs, _ := qm.GetBody().(string)
@@ -408,7 +409,7 @@ func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing
 		if bs != rs {
 			t.Fail()
 		} else {
-			t.Logf("Query|SUCC|%s\n", ret)
+			t.Logf("Query|SUCC|%s", ret)
 		}
 	}
 
@@ -421,20 +422,20 @@ func innerT(kiteMysql *KiteMysqlStore, msg interface{}, msgid string, t *testing
 	t.Logf("Commint END")
 	time.Sleep(200 * time.Millisecond)
 	ret = kiteMysql.Query("trade", msgid)
-	t.Logf("PageQueryEntity|COMMIT RESULT|%s\n", ret)
+	t.Logf("PageQueryEntity|COMMIT RESULT|%s", ret)
 	if !ret.Commit {
-		t.Logf("Commit|FAIL|%s\n", ret)
+		t.Logf("Commit|FAIL|%s", ret)
 		t.Fail()
 	}
 
 	hasNext, entities := kiteMysql.PageQueryEntity(msgid, hn, time.Now().Unix(), 0, 10)
-	t.Logf("PageQueryEntity|%s\n", entities)
+	t.Logf("PageQueryEntity|%s", entities)
 	if hasNext {
-		t.Logf("PageQueryEntity|FAIL|HasNext|%s\n", entities)
+		t.Logf("PageQueryEntity|FAIL|HasNext|%s", entities)
 		t.Fail()
 	} else {
 		if len(entities) != 1 {
-			t.Logf("PageQueryEntity|FAIL|%s\n", entities)
+			t.Logf("PageQueryEntity|FAIL|%s", entities)
 			t.Fail()
 		} else {
 			if entities[0].Header.GetMessageId() != qm.GetHeader().GetMessageId() {

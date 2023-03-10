@@ -1,0 +1,12 @@
+
+  - filename: "./logs/stderr.log"
+    maxsize: 500
+    maxage: 7
+    maxbackups: 5
+    compress: true
+
+  - filename: "./logs/stdout.log"
+    maxsize: 500
+    maxage: 7
+    maxbackups: 5
+    compress: true

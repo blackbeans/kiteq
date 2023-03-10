@@ -2,8 +2,8 @@ package mysql
 
 import (
 	"database/sql"
-	log "github.com/blackbeans/log4go"
 	_ "github.com/go-sql-driver/mysql"
+	log "github.com/sirupsen/logrus"
 	"strconv"
 	// "time"
 )
@@ -53,7 +53,7 @@ func newDbShard(options MysqlOptions) DbShard {
 func openDb(addr string, shardId int, idleConn, maxConn int) *sql.DB {
 	db, err := sql.Open("mysql", addr+"_"+strconv.Itoa(shardId)+"?timeout=30s&readTimeout=30s")
 	if err != nil {
-		log.ErrorLog("kite_store", "NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		log.Errorf("NewKiteMysql|CONNECT FAIL|%s|%s", err, addr)
 		panic(err)
 	}
 	db.SetMaxIdleConns(idleConn)
@@ -103,7 +103,7 @@ func (s DbShard) HashId(key string) int {
 
 	i, err := strconv.ParseInt(num, 16, 16)
 	if nil != err {
-		log.ErrorLog("kite_store", "DbShard|HashId|INVALID HASHKEY|%s|%s\n", key, err)
+		log.Errorf("DbShard|HashId|INVALID HASHKEY|%s|%s", key, err)
 		return 0
 	}
 	return int(i)

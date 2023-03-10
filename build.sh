@@ -15,4 +15,4 @@ go build  -o ./$PROJ $PROJ.go
 
 #tar -zcvf kiteq-1.0.2-linux-386.tar.gz $PROJ log/log.xml conf/*.toml
 #tar -zcvf kiteq-1.0.2-darwin-386.tar.gz $PROJ log/log.xml conf/*.toml
-tar -zcvf kiteq.tar.gz $PROJ log/log.xml conf/*.toml
+tar -zcvf kiteq.tar.gz $PROJ conf/*.toml

@@ -24,14 +24,14 @@ func TestHash(t *testing.T) {
 	fk := hs.FindForShard("26c03f00665862591f696a980b5a6c4f")
 	if fk.shardId != 3 {
 		t.Fail()
-		t.Logf("FAIL|FindForShard|26c03f00665862591f696a980b5a6c4f|%d\n", fk.shardId)
+		t.Logf("FAIL|FindForShard|26c03f00665862591f696a980b5a6c4f|%d", fk.shardId)
 		return
 	}
 
 	hash := hs.FindForKey("26c03f00665862591f696a980b5a6c4f")
 	if hash != 3 {
 		t.Fail()
-		t.Logf("FAIL|FindForKey|26c03f00665862591f696a980b5a6c4f|%d\n", hash)
+		t.Logf("FAIL|FindForKey|26c03f00665862591f696a980b5a6c4f|%d", hash)
 	}
 
 	// !regexp.MatchString(, id)
@@ -48,12 +48,12 @@ func TestHash(t *testing.T) {
 		t.Log("MatchString|26c03f006-65862591f696a980b5a6c4|FAIL")
 	}
 
-	t.Logf("FindForShard|%d\n", fk)
+	t.Logf("FindForShard|%d", fk)
 
 	sc := hs.ShardNum()
 	if sc != 4 {
 		t.Fail()
 	}
 
-	t.Logf("ShardNum|%d\n", sc)
+	t.Logf("ShardNum|%d", sc)
 }

@@ -6,7 +6,7 @@ import (
 	. "kiteq/store"
 	"time"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 func (self *KiteMysqlStore) Start() {
@@ -42,13 +42,13 @@ func (self *KiteMysqlStore) Start() {
 
 					stmt, err := db.Prepare(psql)
 					if nil != err {
-						log.ErrorLog("kite_store", "StmtPool|Create Stmt|FAIL|%s|%s\n", err, psql)
+						log.Errorf("StmtPool|Create Stmt|FAIL|%s|%s", err, psql)
 						return err, nil
 					}
 					return nil, stmt
 				}()
 				if nil != err {
-					log.ErrorLog("kite_store", "NewKiteMysql|NewStmtPool|FAIL|%s\n", err)
+					log.Errorf("NewKiteMysql|NewStmtPool|FAIL|%s", err)
 					panic(err)
 				}
 				innerPool = append(innerPool, stmt)
@@ -63,11 +63,11 @@ func (self *KiteMysqlStore) Start() {
 	self.stmtPools = stmts
 
 	for i := 0; i < count; i++ {
-		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s\n", sqlu, sqld)
+		// log.Printf("KiteMysqlStore|start|SQL|%s\n|%s", sqlu, sqld)
 		self.startBatch(i, self.batchUpChan[i],
 			self.batchDelChan[i], self.batchComChan[i])
 	}
-	log.InfoLog("kite_store", "KiteMysqlStore|Start...")
+	log.Infof("KiteMysqlStore|Start...")
 }
 
 //批量删除任务
@@ -189,13 +189,13 @@ func (self *KiteMysqlStore) batchCommit(hashId int, messageId []string) bool {
 	if len(messageId) <= 0 {
 		return true
 	}
-	// log.Printf("KiteMysqlStore|batchCommit|%s|%s\n", prepareSQL, messageId)
+	// log.Printf("KiteMysqlStore|batchCommit|%s|%s", prepareSQL, messageId)
 	stmt := self.stmtPool(COMMIT, messageId[0])
 	var err error
 	for _, v := range messageId {
 		_, err = stmt.Exec(true, v)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|batchCommit|FAIL|%s|%s\n", err, v)
+			log.Errorf("KiteMysqlStore|batchCommit|FAIL|%s|%s", err, v)
 		}
 	}
 	return nil == err
@@ -212,7 +212,7 @@ func (self *KiteMysqlStore) batchDelete(hashId int, messageId []string) bool {
 	for _, v := range messageId {
 		_, err = stmt.Exec(v)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|batchDelete|FAIL|%s|%s\n", err, v)
+			log.Errorf("KiteMysqlStore|batchDelete|FAIL|%s|%s", err, v)
 		}
 	}
 	return nil == err
@@ -233,7 +233,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		sg, err := json.Marshal(e.SuccGroups)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|batchUpdate|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.SuccGroups)
+			log.Errorf("KiteMysqlStore|batchUpdate|SUCC GROUP|MARSHAL|FAIL|%s|%s|%s", err, e.MessageId, e.SuccGroups)
 			errs = err
 			continue
 		}
@@ -242,7 +242,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		fg, err := json.Marshal(e.FailGroups)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|batchUpdate|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s\n", err, e.MessageId, e.FailGroups)
+			log.Errorf("KiteMysqlStore|batchUpdate|FAIL GROUP|MARSHAL|FAIL|%s|%s|%s", err, e.MessageId, e.FailGroups)
 			errs = err
 			continue
 		}
@@ -258,7 +258,7 @@ func (self *KiteMysqlStore) batchUpdate(hashId int, entity []*MessageEntity) boo
 
 		_, err = stmt.Exec(args...)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|batchUpdate|FAIL|%s|%s\n", err, e)
+			log.Errorf("KiteMysqlStore|batchUpdate|FAIL|%s|%s", err, e)
 			errs = err
 		}
 
@@ -274,7 +274,7 @@ func (self *KiteMysqlStore) Stop() {
 				p.Close()
 			}
 		}
-		log.InfoLog("kite_store", "KiteMysqlStore|Stop|Stmt|%s", k)
+		log.Infof("KiteMysqlStore|Stop|Stmt|%s", k)
 	}
 	self.dbshard.Stop()
 }

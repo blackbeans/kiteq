@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 //mysql的参数
@@ -57,7 +57,7 @@ func NewKiteMysql(ctx context.Context, options MysqlOptions, serverName string) 
 		serverName:   serverName,
 		stop:         false}
 
-	log.InfoLog("kite_store", "NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...\n", options.Addr, options.SlaveAddr)
+	log.Infof("NewKiteMysql|KiteMysqlStore|SUCC|%s|%s...", options.Addr, options.SlaveAddr)
 	return ins
 }
 
@@ -85,7 +85,7 @@ func (self *KiteMysqlStore) Length() map[string] /*topic*/ int {
 			// log.Println(s)
 			rows, err := self.dbshard.FindSlave(hashKey).Query(s, self.serverName, time.Now().Unix())
 			if err != nil {
-				log.ErrorLog("kite_store", "KiteMysqlStore|Length|Query|FAIL|%s|%s|%s", err, hashKey, s)
+				log.Errorf("KiteMysqlStore|Length|Query|FAIL|%s|%s|%s", err, hashKey, s)
 				return err
 			}
 			defer rows.Close()
@@ -94,7 +94,7 @@ func (self *KiteMysqlStore) Length() map[string] /*topic*/ int {
 				num := 0
 				err = rows.Scan(&topic, &num)
 				if nil != err {
-					log.ErrorLog("kite_store", "KiteMysqlStore|Length|Scan|FAIL|%s|%s|%s\n", err, hashKey, s)
+					log.Errorf("KiteMysqlStore|Length|Scan|FAIL|%s|%s|%s", err, hashKey, s)
 					return err
 				} else {
 					v, ok := stat[topic]
@@ -126,7 +126,7 @@ func (self *KiteMysqlStore) Query(topic, messageId string) *MessageEntity {
 	s := self.sqlwrapper.hashQuerySQL(messageId)
 	rows, err := self.dbshard.FindSlave(messageId).Query(s, messageId)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteMysqlStore|Query|FAIL|%s|%s\n", err, messageId)
+		log.Errorf("KiteMysqlStore|Query|FAIL|%s|%s", err, messageId)
 		return nil
 	}
 	defer rows.Close()
@@ -137,7 +137,7 @@ func (self *KiteMysqlStore) Query(topic, messageId string) *MessageEntity {
 		fc := self.convertor.convertFields(entity, filternothing)
 		err := rows.Scan(fc...)
 		if nil != err {
-			log.ErrorLog("kite_store", "KiteMysqlStore|Query|SCAN|FAIL|%s|%s\n", err, messageId)
+			log.Errorf("KiteMysqlStore|Query|SCAN|FAIL|%s|%s", err, messageId)
 			return nil
 		}
 		self.convertor.Convert2Entity(fc, entity, filternothing)
@@ -157,7 +157,7 @@ func (self *KiteMysqlStore) Save(entity *MessageEntity) bool {
 	s := self.sqlwrapper.hashSaveSQL(entity.MessageId)
 	result, err := self.dbshard.FindMaster(entity.MessageId).Exec(s, fvs...)
 	if err != nil {
-		log.ErrorLog("kite_store", "KiteMysqlStore|SAVE|FAIL|%s|%s\n", err, entity.MessageId)
+		log.Errorf("KiteMysqlStore|SAVE|FAIL|%s|%s", err, entity.MessageId)
 		return false
 	}
 
@@ -200,7 +200,7 @@ func (self *KiteMysqlStore) MoveExpired() {
 //迁移过期的消息
 func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 
-	log.InfoLog("kite_store", "KiteMysqlStore|MoveExpired|START|%s|%d", hashKey)
+	log.Infof("KiteMysqlStore|MoveExpired|START|%s|%d", hashKey)
 
 	//需要将过期的消息迁移到DLQ中
 	sql := self.sqlwrapper.hashDLQSQL(DLQ_MOVE_QUERY, hashKey)
@@ -216,7 +216,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 		err := func() error {
 			rows, err := self.dbshard.FindSlave(hashKey).Query(sql, self.serverName, now, start, limit)
 			if err != nil {
-				log.ErrorLog("kite_store", "KiteMysqlStore|migrateMessage|Query|FAIL|%s|%s|%s", err, hashKey, sql)
+				log.Errorf("KiteMysqlStore|migrateMessage|Query|FAIL|%s|%s|%s", err, hashKey, sql)
 				return err
 			}
 			defer rows.Close()
@@ -225,7 +225,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 				var messageId string
 				err = rows.Scan(&id, &messageId)
 				if nil != err {
-					log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|Scan|FAIL|%s|%s|%s", err, hashKey, sql)
+					log.Errorf("KiteMysqlStore|MoveExpired|Scan|FAIL|%s|%s|%s", err, hashKey, sql)
 				} else {
 					start = id
 					messageIds = append(messageIds, messageId)
@@ -236,7 +236,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 
 		//已经搬迁完毕则退出进行下一个
 		if nil != err || len(messageIds[1:]) <= 0 {
-			log.WarnLog("kite_store", "KiteMysqlStore|MoveExpired|SUCC|%s|%d|%s", hashKey, start, err)
+			log.Warnf("KiteMysqlStore|MoveExpired|SUCC|%s|%d|%s", hashKey, start, err)
 			break
 		}
 
@@ -245,7 +245,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 		isqlTmp := strings.Replace(isql, "{ids}", in, 1)
 		_, err = self.dbshard.FindMaster(hashKey).Exec(isqlTmp, messageIds[1:]...)
 		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|Insert|FAIL|%s|%s", err, isqlTmp, messageIds)
+			log.Errorf("KiteMysqlStore|MoveExpired|Insert|FAIL|%s|%s", err, isqlTmp, messageIds)
 			break
 		}
 
@@ -253,7 +253,7 @@ func (self *KiteMysqlStore) migrateMessage(now int64, hashKey string) {
 		messageIds[0] = self.serverName
 		_, err = self.dbshard.FindMaster(hashKey).Exec(dsqlTmp, messageIds...)
 		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|MoveExpired|DELETE|FAIL|%s|%s|%s|%s", err, dsql, dsqlTmp, messageIds)
+			log.Errorf("KiteMysqlStore|MoveExpired|DELETE|FAIL|%s|%s|%s|%s", err, dsql, dsqlTmp, messageIds)
 			break
 		}
 	}
@@ -272,7 +272,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 	rows, err := self.dbshard.FindSlave(hashKey).
 		Query(s, kiteServer, time.Now().Unix(), nextDeliverySeconds, startIdx, limit+1)
 	if err != nil {
-		log.ErrorLog("kite_store", "KiteMysqlStore|Query|FAIL|%s|%s\n", err, hashKey)
+		log.Errorf("KiteMysqlStore|Query|FAIL|%s|%s", err, hashKey)
 		return false, nil
 	}
 	defer rows.Close()
@@ -284,7 +284,7 @@ func (self *KiteMysqlStore) PageQueryEntity(hashKey string, kiteServer string, n
 		fc := self.convertor.convertFields(entity, filterbody)
 		err := rows.Scan(fc...)
 		if err != nil {
-			log.ErrorLog("kite_store", "KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d\n", err, kiteServer, nextDeliverySeconds, startIdx)
+			log.Errorf("KiteMysqlStore|PageQueryEntity|FAIL|%s|%s|%d|%d", err, kiteServer, nextDeliverySeconds, startIdx)
 		} else {
 
 			self.convertor.Convert2Entity(fc, entity, filterbody)

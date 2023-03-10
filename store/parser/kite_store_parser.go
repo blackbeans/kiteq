@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 // storage schema
@@ -38,7 +38,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if initcap := params.Get("initcap"); len(initcap) > 0 {
 			v, e := strconv.ParseInt(initcap, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|INIT CAP|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|INIT CAP|%s", db)
 			}
 			initval = int(v)
 		}
@@ -46,7 +46,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if maxcap := params.Get("maxcap"); len(maxcap) > 0 {
 			v, e := strconv.ParseInt(maxcap, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|MAX CAP|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|MAX CAP|%s", db)
 			}
 			max = int(v)
 		}
@@ -57,7 +57,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if batchUpdateSize := params.Get("batchUpdateSize"); len(batchUpdateSize) > 0 {
 			v, e := strconv.ParseInt(batchUpdateSize, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|batchUpdateSize|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|batchUpdateSize|%s", db)
 			}
 			bus = int(v)
 		}
@@ -66,7 +66,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if batchDelSize := params.Get("batchDelSize"); len(batchDelSize) > 0 {
 			v, e := strconv.ParseInt(batchDelSize, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s", db)
 			}
 			bds = int(v)
 		}
@@ -75,7 +75,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if flushSeconds := params.Get("flushSeconds"); len(flushSeconds) > 0 {
 			v, e := strconv.ParseInt(flushSeconds, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s", db)
 			}
 			flushPeriod = time.Duration(v * int64(flushPeriod))
 		}
@@ -84,7 +84,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if mc := params.Get("maxConn"); len(mc) > 0 {
 			v, e := strconv.ParseInt(mc, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|batchDelSize|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|batchDelSize|%s", db)
 			}
 			maxConn = int(v)
 		}
@@ -107,7 +107,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if sd := params.Get("shardnum"); len(sd) > 0 {
 			v, e := strconv.ParseInt(sd, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|ShardNum|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|ShardNum|%s", db)
 			}
 			shardnum = int(v)
 		}
@@ -132,7 +132,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if d := params.Get("cap"); len(d) > 0 {
 			v, e := strconv.ParseInt(d, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|cap|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|cap|%s", db)
 			}
 			maxcap = int(v)
 		}
@@ -142,7 +142,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if cs := params.Get("checkSeconds"); len(cs) > 0 {
 			v, e := strconv.ParseInt(cs, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|checkPeriod|%s", db)
 			}
 			checkPeriod = time.Duration(v * int64(checkPeriod))
 		}
@@ -152,7 +152,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		if fbs := params.Get("flushBatchSize"); len(fbs) > 0 {
 			v, e := strconv.ParseInt(fbs, 10, 32)
 			if nil != e {
-				log.Crashf("NewKiteQServer|INVALID|checkPeriod|%s\n", db)
+				log.Fatalf("NewKiteQServer|INVALID|checkPeriod|%s", db)
 			}
 			fbsize = int(v)
 		}
@@ -170,7 +170,7 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 		kitedb = rocksdb.NewRocksDbStore(ctx, parsed.Host, options)
 
 	default:
-		log.Crashf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s\n", db)
+		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s", db)
 	}
 	return kitedb
 }

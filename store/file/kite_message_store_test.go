@@ -75,9 +75,9 @@ func cleanSnapshot(path string) {
 
 	err := os.RemoveAll(path)
 	if nil != err {
-		log.Printf("Remove|FAIL|%s\n", path)
+		log.Printf("Remove|FAIL|%s", path)
 	} else {
-		log.Printf("Remove|SUCC|%s\n", path)
+		log.Printf("Remove|SUCC|%s", path)
 	}
 
 }
@@ -115,7 +115,7 @@ func TestDeleteAndStart(t *testing.T) {
 		var str string
 		data, err := snapshot.Query(id)
 		if nil != err {
-			log.Printf("TestDeleteAndStart|Query|%s\n", err)
+			log.Printf("TestDeleteAndStart|Query|%s", err)
 		}
 
 		str = string(data)
@@ -208,7 +208,7 @@ func TestDelete(t *testing.T) {
 		var str string
 		data, err := nsnapshot.Query(id)
 		if nil != err {
-			log.Printf("TestDelete|Query|%s\n", err)
+			log.Printf("TestDelete|Query|%s", err)
 		}
 
 		str = string(data)
@@ -270,32 +270,32 @@ func TestQuery(t *testing.T) {
 		id := int64(rand.Intn(20))
 		_, err := snapshot.Query(id)
 		if nil != err {
-			log.Printf("Query|%s|%d\n", err, id)
+			log.Printf("Query|%s|%d", err, id)
 			t.Fail()
 			break
 
 		} else {
-			// log.Printf("Query|SUCC|%d\n", id)
+			// log.Printf("Query|SUCC|%d", id)
 			j++
 		}
 	}
 
 	_, err := snapshot.Query(19)
 	if nil != err {
-		log.Printf("Query|%s|%d\n", err, 19)
+		log.Printf("Query|%s|%d", err, 19)
 		t.Fail()
 
 	}
 
 	_, err = snapshot.Query(0)
 	if nil != err {
-		log.Printf("Query|%s|%d\n", err, 0)
+		log.Printf("Query|%s|%d", err, 0)
 		t.Fail()
 	}
 
 	run = false
 
-	log.Printf("snapshot|%s|%d\n", snapshot, j)
+	log.Printf("snapshot|%s|%d", snapshot, j)
 
 	snapshot.Destory()
 	cleanSnapshot("./snapshot/")
@@ -353,7 +353,7 @@ func BenchmarkQuery(t *testing.B) {
 		id := int64(rand.Intn(20))
 		_, err := snapshot.Query(id)
 		if nil != err {
-			log.Printf("Query|%s|%d\n", err, id)
+			log.Printf("Query|%s|%d", err, id)
 			t.Fail()
 			break
 		}

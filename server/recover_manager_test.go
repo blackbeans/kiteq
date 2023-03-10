@@ -53,7 +53,7 @@ func (self *mockDeliverHandler) TypeAssert(event turbo.IEvent) bool {
 }
 
 func (self *mockDeliverHandler) Process(ctx *turbo.DefaultPipelineContext, event turbo.IEvent) error {
-	log.Printf("TestRecoverManager|-------------------%s\n", event)
+	log.Printf("TestRecoverManager|-------------------%s", event)
 	self.ch <- true
 	return nil
 
@@ -92,10 +92,10 @@ func TestRecoverManager(t *testing.T) {
 	rm.Start()
 	select {
 	case succ := <-ch:
-		log.Printf("--------------recover %s\n", succ)
+		log.Printf("--------------recover %s", succ)
 	case <-time.After(5 * time.Second):
 		t.Fail()
-		log.Println("waite recover  deliver timeout\n")
+		log.Println("waite recover  deliver timeout")
 	}
 
 }

@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -56,6 +56,6 @@ func main() {
 	}
 	qserver.Shutdown()
 	cancel()
-	log.InfoLog("kite_server", "KiteQServer IS STOPPED!")
+	log.Infof("KiteQServer IS STOPPED!")
 
 }

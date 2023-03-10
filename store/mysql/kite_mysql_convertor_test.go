@@ -34,7 +34,7 @@ func TestConvertFields(t *testing.T) {
 	fs := c.convertFields(entity, func(colname string) bool {
 		return false
 	})
-	t.Logf("%d|%s\n", len(c.columns), fs)
+	t.Logf("%d|%s", len(c.columns), fs)
 	if len(fs) != len(c.columns) {
 		t.Fail()
 	}
@@ -79,12 +79,12 @@ func TestConvert2Entity(t *testing.T) {
 	entity.KiteServer = hn
 
 	params := c.Convert2Params(entity)
-	t.Logf("TestConvert2Entity|Convert2Params|%s\n", params)
+	t.Logf("TestConvert2Entity|Convert2Params|%s", params)
 	econ := &store.MessageEntity{}
 	c.Convert2Entity(params, econ, func(colname string) bool {
 		return false
 	})
-	t.Logf("TestConvert2Entity|Convert2Entity|%s\n", econ)
+	t.Logf("TestConvert2Entity|Convert2Entity|%s", econ)
 	if econ.MessageId != entity.MessageId {
 		t.Fail()
 	}
@@ -138,7 +138,7 @@ func TestConvert2Params(t *testing.T) {
 	if nil != params {
 		for i, col := range c.columns {
 			cv := params[i]
-			t.Logf("TestConvert2Params|FIELD|%s|%s\n", col.fieldName, cv)
+			t.Logf("TestConvert2Params|FIELD|%s|%s", col.fieldName, cv)
 			if col.fieldName == "MessageId" {
 				rv := reflect.ValueOf(cv)
 				s := rv.Elem().Interface()

@@ -1,6 +1,7 @@
 package file
 
 import (
+	"context"
 	"fmt"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/golang/protobuf/proto"
@@ -12,7 +13,7 @@ import (
 
 func TestFileStoreQuery(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	for i := 0; i < 100; i++ {
@@ -42,7 +43,7 @@ func TestFileStoreQuery(t *testing.T) {
 		entity := fs.Query("trade", id)
 		if nil == entity {
 			t.Fail()
-			log.Printf("FAIL|%s\n", entity)
+			log.Printf("FAIL|%s", entity)
 		} else {
 			// log.Println(entity)
 		}
@@ -54,7 +55,7 @@ func TestFileStoreQuery(t *testing.T) {
 func BenchmarkTestFileAppend(t *testing.B) {
 	t.StopTimer()
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 	t.StartTimer()
 	for i := 0; i < t.N; i++ {
@@ -82,7 +83,7 @@ func BenchmarkTestFileAppend(t *testing.B) {
 
 func TestFileDuplicateAppend(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 	for i := 0; i < 10; i++ {
 		//创建消息
@@ -114,7 +115,7 @@ func TestFileDuplicateAppend(t *testing.T) {
 
 func TestFileStoreCommit(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	for i := 0; i < 100; i++ {
@@ -158,7 +159,7 @@ func TestFileStoreCommit(t *testing.T) {
 
 func TestFileStoreUpdate(t *testing.T) {
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	for i := 0; i < 100; i++ {
@@ -216,7 +217,7 @@ func TestFileStoreUpdate(t *testing.T) {
 func TestFileStoreDelete(t *testing.T) {
 
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	for i := 0; i < 100; i++ {
@@ -267,7 +268,7 @@ func TestFileStoreDelete(t *testing.T) {
 func TestFileStoreInit(t *testing.T) {
 
 	cleanSnapshot("./snapshot/")
-	fs := NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs := NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	for i := 0; i < 100; i++ {
@@ -300,7 +301,7 @@ func TestFileStoreInit(t *testing.T) {
 	fs.Stop()
 
 	log.Println("-------------------Query")
-	fs = NewKiteFileStore(".", 1000, 5000000, 1*time.Second)
+	fs = NewKiteFileStore(context.TODO(), ".", 1000, 5000000, 1*time.Second)
 	fs.Start()
 
 	// for _, v := range fs.oplogs {
@@ -309,7 +310,7 @@ func TestFileStoreInit(t *testing.T) {
 	// 		log.Printf("TestFileStoreInit|Check|%d|%s", ob.Id, ob.MessageId)
 	// 	}
 	// }
-	log.Printf("TestFileStoreInit|Check|SUCC|\n")
+	log.Printf("TestFileStoreInit|Check|SUCC|")
 	//commit and check
 	for i := 50; i < 100; i++ {
 		id := fmt.Sprint(i) + "26c03f00665862591f696a980b5ac"
@@ -324,7 +325,7 @@ func TestFileStoreInit(t *testing.T) {
 		log.Printf("TestFileStoreInit|Exist|SUCC|%d|%s|%s", i, id, entity)
 	}
 
-	log.Printf("TestFileStoreInit|Exist|\n")
+	log.Printf("TestFileStoreInit|Exist|")
 
 	//commit and check
 	for i := 0; i < 50; i++ {
@@ -338,7 +339,7 @@ func TestFileStoreInit(t *testing.T) {
 		}
 	}
 
-	log.Printf("TestFileStoreInit|Delete\n")
+	log.Printf("TestFileStoreInit|Delete")
 	fs.Stop()
 	cleanSnapshot("./snapshot/")
 }

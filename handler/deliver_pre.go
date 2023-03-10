@@ -109,7 +109,7 @@ func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *
 		entity = self.kitestore.Query(pevent.header.GetTopic(), pevent.messageId)
 		if nil == entity {
 			self.kitestore.Expired(pevent.header.GetTopic(), pevent.messageId)
-			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s\n", pevent.messageId)
+			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s", pevent.messageId)
 			return
 		}
 	}
@@ -146,7 +146,7 @@ func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *
 func (self *DeliverPreHandler) fillGroupIds(pevent *deliverEvent, entity *store.MessageEntity) {
 	binds, limiters := self.exchanger.FindBinds(entity.Header.GetTopic(), entity.Header.GetMessageType(),
 		func(b *registry.Binding) bool {
-			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|\n", b)
+			// log.Printf("DeliverPreHandler|fillGroupIds|Filter Bind |%s|", b)
 			//过滤掉已经投递成功的分组
 			for _, sg := range entity.SuccGroups {
 				if sg == b.GroupId {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"github.com/blackbeans/kiteq-common/stat"
-	// log "github.com/blackbeans/log4go"
 	"github.com/blackbeans/turbo"
 	"sort"
 	"time"

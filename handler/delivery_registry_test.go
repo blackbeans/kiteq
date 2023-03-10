@@ -11,7 +11,7 @@ import (
 
 func BenchmarkDeliveryRegistry(t *testing.B) {
 	t.StopTimer()
-	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
+	tw := turbo.NewTimerWheel(100 * time.Millisecond)
 	registry := NewDeliveryRegistry(context.TODO(), tw, 10*10000)
 
 	t.SetParallelism(8)
@@ -28,7 +28,7 @@ func BenchmarkDeliveryRegistry(t *testing.B) {
 }
 
 func TestDeliveryRegistry(t *testing.T) {
-	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
+	tw := turbo.NewTimerWheel(100 * time.Millisecond)
 	registry := NewDeliveryRegistry(context.TODO(), tw, 10*10000)
 
 	msgId := store.MessageId()

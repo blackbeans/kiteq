@@ -3,7 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"runtime"
 	"time"
@@ -123,7 +123,7 @@ func (self *KiteQServer) startFlow() {
 				TopicsRecieve:    topicsrecieve,
 				KiteServerLimter: []int{used, total}}
 
-			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d\n", ns.ReadBytes, ns.ReadCount,
+			line := fmt.Sprintf("\nRemoting: \tread:%d/%d\twrite:%d/%d\tdispatcher_go:%d\tconnetions:%d", ns.ReadBytes, ns.ReadCount,
 				ns.WriteBytes, ns.WriteCount, ns.DisPoolSize, self.clientManager.ConnNum())
 
 			line = fmt.Sprintf("%sKiteQ:\tdeliver:%d\tdeliver-go:%d", line, ks.DeliverCount,
@@ -132,7 +132,7 @@ func (self *KiteQServer) startFlow() {
 				line = fmt.Sprintf("%s\nKiteStore:%s", line, self.kitedb.Monitor())
 
 			}
-			log.InfoLog("kite_server", line)
+			log.Infof(line)
 			self.lastNetstat[count%2] = ns
 			self.lastKiteStat[count%2] = ks
 			count++

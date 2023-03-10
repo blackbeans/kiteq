@@ -13,7 +13,7 @@
 		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
-		logxml="./conf/log_test.xml"
+		logxml="./conf/log.yaml"
 		db="rocksdb://./db/"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
@@ -24,7 +24,7 @@
 		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
-		logxml="./conf/log_test.xml"
+		logxml="./conf/log.yaml"
 		db="file://.?cap=10000000&checkSeconds=10"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
@@ -36,7 +36,7 @@
 		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
-		logxml="./conf/log_test.xml"
+		logxml="./conf/log.yaml"
 		db="mysql://localhost:3306?db=kite&username=root&batchUpdateSize=2000&batchDelSize=10000&flushSeconds=1&maxConn=20"
 		deliverySeconds=5
 		maxDeliverWorkers=8000
@@ -48,7 +48,7 @@
 		topics=["relation","message","user-profile"]
 		dlqExecHour=2
 		deliveryFirst=false
-		logxml="./conf/log_test.xml"
+		logxml="./conf/log.yaml"
 		db="memory://.?initcap=10000000&maxcap=2000000"
 		deliverySeconds=5
 		maxDeliverWorkers=8000

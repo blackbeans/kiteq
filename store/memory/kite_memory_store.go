@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	log "github.com/blackbeans/log4go"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -72,7 +72,7 @@ func (self *KiteMemoryStore) Length() map[string] /*topic*/ int {
 }
 
 func (self *KiteMemoryStore) Monitor() string {
-	return fmt.Sprintf("memory-length:%v\n", self.Length())
+	return fmt.Sprintf("memory-length:%v", self.Length())
 }
 
 func (self *KiteMemoryStore) AsyncUpdateDeliverResult(entity *MessageEntity) bool {
@@ -91,13 +91,13 @@ func (self *KiteMemoryStore) hash(messageid string) (l *sync.RWMutex, e map[stri
 	i, err := strconv.ParseInt(id, CONCURRENT_LEVEL, 8)
 	hashId := int(i)
 	if nil != err {
-		log.ErrorLog("kite_store", "KiteMemoryStore|hash|INVALID MESSAGEID|%s\n", messageid)
+		log.Errorf("KiteMemoryStore|hash|INVALID MESSAGEID|%s", messageid)
 		hashId = 0
 	} else {
 		hashId = hashId % CONCURRENT_LEVEL
 	}
 
-	// log.Debug("KiteMemoryStore|hash|%s|%d\n", messageid, hashId)
+	// log.Debug("KiteMemoryStore|hash|%s|%d", messageid, hashId)
 
 	//hash part
 	l = self.locks[hashId]
@@ -126,7 +126,7 @@ func (self *KiteMemoryStore) Save(entity *MessageEntity) bool {
 	//没有空闲node，则判断当前的datalinke中是否达到容量上限
 	cl := dl.Len()
 	if cl >= self.maxcap {
-		// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d\n", cl, self.maxcap)
+		// log.Warn("KiteMemoryStore|SAVE|OVERFLOW|%d/%d", cl, self.maxcap)
 		//淘汰最旧的数据
 		back := dl.Back()
 		b := dl.Remove(back).(*MessageEntity)
@@ -186,7 +186,7 @@ func (self *KiteMemoryStore) innerDelete(messageId string,
 	delete(el, messageId)
 	dl.Remove(e)
 	e = nil
-	// log.Info("KiteMemoryStore|innerDelete|%s\n", messageId)
+	// log.Info("KiteMemoryStore|innerDelete|%s", messageId)
 }
 
 func (self *KiteMemoryStore) Expired(topic, messageId string) bool {

@@ -37,13 +37,13 @@ func TestStmtPool(t *testing.T) {
 
 	if nil != err {
 		t.Fail()
-		t.Logf("NewStmtPool|FAIL|%s\n", err)
+		t.Logf("NewStmtPool|FAIL|%s", err)
 		return
 	}
 
 	row, err := db.Query("select * from test_a where username=?", "a")
 	if nil != err {
-		t.Logf("Query DB |FAIL|%s\n", err)
+		t.Logf("Query DB |FAIL|%s", err)
 		t.Fail()
 		return
 	}
@@ -55,24 +55,24 @@ func TestStmtPool(t *testing.T) {
 		err := row.Scan(&id, &username)
 		if nil != err {
 			t.Fail()
-			t.Logf("db|QUERY|Scan |FAIL|%s\n", err)
+			t.Logf("db|QUERY|Scan |FAIL|%s", err)
 			return
 		}
 
 		if username != "a" {
 			t.Fail()
-			t.Logf("db|QUERY|username is not a |FAIL\n")
+			t.Logf("db|QUERY|username is not a |FAIL")
 			return
 		}
 	} else {
 		t.Fail()
-		t.Logf("db|QUERY|FAIL|%s\n", err)
+		t.Logf("db|QUERY|FAIL|%s", err)
 	}
 
 	err, stmt := p.Get()
 	if nil != err {
 		t.Fail()
-		t.Logf("Get Stmt |FAIL|%s\n", err)
+		t.Logf("Get Stmt |FAIL|%s", err)
 		return
 	}
 
@@ -81,7 +81,7 @@ func TestStmtPool(t *testing.T) {
 
 	row, err = db.Query("select * from test_a where username=?", "b")
 	if nil != err {
-		t.Logf("Query Stmt |FAIL|%s\n", err)
+		t.Logf("Query Stmt |FAIL|%s", err)
 		t.Fail()
 		return
 	}
@@ -93,18 +93,18 @@ func TestStmtPool(t *testing.T) {
 		err := row.Scan(&id, &username)
 		if nil != err {
 			t.Fail()
-			t.Logf("Query Stmt|Scan |FAIL|%s\n", err)
+			t.Logf("Query Stmt|Scan |FAIL|%s", err)
 			return
 		}
 
 		if username != "b" || id != 1 {
 			t.Fail()
-			t.Logf("Query Stmt|username is not a |FAIL\n")
+			t.Logf("Query Stmt|username is not a |FAIL")
 			return
 		}
 	} else {
 		t.Fail()
-		t.Logf("Query Stmt|username is not a |FAIL\n")
+		t.Logf("Query Stmt|username is not a |FAIL")
 	}
 
 	p.Shutdown()
@@ -113,7 +113,7 @@ func TestStmtPool(t *testing.T) {
 func dbcreate(addr string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", addr)
 	if err != nil {
-		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s\n", err, addr)
+		log.Panicf("NewKiteMysql|CONNECT FAIL|%s|%s", err, addr)
 	}
 
 	db.SetMaxIdleConns(10)

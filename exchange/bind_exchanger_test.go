@@ -24,7 +24,7 @@ func TestSubscribeBindings(t *testing.T) {
 	succ := exchanger.PushQServer("localhost:13800", topics)
 	if !succ {
 		t.Fail()
-		t.Logf("PushQServer|FAIL|%s\n", succ)
+		t.Logf("PushQServer|FAIL|%s", succ)
 		return
 	}
 
@@ -35,14 +35,14 @@ func TestSubscribeBindings(t *testing.T) {
 
 	err := exchanger.registryCenter.PublishBindings("s-trade-001", bindings)
 	if nil != err {
-		t.Logf("TestSubscribeBindings|FAIL|%s|%s\n", err, "s-trade-001")
+		t.Logf("TestSubscribeBindings|FAIL|%s|%s", err, "s-trade-001")
 		return
 	}
 
 	time.Sleep(10 * time.Second)
 
 	tradeBind, _ := exchanger.FindBinds("trade", "trade-succ-200", filter)
-	t.Logf("trade trade-succ-200|%t\n", tradeBind)
+	t.Logf("trade trade-succ-200|%t", tradeBind)
 	if len(tradeBind) != 1 {
 		t.Fail()
 		return
@@ -60,7 +60,7 @@ func TestSubscribeBindings(t *testing.T) {
 		return
 	}
 
-	t.Logf("feed feed-geo-update|%t\n", feedBindU)
+	t.Logf("feed feed-geo-update|%t", feedBindU)
 
 	if !feedBindU[0].Matches("feed", "feed-geo-update") {
 		t.Fail()
@@ -73,7 +73,7 @@ func TestSubscribeBindings(t *testing.T) {
 		return
 	}
 
-	t.Logf("feed feed-geo-delete|%t\n", feedBindD)
+	t.Logf("feed feed-geo-delete|%t", feedBindD)
 
 	if !feedBindD[0].Matches("feed", "feed-geo-delete") {
 		t.Fail()
@@ -88,11 +88,11 @@ func TestSubscribeBindings(t *testing.T) {
 	path := registry.KITEQ_SUB + "/trade/s-trade-001-bind"
 	conn.Delete(path, -1)
 	nodes, _, _ := conn.Children(registry.KITEQ_SUB + "/trade")
-	t.Logf("trade trade-succ-200|delete|s-trade-001-bind|%t\n", nodes)
+	t.Logf("trade trade-succ-200|delete|s-trade-001-bind|%t", nodes)
 	time.Sleep(5 * time.Second)
 
 	tradeBind, _ = exchanger.FindBinds("trade", "trade-succ-200", filter)
-	t.Logf("trade trade-succ-200|no binding |%t\n", tradeBind)
+	t.Logf("trade trade-succ-200|no binding |%t", tradeBind)
 	if len(tradeBind) != 0 {
 		t.Fail()
 		return
@@ -113,7 +113,7 @@ func cleanUp(t *testing.T, conn *zk.Conn, path string) {
 			//开始删除
 			conn.Delete(path+"/"+v, -1)
 			time.Sleep(2 * time.Second)
-			t.Logf("cleanUp|%s\n", path+"/"+v)
+			t.Logf("cleanUp|%s", path+"/"+v)
 		} else {
 			cleanUp(t, conn, path+"/"+v)
 		}
