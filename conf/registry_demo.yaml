@@ -1,0 +1,17 @@
+brokers:
+      - address: "localhost:13800"  #服务IP地址
+        topics: [ "relation","message","user-profile"]
+        env: "dev"
+      - address: "localhost:13900"  #服务IP地址
+        topics: [ "relation","message","user-profile" ]
+        env: "pre"
+
+#绑定关系
+bindings:
+    #一组绑定关系
+    - groupIds: ["s-mts-test1"]
+      topic: "user-profile"
+      messageType: "profile-update"
+      bindType: "direct"
+      watermark: 1000
+      persistent: true

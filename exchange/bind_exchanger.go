@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"context"
 	"github.com/blackbeans/kiteq-common/registry"
 	"github.com/blackbeans/turbo"
 	log "github.com/sirupsen/logrus"
@@ -29,15 +30,15 @@ type BindExchanger struct {
 	defaultLimiter *turbo.BurstyLimiter
 }
 
-func NewBindExchanger(zkhost string,
+func NewBindExchanger(parent context.Context, registryUri string,
 	kiteQServer string) *BindExchanger {
 	ex := &BindExchanger{
 		exchanger: make(map[string]map[string][]*registry.Binding, 100),
 		limiters:  make(map[string]map[string]*turbo.BurstyLimiter, 100),
 		topics:    make([]string, 0, 50)}
-	center := registry.NewRegistryCenter(zkhost)
-	center.RegisteWatcher(PATH_SERVER, ex)
-	center.RegisteWatcher(PATH_SUB, ex)
+	center := registry.NewRegistryCenter(parent, registryUri)
+	center.RegisterWatcher(PATH_SERVER, ex)
+	center.RegisterWatcher(PATH_SUB, ex)
 	ex.registryCenter = center
 	ex.kiteqserver = kiteQServer
 	limiter, err := turbo.NewBurstyLimiter(int(DEFAULT_WARTER_MARK/2), int(DEFAULT_WARTER_MARK))
@@ -108,7 +109,7 @@ func (self *BindExchanger) PushQServer(hostport string, topics []string) bool {
 	}
 	//存在需要删除的topics
 	if len(delTopics) > 0 {
-		self.registryCenter.UnpublishQServer(hostport, delTopics)
+		self.registryCenter.UnPublishQServer(hostport, delTopics)
 		func() {
 			self.lock.Lock()
 			defer self.lock.Unlock()
@@ -344,7 +345,7 @@ func (self *BindExchanger) OnSessionExpired() {
 //关闭掉exchanger
 func (self *BindExchanger) Shutdown() {
 	//删除掉当前的QServer
-	self.registryCenter.UnpublishQServer(self.kiteqserver, self.topics)
+	self.registryCenter.UnPublishQServer(self.kiteqserver, self.topics)
 	time.Sleep(10 * time.Second)
 	self.registryCenter.Close()
 	log.Infof("BindExchanger|Shutdown...")

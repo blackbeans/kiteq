@@ -55,7 +55,7 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	clientManager := turbo.NewClientManager(reconnManager)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := exchange.NewBindExchanger(kc.so.registryUri, kc.so.bindHost)
+	exchanger := exchange.NewBindExchanger(ctx, kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
 	registry := handler.NewDeliveryRegistry(ctx, kc.rc.TW, 10*10000)
