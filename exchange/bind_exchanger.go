@@ -7,15 +7,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"math"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	PATH_SERVER         = "/kiteq/server"
-	PATH_SUB            = "/kiteq/sub"
-	MAX_WARTER_MARK     = int32(12 * 1000)
 	DEFAULT_WARTER_MARK = int32(6000)
 )
 
@@ -37,8 +33,10 @@ func NewBindExchanger(parent context.Context, registryUri string,
 		limiters:  make(map[string]map[string]*turbo.BurstyLimiter, 100),
 		topics:    make([]string, 0, 50)}
 	center := registry.NewRegistryCenter(parent, registryUri)
-	center.RegisterWatcher(PATH_SERVER, ex)
-	center.RegisterWatcher(PATH_SUB, ex)
+	center.RegisterWatcher(ex)
+
+	//center.RegisterWatcher(PATH_SERVER, ex)
+	//center.RegisterWatcher(PATH_SUB, ex)
 	ex.registryCenter = center
 	ex.kiteqserver = kiteQServer
 	limiter, err := turbo.NewBurstyLimiter(int(DEFAULT_WARTER_MARK/2), int(DEFAULT_WARTER_MARK))
@@ -159,7 +157,7 @@ func (self *BindExchanger) subscribeBinds(topics []string) bool {
 			return false
 		} else {
 			for groupId, bs := range binds {
-				self.onBindChanged(topic, groupId, bs)
+				self.OnBindChanged(topic, groupId, bs)
 				log.Infof("BindExchanger|SubscribeBinds|SUCC|%s|%s", topic, binds)
 			}
 		}
@@ -203,79 +201,8 @@ func (self *BindExchanger) FindBinds(topic string, messageType string, filter fu
 	return validBinds, limiters
 }
 
-//订阅关系topic下的group发生变更
-func (self *BindExchanger) NodeChange(path string, eventType registry.RegistryEvent, childNode []string) {
-
-	//如果是订阅关系变更则处理
-	if strings.HasPrefix(path, registry.KITEQ_SUB) {
-		//获取topic
-		split := strings.Split(path, "/")
-		if len(split) < 4 {
-			if eventType == registry.Created {
-				//不合法的订阅璐姐
-				log.Errorf("BindExchanger|NodeChange|INVALID SUB PATH |%s|%t", path, childNode)
-			}
-			return
-		}
-		//获取topic
-		topic := split[3]
-
-		self.lock.Lock()
-		defer self.lock.Unlock()
-		//如果topic下无订阅分组节点，直接删除该topic
-		if len(childNode) <= 0 {
-			self.onBindChanged(topic, "", nil)
-			log.Errorf("BindExchanger|NodeChange|无子节点|%s|%s", path, childNode)
-			return
-		}
-
-		// //对当前的topic的分组进行重新设置
-		switch eventType {
-		case registry.Created, registry.Child:
-
-			bm, err := self.registryCenter.GetBindAndWatch(topic)
-			if nil != err {
-				log.Errorf("BindExchanger|NodeChange|获取订阅关系失败|%s|%s", path, childNode)
-			}
-
-			//如果topic下没有订阅关系分组则青琉璃
-			if len(bm) > 0 {
-				for groupId, bs := range bm {
-					self.onBindChanged(topic, groupId, bs)
-				}
-			} else {
-				//删除具体某个分组
-				self.onBindChanged(topic, "", nil)
-			}
-		}
-
-	} else {
-		// log.Warn("BindExchanger|NodeChange|非SUB节点变更|%s|%s", path, childNode)
-	}
-}
-
-func (self *BindExchanger) DataChange(path string, binds []*registry.Binding) {
-
-	//订阅关系变更才处理
-	if strings.HasPrefix(path, registry.KITEQ_SUB) {
-
-		split := strings.Split(path, "/")
-		//获取topic
-		topic := split[3]
-		groupId := strings.TrimSuffix(split[4], "-bind")
-		self.lock.Lock()
-		defer self.lock.Unlock()
-		//开始处理变化的订阅关系
-		self.onBindChanged(topic, groupId, binds)
-
-	} else {
-		log.Warnf("BindExchanger|DataChange|非SUB节点变更|%s", path)
-	}
-
-}
-
 //订阅关系改变
-func (self *BindExchanger) onBindChanged(topic, groupId string, newbinds []*registry.Binding) {
+func (self *BindExchanger) OnBindChanged(topic, groupId string, newbinds []*registry.Binding) {
 
 	if len(groupId) <= 0 {
 		delete(self.exchanger, topic)

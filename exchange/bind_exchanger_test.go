@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"context"
 	"github.com/blackbeans/go-zookeeper/zk"
 	"github.com/blackbeans/kiteq-common/registry"
 
@@ -18,7 +19,7 @@ func TestSubscribeBindings(t *testing.T) {
 	conn, _, _ := zk.Connect([]string{"localhost:2181"}, 10*time.Second)
 	cleanUp(t, conn, "/kiteq")
 
-	exchanger := NewBindExchanger("zk://localhost:2181", "127.0.0.1:13800")
+	exchanger := NewBindExchanger(context.TODO(), "zk://localhost:2181", "127.0.0.1:13800")
 	//推送一下当前服务器的可用的topics列表
 	topics := []string{"trade", "feed"}
 	succ := exchanger.PushQServer("localhost:13800", topics)
