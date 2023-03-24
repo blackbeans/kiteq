@@ -157,8 +157,8 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 			fbsize = int(v)
 		}
 
-		kitedb = smf.NewKiteFileStore(ctx, parsed.Host, fbsize, maxcap, checkPeriod)
-		log.Debug("NewKiteQServer|FILESTORE|%s|%d|%d", parsed.Host, maxcap, int(checkPeriod.Seconds()))
+		kitedb = smf.NewKiteFileStore(ctx, parsed.Host+parsed.Path, fbsize, maxcap, checkPeriod)
+		log.Infof("NewKiteQServer|FileStore|%s|%d|%d", parsed.Host+parsed.Path, maxcap, int(checkPeriod.Seconds()))
 	case "rocksdb":
 		options := make(map[string]string, len(parsed.Query()))
 		for k, v := range parsed.Query() {
@@ -167,7 +167,8 @@ func ParseDB(ctx context.Context, db string, serverName string) store.IKiteStore
 			}
 		}
 		//获取到存储路径
-		kitedb = rocksdb.NewRocksDbStore(ctx, parsed.Host, options)
+		kitedb = rocksdb.NewRocksDbStore(ctx, parsed.Host+parsed.Path, options)
+		log.Infof("NewKiteQServer|RocksDb|%s|%v", parsed.Host+parsed.Path, options)
 
 	default:
 		log.Fatalf("NewKiteQServer|UNSUPPORT DB PROTOCOL|%s", db)

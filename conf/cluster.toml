@@ -19,6 +19,17 @@
 		maxDeliverWorkers=8000
 		recoverSeconds=10
 		recievePermitsPerSecond=20000
+	[clusters.rocksdb_dev_2]
+		env="dev" #env=dev/online
+		topics=["relation","message","user-profile"]
+		dlqExecHour=2
+		deliveryFirst=false
+		logxml="./conf/log.yaml"
+		db="rocksdb://./db2/"
+		deliverySeconds=5
+		maxDeliverWorkers=8000
+		recoverSeconds=10
+		recievePermitsPerSecond=20000
 	[clusters.file_dev]
 		env="dev" #env=dev/online
 		topics=["relation","message","user-profile"]
