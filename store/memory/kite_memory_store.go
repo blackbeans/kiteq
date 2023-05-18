@@ -4,16 +4,17 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"github.com/blackbeans/logx"
 	. "kiteq/store"
 	"strconv"
 	"sync"
-
-	log "github.com/sirupsen/logrus"
 )
 
 const (
 	CONCURRENT_LEVEL = 16
 )
+
+var log = logx.GetLogger("kiteq_store")
 
 type KiteMemoryStore struct {
 	datalinks []*list.List                              //用于LRU

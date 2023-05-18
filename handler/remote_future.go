@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/blackbeans/turbo"
-	// 	log "github.com/sirupsen/logrus"
+	// 	"github.com/blackbeans/logx"
 )
 
 //网络调用的futurehandler

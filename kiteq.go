@@ -13,14 +13,12 @@ import (
 	"time"
 
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
 
 	//加载启动参数
 	so := server.Parse()
-
 	runtime.GOMAXPROCS(runtime.NumCPU()*2 + 1)
 
 	rc := turbo.NewTConfig(
@@ -56,6 +54,5 @@ func main() {
 	}
 	qserver.Shutdown()
 	cancel()
-	log.Infof("KiteQServer IS STOPPED!")
 
 }

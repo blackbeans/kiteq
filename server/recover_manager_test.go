@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/turbo"
@@ -9,7 +10,6 @@ import (
 	"kiteq/handler"
 	"kiteq/store"
 	"kiteq/store/memory"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -63,7 +63,7 @@ func TestRecoverManager(t *testing.T) {
 
 	pipeline := turbo.NewDefaultPipeline()
 
-	kitedb := memory.NewKiteMemoryStore(100, 100)
+	kitedb := memory.NewKiteMemoryStore(context.Background(), 100, 100)
 
 	messageid := store.MessageId()
 	t.Logf("messageid:%s\b", messageid)
@@ -80,15 +80,15 @@ func TestRecoverManager(t *testing.T) {
 	ch := make(chan bool, 1)
 
 	// 临时在这里创建的BindExchanger
-	exchanger := exchange.NewBindExchanger("zk://localhost:2181", "127.0.0.1:13800")
+	exchanger := exchange.NewBindExchanger(context.Background(), "zk://localhost:2181", "127.0.0.1:13800")
 
-	tw := turbo.NewTimerWheel(100*time.Millisecond, 10)
+	tw := turbo.NewTimerWheel(100 * time.Millisecond)
 
-	deliveryRegistry := handler.NewDeliveryRegistry(tw, 10)
+	deliveryRegistry := handler.NewDeliveryRegistry(context.Background(), tw, 10)
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, fs, 100, deliveryRegistry))
 	pipeline.RegisteHandler("deliver", newmockDeliverHandler("deliver", ch))
 	hostname, _ := os.Hostname()
-	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb, tw)
+	rm := NewRecoverManager(hostname, 16*time.Second, pipeline, kitedb)
 	rm.Start()
 	select {
 	case succ := <-ch:

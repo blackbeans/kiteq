@@ -5,6 +5,7 @@ import (
 	"container/heap"
 	"context"
 	"encoding/json"
+	"github.com/blackbeans/logx"
 	"kiteq/store"
 	"strconv"
 	"sync"
@@ -13,8 +14,9 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/cockroachdb/pebble"
 	"github.com/golang/protobuf/proto"
-	log "github.com/sirupsen/logrus"
 )
+
+var log = logx.GetLogger("kiteq_store")
 
 //delvier tags
 type opBody struct {

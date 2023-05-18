@@ -16,7 +16,6 @@ import (
 
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 )
 
 type KiteQServer struct {

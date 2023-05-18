@@ -1,0 +1,30 @@
+<logging>
+  <filter enabled="true">
+    <tag>kiteq_server</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->
+    <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
+  </filter>
+  <filter enabled="true">
+    <tag>kiteq_store</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->
+    <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
+  </filter>
+  <filter enabled="true">
+    <tag>kiteq_handler</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->
+    <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
+  </filter>
+  <filter enabled="true">
+    <tag>kiteq_deliver</tag>
+    <type>file</type>
+    <level>INFO</level>
+    <property name="maxsize">100M</property> <!-- \d+[KMG]? Suffixes are in terms of 2**10 -->
+    <property name="maxlines">10M</property> <!-- \d+[KMG]? Suffixes are in terms of thousands -->
+  </filter>
+</logging>

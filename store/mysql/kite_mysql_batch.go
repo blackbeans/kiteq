@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	. "kiteq/store"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func (self *KiteMysqlStore) Start() {

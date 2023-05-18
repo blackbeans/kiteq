@@ -5,14 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/blackbeans/logx"
 	. "kiteq/store"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/sirupsen/logrus"
 )
+
+var log = logx.GetLogger("kiteq_store")
 
 //delvier tags
 type opBody struct {

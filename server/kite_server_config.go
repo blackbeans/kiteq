@@ -3,13 +3,10 @@ package server
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"github.com/blackbeans/kiteq-common/stat"
+	"github.com/blackbeans/logx"
 	"github.com/blackbeans/turbo"
 	"github.com/naoina/toml"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"time"
@@ -94,15 +91,24 @@ func MockServerOption() ServerOption {
 	return so
 }
 
+var log = logx.GetLogger("kiteq_server")
+
 func Parse() ServerOption {
 	//两种方式都支持
 	pprofPort := flag.Int("pport", -1, "pprof port default value is -1 ")
 	bindAddr := flag.String("bind", "localhost:13800", "-bind=localhost:13800")
 	clusterName := flag.String("clusterName", "default_dev", "-clusterName=default_dev")
 	configPath := flag.String("configPath", "", "-configPath=conf/cluster.toml kiteq配置的toml文件")
+	logsPath := flag.String("logPath", "./logs", "-logPath=./logs logs输出路径")
 	flag.Parse()
 
+	logPath := "./logs"
+	if nil != logsPath && len(*logsPath) > 0 {
+		logPath = *logsPath
+	}
+
 	so := ServerOption{}
+
 	//判断当前采用配置文件加载
 	if nil != configPath && len(*configPath) > 0 {
 		//解析
@@ -111,33 +117,11 @@ func Parse() ServerOption {
 			panic("loadTomlConf|FAIL|" + err.Error())
 		}
 	}
-
-	//加载log配置
-	raw, err := ioutil.ReadFile(so.logxml)
-	if nil != err {
-		panic(fmt.Errorf("read logxml fail %s ,%v", so.logxml, err))
-	}
-
-	var loggers []*lumberjack.Logger
-	err = yaml.Unmarshal(raw, &loggers)
-	if nil != err {
-		panic(fmt.Errorf("yaml.Unmarshal fail %s ,%v", so.logxml, err))
-	}
 	//加载log4go的配置
-
-	//&lumberjack.Logger{
-	//	// 日志输出文件路径
-	//	Filename: "./logs/kiteq.log",
-	//	// 日志文件最大 size, 单位是 MB
-	//	MaxSize: 500, // megabytes
-	//	// 最大过期日志保留的个数
-	//	MaxBackups: 3,
-	//	// 保留过期文件的最大时间间隔,单位是天
-	//	MaxAge: 28, //days
-	//	// 是否需要压缩滚动日志, 使用的 gzip 压缩
-	//	Compress: true, // disabled by default
-	//}
-	log.SetOutput(loggers[0])
+	if err := logx.InitLogger(logPath, so.logxml); nil != err {
+		panic(err)
+	}
+	log = logx.GetLogger("kiteq_server")
 	return so
 }
 
@@ -151,7 +135,6 @@ func loadTomlConf(path, clusterName, bindAddr string, pprofPort int, so *ServerO
 	if nil != rerr {
 		return rerr
 	}
-	log.Debugf("ServerConfig|Parse|toml:%s", string(buff))
 	//读取配置
 	var option Option
 	err = toml.Unmarshal(buff, &option)

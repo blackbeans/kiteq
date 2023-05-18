@@ -2,6 +2,7 @@ package parser
 
 import (
 	"context"
+	"github.com/blackbeans/logx"
 	"kiteq/store"
 	smf "kiteq/store/file"
 	sm "kiteq/store/memory"
@@ -11,9 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
+
+var log = logx.GetLogger("kiteq_store")
 
 // storage schema
 //  mock    mock://

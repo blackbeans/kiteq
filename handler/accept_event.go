@@ -6,7 +6,6 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 	"os"
 	"time"
@@ -78,7 +77,7 @@ func (self *AcceptHandler) Process(ctx *turbo.DefaultPipelineContext, event turb
 	if nil != msg && !self.limiter.Acquire() {
 		remoteEvent := turbo.NewRemotingEvent(storeAck(ae.opaque,
 			msg.Header.GetMessageId(), false,
-			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", "", ae.client.LocalAddr())),
+			fmt.Sprintf("Store Result KiteQ OverFlow [%s]", ae.client.LocalAddr())),
 			[]string{ae.client.RemoteAddr()})
 		ctx.SendForward(remoteEvent)
 		return nil

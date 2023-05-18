@@ -3,8 +3,8 @@ package exchange
 import (
 	"context"
 	"github.com/blackbeans/kiteq-common/registry"
+	"github.com/blackbeans/logx"
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 	"math"
 	"sort"
 	"sync"
@@ -14,6 +14,8 @@ import (
 const (
 	DEFAULT_WARTER_MARK = int32(6000)
 )
+
+var log = logx.GetLogger("kiteq_server")
 
 //用于管理订阅关系，对接zookeeper的订阅关系变更
 type BindExchanger struct {
@@ -253,6 +255,11 @@ func (self *BindExchanger) OnBindChanged(topic, groupId string, newbinds []*regi
 		delete(limiter, groupId)
 
 	}
+}
+
+//当QServer变更
+func (self *BindExchanger) OnQServerChanged(topic string, hosts []string) {
+
 }
 
 //当zk断开链接时

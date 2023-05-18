@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"database/sql"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )

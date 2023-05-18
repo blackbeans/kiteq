@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-
 	"github.com/blackbeans/go-uuid"
 	"github.com/blackbeans/kiteq-common/protocol"
 )

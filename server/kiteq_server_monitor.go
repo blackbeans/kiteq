@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"runtime"
 	"time"

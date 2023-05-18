@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 	"time"
 )

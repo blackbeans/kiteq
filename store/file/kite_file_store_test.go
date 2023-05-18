@@ -6,7 +6,6 @@ import (
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/golang/protobuf/proto"
 	"kiteq/store"
-	"log"
 	"testing"
 	"time"
 )

@@ -4,14 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/blackbeans/logx"
 	. "kiteq/store"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/sirupsen/logrus"
 )
+
+var log = logx.GetLogger("kiteq_store")
 
 //mysql的参数
 type MysqlOptions struct {

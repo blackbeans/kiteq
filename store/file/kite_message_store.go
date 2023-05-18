@@ -3,7 +3,6 @@ package file
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"hash/crc32"
 	"os"
 	"path/filepath"

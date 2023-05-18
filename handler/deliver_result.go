@@ -2,13 +2,13 @@ package handler
 
 import (
 	"fmt"
+	"github.com/blackbeans/logx"
 	"kiteq/store"
 	"sort"
 	"time"
 
 	"github.com/blackbeans/kiteq-common/protocol"
 	"github.com/blackbeans/turbo"
-	log "github.com/sirupsen/logrus"
 )
 
 type redeliveryWindows []RedeliveryWindow
@@ -110,7 +110,7 @@ func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, eve
 		close(fevent.attemptDeliver)
 	}
 
-	log.Infof("%s|Process|SEND RESULT:"+
+	logx.GetLogger("deliver_result").Infof("%s|Process|SEND RESULT:"+
 		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d"+
 		"CreateTime:%d\nproperties:%v"+
 		"AttemptDeliver:%v\nFly:%v"+

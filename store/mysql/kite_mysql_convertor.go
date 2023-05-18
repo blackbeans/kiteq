@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 
 	"github.com/blackbeans/kiteq-common/protocol"
-	log "github.com/sirupsen/logrus"
 	"kiteq/store"
 	"reflect"
 )
