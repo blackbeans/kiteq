@@ -131,7 +131,7 @@ func (self *KiteQServer) startFlow() {
 				line = fmt.Sprintf("%s\nKiteStore:%s", line, self.kitedb.Monitor())
 
 			}
-			log.Infof(line)
+			log.Info(line)
 			self.lastNetstat[count%2] = ns
 			self.lastKiteStat[count%2] = ks
 			count++

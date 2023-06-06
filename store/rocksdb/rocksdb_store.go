@@ -1,11 +1,11 @@
 package rocksdb
 
 import (
-	"bytes"
 	"container/heap"
 	"context"
 	"encoding/json"
 	"github.com/blackbeans/logx"
+	"github.com/valyala/bytebufferpool"
 	"kiteq/store"
 	"strconv"
 	"sync"
@@ -93,25 +93,23 @@ type RocksDbStore struct {
 	recoverHeap recoverHeap
 
 	//添加和更新recoverItem
-	addChan             chan *recoverItem
-	upChan              chan *recoverItem
-	delChan             chan *recoverItem
-	pageQueryChan       chan pageQuery
-	pageQueryResponseCh chan *pageQueryResponse
+	addChan       chan *recoverItem
+	upChan        chan *recoverItem
+	delChan       chan *recoverItem
+	pageQueryChan chan *pageQuery
 }
 
 func NewRocksDbStore(ctx context.Context, rocksDbDir string, options map[string]string) *RocksDbStore {
 	return &RocksDbStore{
-		ctx:                 ctx,
-		options:             options,
-		rocksDbDir:          rocksDbDir,
-		recoverMap:          &sync.Map{},
-		recoverHeap:         make([]*recoverItem, 0, 10*10000),
-		addChan:             make(chan *recoverItem, 1000),
-		upChan:              make(chan *recoverItem, 1000),
-		delChan:             make(chan *recoverItem, 1000),
-		pageQueryChan:       make(chan pageQuery, 1),
-		pageQueryResponseCh: make(chan *pageQueryResponse, 1),
+		ctx:           ctx,
+		options:       options,
+		rocksDbDir:    rocksDbDir,
+		recoverMap:    &sync.Map{},
+		recoverHeap:   make([]*recoverItem, 0, 10*10000),
+		addChan:       make(chan *recoverItem, 1000),
+		upChan:        make(chan *recoverItem, 1000),
+		delChan:       make(chan *recoverItem, 1000),
+		pageQueryChan: make(chan *pageQuery, 1),
 	}
 }
 
@@ -234,7 +232,9 @@ func (self *RocksDbStore) heapProcess() {
 				heap.Remove(&self.recoverHeap, del.index)
 				self.recoverNum--
 			}
-		case pageQuery := <-self.pageQueryChan:
+		case pq := <-self.pageQueryChan:
+
+			pageQuery := pq
 			//recover items
 			recoverItems := make([]*recoverItem, 0, 10)
 			for self.recoverHeap.Len() > 0 {
@@ -258,12 +258,8 @@ func (self *RocksDbStore) heapProcess() {
 			if len(recoverItems) < pageQuery.limit {
 				hasMore = false
 			}
-
 			//分页查询结果
-			self.pageQueryResponseCh <- &pageQueryResponse{
-				hasMore: hasMore,
-				items:   recoverItems,
-			}
+			pageQuery.onResponse(hasMore, recoverItems...)
 		}
 	}
 }
@@ -344,7 +340,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 	key := []byte(msgKeyForHeader(topic, messageId))
 	data, r, err := batch.Get(key)
 	if nil != err {
-		log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
+		log.Errorf("KiteFileStore|Query|FAIL|%v|%s", err, string(key))
 		batch.Close()
 		return nil
 	}
@@ -353,7 +349,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 	err = protocol.UnmarshalPbMessage(data[1:], &header)
 	if nil != err {
 		batch.Close()
-		log.Errorf("KiteFileStore|Query.UnmarshalPbMessage|FAIL|%v", err, string(key))
+		log.Errorf("KiteFileStore|Query.UnmarshalPbMessage|FAIL|%v|%s", err, string(key))
 		return nil
 	}
 	r.Close()
@@ -364,7 +360,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
 		if nil != err {
 			batch.Close()
-			log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
+			log.Errorf("KiteFileStore|Query|FAIL|%v|%s", err, string(key))
 			return nil
 		}
 		r.Close()
@@ -377,7 +373,7 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 		body, r, err := batch.Get([]byte(msgKeyForBody(topic, messageId)))
 		if nil != err {
 			batch.Close()
-			log.Errorf("KiteFileStore|Query|FAIL|%v", err, string(key))
+			log.Errorf("KiteFileStore|Query|FAIL|%v|%s", err, string(key))
 			return nil
 		}
 		r.Close()
@@ -428,46 +424,42 @@ func (self *RocksDbStore) Save(entity *store.MessageEntity) bool {
 	return self.save0(self.rocksdb, entity)
 }
 
-var slicePool = &sync.Pool{New: func() interface{} {
-	return make([]byte, 0, 2*1024)
-}}
+var slicePool = &bytebufferpool.Pool{}
 
 //存储数据
 func (self *RocksDbStore) save0(rocksdb *pebble.DB, entity *store.MessageEntity) bool {
-	batch := rocksdb.NewBatch()
+	batch := rocksdb
 	rawHeader, _ := protocol.MarshalPbMessage(entity.Header)
 
-	arr := slicePool.Get().([]byte)
-
-	buff := bytes.NewBuffer(arr)
+	buff := slicePool.Get()
 	buff.WriteByte(entity.MsgType)
 	buff.Write(rawHeader)
 	//header
-	err := batch.Set([]byte(msgKeyForHeader(entity.Topic, entity.MessageId)), buff.Bytes(), &pebble.WriteOptions{Sync: true})
+	err := batch.Set([]byte(msgKeyForHeader(entity.Topic, entity.MessageId)), buff.Bytes(), pebble.NoSync)
 	if nil != err {
-		slicePool.Put(arr[:0])
+		slicePool.Put(buff)
 		batch.Close()
 		return false
 	}
-	slicePool.Put(arr[:0])
+	slicePool.Put(buff)
 	switch entity.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
 		//body
-		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), entity.GetBody().([]byte), pebble.Sync)
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), entity.GetBody().([]byte), pebble.NoSync)
 		if nil != err {
 			batch.Close()
 			return false
 		}
 	case protocol.CMD_STRING_MESSAGE:
 		//body
-		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), []byte(entity.GetBody().(string)), pebble.Sync)
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), []byte(entity.GetBody().(string)), pebble.NoSync)
 		if nil != err {
 			batch.Close()
 			return false
 		}
 
 	}
-	batch.Commit(&pebble.WriteOptions{Sync: true})
+	//batch.Commit(&pebble.WriteOptions{Sync: true})
 	//提交
 	return true
 }
@@ -552,80 +544,83 @@ func (self *RocksDbStore) Expired(topic, messageId string) bool {
 }
 
 type pageQuery struct {
+	sync.WaitGroup
 	nextDeliveryTime int64
 	limit            int
-}
-
-type pageQueryResponse struct {
-	hasMore bool
-	items   []*recoverItem
+	onResponse       func(hasMore bool, items ...*recoverItem)
 }
 
 func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nextDeliverySeconds int64, startIdx, limit int) (bool, []*store.MessageEntity) {
 
-	//recover items
-	self.pageQueryChan <- pageQuery{
+	//获取对应的实体
+	entities := make([]*store.MessageEntity, 0, limit)
+	hasMore := false
+
+	pq := &pageQuery{
 		nextDeliveryTime: nextDeliverySeconds,
 		limit:            limit,
 	}
+	pq.Add(1)
+	pq.onResponse = func(more bool, items ...*recoverItem) {
+		defer pq.Done()
+		hasMore = more
+		batch := self.rocksdb.NewIndexedBatch()
+		for _, item := range items {
 
-	//获取查询之后的响应
-	response := <-self.pageQueryResponseCh
-
-	//获取对应的实体
-	entities := make([]*store.MessageEntity, 0, len(response.items))
-	batch := self.rocksdb.NewIndexedBatch()
-	for _, item := range response.items {
-
-		key := msgKeyForHeader(item.Topic, item.MessageId)
-		rawHeader, hr, err := batch.Get([]byte(key))
-		if nil != err {
-			continue
-		}
-		var header protocol.Header
-		err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
-		if nil != err {
+			key := msgKeyForHeader(item.Topic, item.MessageId)
+			rawHeader, hr, err := batch.Get([]byte(key))
+			if nil != err {
+				continue
+			}
+			var header protocol.Header
+			err = protocol.UnmarshalPbMessage(rawHeader[1:], &header)
+			if nil != err {
+				hr.Close()
+				log.Errorf("KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v|%s", err, string(key))
+				continue
+			}
 			hr.Close()
-			log.Errorf("KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v", err, string(key))
-			continue
-		}
-		hr.Close()
 
-		//创建消息
-		entity := &store.MessageEntity{
-			Header:    &header,
-			MessageId: header.GetMessageId(),
-			Topic:     header.GetTopic(),
-			Commit:    header.GetCommit()}
+			//创建消息
+			entity := &store.MessageEntity{
+				Header:    &header,
+				MessageId: header.GetMessageId(),
+				Topic:     header.GetTopic(),
+				Commit:    header.GetCommit()}
 
-		//查询投递操作日志
-		data, r, err := batch.Get([]byte(opLogKey(item.Topic, item.MessageId)))
-		if nil != err {
-			if err == pebble.ErrNotFound {
-				continue
+			//查询投递操作日志
+			data, r, err := batch.Get([]byte(opLogKey(item.Topic, item.MessageId)))
+			if nil != err {
+				if err == pebble.ErrNotFound {
+					continue
+				} else {
+					continue
+				}
+			}
+
+			var opLog opBody
+			err = json.Unmarshal(data, &opLog)
+			if nil != err {
+				if err != pebble.ErrNotFound {
+					log.Errorf("KiteFileStore|QueryLog|FAIL|%v", err)
+				}
+				r.Close()
 			} else {
-				continue
+				r.Close()
 			}
-		}
 
-		var opLog opBody
-		err = json.Unmarshal(data, &opLog)
-		if nil != err {
-			if err != pebble.ErrNotFound {
-				log.Errorf("KiteFileStore|QueryLog|FAIL|%v", err)
-			}
-			r.Close()
-		} else {
-			r.Close()
+			//merge data
+			entity.FailGroups = opLog.FailGroups
+			entity.SuccGroups = opLog.SuccGroups
+			entity.NextDeliverTime = opLog.NextDeliverTime
+			entity.DeliverCount = opLog.DeliverCount
+			entities = append(entities, entity)
 		}
-
-		//merge data
-		entity.FailGroups = opLog.FailGroups
-		entity.SuccGroups = opLog.SuccGroups
-		entity.NextDeliverTime = opLog.NextDeliverTime
-		entity.DeliverCount = opLog.DeliverCount
-		entities = append(entities, entity)
+		batch.Close()
 	}
-	batch.Close()
-	return response.hasMore, entities
+
+	//recover items
+	self.pageQueryChan <- pq
+	pq.Wait()
+	return hasMore, entities
 }

@@ -115,7 +115,7 @@ func (self *KiteFileStore) replay(ol *oplog) {
 		}
 		l.Unlock()
 	} else {
-		log.Errorf("KiteFileStore|replay|INVALID|%s|%s", ol.Body, ol.Op)
+		log.Errorf("KiteFileStore|replay|INVALID|%s|%d", ol.Body, ol.Op)
 	}
 
 }

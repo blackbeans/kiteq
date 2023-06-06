@@ -42,7 +42,7 @@ func TestFileStoreQuery(t *testing.T) {
 		entity := fs.Query("trade", id)
 		if nil == entity {
 			t.Fail()
-			log.Printf("FAIL|%s", entity)
+			log.Printf("FAIL|%v", entity)
 		} else {
 			// log.Println(entity)
 		}
@@ -321,7 +321,7 @@ func TestFileStoreInit(t *testing.T) {
 			t.Fail()
 			return
 		}
-		log.Printf("TestFileStoreInit|Exist|SUCC|%d|%s|%s", i, id, entity)
+		log.Printf("TestFileStoreInit|Exist|SUCC|%d|%s|%v", i, id, entity)
 	}
 
 	log.Printf("TestFileStoreInit|Exist|")

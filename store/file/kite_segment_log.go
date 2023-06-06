@@ -245,7 +245,7 @@ func (self *oplog) marshal() []byte {
 	encoder := gob.NewEncoder(buff)
 	err := encoder.Encode(self)
 	if nil != err {
-		log.Errorf("oplog|marshal|fail|%s|%s", err, self)
+		log.Errorf("oplog|marshal|fail|%s|%v", err, self)
 		return nil
 	}
 	b := buff.Bytes()

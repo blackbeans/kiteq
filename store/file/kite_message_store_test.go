@@ -11,7 +11,7 @@ import (
 )
 
 func traverse(oplog *oplog) {
-	log.Printf("------%s", oplog)
+	log.Printf("------%v", oplog)
 }
 
 func TestSingle(t *testing.T) {
