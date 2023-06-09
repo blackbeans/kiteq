@@ -2,6 +2,7 @@ package rocksdb
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/blackbeans/go-uuid"
 	"kiteq/store"
 	"testing"
@@ -147,6 +148,7 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("TestRocksDbStore_PageQueryEntity:%+v", entities)
+	rawJson, _ := json.Marshal(entities)
+	t.Logf("TestRocksDbStore_PageQueryEntity:%s", string(rawJson))
 
 }

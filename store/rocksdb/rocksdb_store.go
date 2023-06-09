@@ -309,7 +309,7 @@ func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) 
 		return false
 	}
 
-	err = self.rocksdb.Set([]byte(opLogKey(entity.Topic, entity.MessageId)), rawOpLog, pebble.Sync)
+	err = self.rocksdb.Set([]byte(opLogKey(entity.Topic, entity.MessageId)), rawOpLog, pebble.NoSync)
 	if nil != err {
 		log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|Set|FAIL|%v", err)
 		return false
