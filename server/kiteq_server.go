@@ -85,7 +85,7 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	pipeline.RegisteHandler("persistent", handler.NewPersistentHandler("persistent", kc.so.deliveryTimeout, kitedb, kc.so.deliveryFirst))
 	pipeline.RegisteHandler("txAck", handler.NewTxAckHandler("txAck", kitedb))
 	pipeline.RegisteHandler("deliverpre", handler.NewDeliverPreHandler("deliverpre", kitedb, exchanger, kc.flowstat, kc.so.maxDeliverWorkers, registry))
-	pipeline.RegisteHandler("deliver", handler.NewDeliverQosHandler("deliver", kc.flowstat))
+	pipeline.RegisteHandler("deliver", handler.NewDeliverQosHandler(ctx, "deliver", kc.flowstat))
 	pipeline.RegisteHandler("remoting", turbo.NewRemotingHandler("remoting", clientManager))
 	pipeline.RegisteHandler("remote-future", handler.NewRemotingFutureHandler("remote-future"))
 	pipeline.RegisteHandler("deliver-result", handler.NewDeliverResultHandler("deliver-result", kc.so.deliveryTimeout, kitedb, rw, registry))
@@ -141,7 +141,7 @@ func (self *KiteQServer) Start() {
 	if !succ {
 		log.Fatalf("KiteQServer|PushQServer|FAIL|%s|%s", err, self.kc.so.topics)
 	} else {
-		log.Infof("kite_server", "KiteQServer|PushQServer|SUCC|%s", self.kc.so.topics)
+		log.Infof("KiteQServer|PushQServer|SUCC|%s", self.kc.so.topics)
 	}
 
 	//开启流量统计

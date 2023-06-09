@@ -14,4 +14,5 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/naoina/toml v0.1.0
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 )

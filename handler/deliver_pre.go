@@ -59,7 +59,7 @@ func (self *DeliverPreHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 	//尝试注册一下当前的投递事件的消息
 	//如果失败则放弃本次投递
 	//会在 deliverResult里取消该注册事件可以继续投递
-	succ := self.deliveryRegistry.Registe(pevent.messageId, EXPIRED_SECOND)
+	succ := self.deliveryRegistry.Registe(pevent.messageId, ExpiredSecond)
 	if !succ {
 		return nil
 	}

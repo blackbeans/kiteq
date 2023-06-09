@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"github.com/blackbeans/kiteq-common/stat"
 	"github.com/blackbeans/turbo"
 	"sort"
@@ -8,21 +9,23 @@ import (
 )
 
 const (
-	EXPIRED_SECOND = 10 * time.Second
+	ExpiredSecond = 10 * time.Second
 )
 
 //----------------投递的handler
 type DeliverQosHandler struct {
 	turbo.BaseDoubleSidedHandler
 	flowstat *stat.FlowStat
+	ctx      context.Context
 }
 
 //------创建deliver
-func NewDeliverQosHandler(name string, flowstat *stat.FlowStat) *DeliverQosHandler {
+func NewDeliverQosHandler(parent context.Context, name string, flowstat *stat.FlowStat) *DeliverQosHandler {
 
 	phandler := &DeliverQosHandler{}
 	phandler.BaseDoubleSidedHandler = turbo.NewBaseDoubleSidedHandler(name, phandler)
 	phandler.flowstat = flowstat
+	phandler.ctx = parent
 	return phandler
 }
 
@@ -45,7 +48,7 @@ func (self *DeliverQosHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 	//没有投递分组直接投递结果
 	if len(pevent.deliverGroups) <= 0 {
 		//直接显示投递成功
-		resultEvent := newDeliverResultEvent(pevent, nil)
+		resultEvent := newDeliverResultEvent(pevent, turbo.EMPTY_FUTURE)
 		ctx.SendForward(resultEvent)
 		return nil
 	}
@@ -69,7 +72,7 @@ func (self *DeliverQosHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 			groups = append(groups, g)
 		} else {
 			//too fast overflow
-			overflow[g] = turbo.NewErrFuture(0, g, turbo.ERR_OVER_FLOW, nil)
+			overflow[g] = turbo.NewErrFuture(0, g, turbo.ERR_OVER_FLOW, self.ctx)
 		}
 	}
 

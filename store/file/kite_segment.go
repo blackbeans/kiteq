@@ -361,7 +361,7 @@ func (self *Segment) Delete(cid int64) bool {
 			return true
 		}
 	} else {
-		log.Debugf("Segment|Delete|NO Chunk|chunkid:%d|%d", cid, idx, len(self.chunks))
+		log.Debugf("Segment|Delete|NO Chunk|chunkid:%d|%d|%d", cid, idx, len(self.chunks))
 	}
 
 	return true

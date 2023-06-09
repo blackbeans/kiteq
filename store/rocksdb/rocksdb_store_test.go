@@ -2,6 +2,8 @@ package rocksdb
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/blackbeans/go-uuid"
 	"kiteq/store"
 	"testing"
 	"time"
@@ -15,6 +17,30 @@ var rocksstore *RocksDbStore
 func init() {
 	rocksstore = NewRocksDbStore(context.TODO(), ".", map[string]string{})
 	rocksstore.Start()
+}
+
+func BenchmarkRocksDbStore_Save(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		//创建消息
+
+		msg := &protocol.BytesMessage{}
+		msg.Header = &protocol.Header{
+			MessageId:    proto.String(uuid.New()),
+			Topic:        proto.String("trade"),
+			MessageType:  proto.String("pay-succ"),
+			ExpiredTime:  proto.Int64(time.Now().Add(10 * time.Minute).Unix()),
+			DeliverLimit: proto.Int32(100),
+			GroupId:      proto.String("go-kite-test"),
+			Commit:       proto.Bool(false),
+			Fly:          proto.Bool(false)}
+		msg.Body = []byte("hello world")
+
+		entity := store.NewMessageEntity(protocol.NewQMessage(msg))
+		if succ := rocksstore.Save(entity); !succ {
+			b.FailNow()
+		}
+	}
+
 }
 
 func TestRocksDbStore_Save(t *testing.T) {
@@ -42,7 +68,7 @@ func TestRocksDbStore_Save(t *testing.T) {
 	if nil == entity || entity.MessageId != "26c03f00665862591f696a980b5ac" {
 		t.FailNow()
 	}
-	t.Logf("%+v", entity)
+	t.Logf("%+v", entity.MessageId)
 }
 
 func TestRocksDbStore_AsyncCommit(t *testing.T) {
@@ -95,17 +121,20 @@ func TestRocksDbStore_AsyncUpdate(t *testing.T) {
 
 	//更新失败了？
 	if succ := rocksstore.AsyncUpdateDeliverResult(entity); !succ {
+		t.Logf("TestRocksDbStore_AsyncUpdate.AsyncUpdateDeliverResult|Fail|%v", entity)
 		t.FailNow()
 	}
 
 	//查询消息
 	entity = rocksstore.Query("trade", "26c03f00665862591f696a980b5ac")
 	if nil == entity {
+		t.Logf("TestRocksDbStore_AsyncUpdate.Query|Fail|26c03f00665862591f696a980b5ac")
 		t.FailNow()
 	}
 	if entity.NextDeliverTime != now ||
 		entity.FailGroups[0] != "s-vip-service" ||
 		entity.SuccGroups[0] != "s-profile-service" || entity.SuccGroups[1] != "s-group-service" {
+		t.Logf("TestRocksDbStore_AsyncUpdate.Query|Fail|%v", entity)
 		t.FailNow()
 	}
 }
@@ -119,6 +148,7 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Logf("TestRocksDbStore_PageQueryEntity:%+v", entities)
+	rawJson, _ := json.Marshal(entities)
+	t.Logf("TestRocksDbStore_PageQueryEntity:%s", string(rawJson))
 
 }

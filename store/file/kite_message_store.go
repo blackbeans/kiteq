@@ -249,7 +249,7 @@ func (self *MessageStore) recoverSnapshot() {
 		for i, s := range self.segments {
 			err := s.Open(self.replay)
 			if nil != err {
-				log.Errorf("MessageStore|recoverSnapshot|Fail|%s", err, s.slog.path)
+				log.Errorf("MessageStore|recoverSnapshot|Fail|%s|%s", err, s.slog.path)
 				panic(err)
 			}
 
