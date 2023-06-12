@@ -158,6 +158,7 @@ func (self *RocksDbStore) Start() {
 	self.rockDLQ = rockDLQ
 
 	//恢复oplog
+	uniqOp := make(map[string]bool, 1000)
 	snapshot := rocksdb.NewSnapshot()
 	iter := snapshot.NewIter(prefixIterOptions([]byte("mh:")))
 	for iter.First(); iter.Valid(); iter.Next() {
@@ -173,7 +174,8 @@ func (self *RocksDbStore) Start() {
 			Topic:     header.GetTopic(),
 			MessageId: header.GetMessageId(),
 		}
-		rawOp, _, err := snapshot.Get([]byte(opLogKey(header.GetTopic(), header.GetMessageId())))
+		key := opLogKey(header.GetTopic(), header.GetMessageId())
+		rawOp, _, err := snapshot.Get([]byte(key))
 		if nil == err {
 			var tmp recoverItem
 			err := json.Unmarshal(rawOp, &tmp)
@@ -181,7 +183,10 @@ func (self *RocksDbStore) Start() {
 				item = &tmp
 			}
 		}
-		self.addChan <- item
+		if _, ok := uniqOp[key]; !ok {
+			self.addChan <- item
+			uniqOp[key] = true
+		}
 	}
 	//关闭遍历
 	iter.Close()
@@ -195,7 +200,11 @@ func (self *RocksDbStore) Start() {
 			_ = batchDelete.Delete(iter.Key(), pebble.NoSync)
 			continue
 		}
-		self.addChan <- &tmp
+		key := opLogKey(tmp.Topic, tmp.MessageId)
+		if _, ok := uniqOp[key]; !ok {
+			uniqOp[key] = true
+			self.addChan <- &tmp
+		}
 	}
 	batchDelete.Commit(pebble.Sync)
 	batchDelete.Close()
@@ -231,6 +240,8 @@ func (self *RocksDbStore) heapProcess() {
 			}
 			//分页查询结果
 			pageQuery.onResponse(hasMore, recoverItems...)
+		default:
+
 		}
 	}
 }
