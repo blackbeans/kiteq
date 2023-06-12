@@ -152,3 +152,8 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 	t.Logf("TestRocksDbStore_PageQueryEntity:%s", string(rawJson))
 
 }
+
+//func TestLoadLocal(t *testing.T) {
+//	_, entities := rocksstore.PageQueryEntity("0", "", time.Now().Add(-30*time.Minute).Unix(), 0, 1000)
+//	t.Logf("%d\n", len(entities))
+//}

@@ -46,11 +46,6 @@ func (self *RecoverManager) Start() {
 }
 
 func (self *RecoverManager) startRecoverTask(hashKey string) {
-	defer func() {
-
-		log.Errorf("RecoverManager|startRecoverTask|STOPPED|%s|%v", hashKey)
-
-	}()
 	// log.Info("RecoverManager|startRecoverTask|SUCC|%s....", hashKey)
 	for !self.isClose {
 		//开始

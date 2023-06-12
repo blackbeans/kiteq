@@ -9,7 +9,7 @@ brokers:
 #绑定关系
 bindings:
     #一组绑定关系
-    - groupIds: ["s-mts-test1"]
+    - groupIds: ["s-user-profile"]
       topic: "user-profile"
       messageType: "profile-update"
       bindType: "direct"

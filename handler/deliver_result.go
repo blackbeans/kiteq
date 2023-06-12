@@ -111,10 +111,10 @@ func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, eve
 	}
 
 	logx.GetLogger("deliver_result").Infof("%s|Process|SEND RESULT:"+
-		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d"+
-		"CreateTime:%d\nproperties:%v"+
-		"AttemptDeliver:%v\nFly:%v"+
-		"NextDeliverTime:%d"+
+		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d\n"+
+		"CreateTime:%d\nproperties:%v\n"+
+		"AttemptDeliver:%v\nFly:%v\n"+
+		"NextDeliverTime:%d\n"+
 		"DeliverGroups:%v\nSUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
 		self.GetName(),
 		fevent.header.GetMessageId(), fevent.header.GetTopic(),
