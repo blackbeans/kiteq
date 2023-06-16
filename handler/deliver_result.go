@@ -182,6 +182,7 @@ func (self *DeliverResultHandler) checkRedelivery(fevent *deliverResultEvent) bo
 func (self *DeliverResultHandler) saveDeliverResult(h *protocol.Header, deliverCount int32, succGroups []string, failGroups []string) {
 
 	entity := &store.MessageEntity{
+		Header:       h,
 		Topic:        h.GetTopic(),
 		MessageType:  h.GetMessageType(),
 		MessageId:    h.GetMessageId(),

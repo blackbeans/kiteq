@@ -145,6 +145,7 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 
 	hasmore, entities := rocksstore.PageQueryEntity("", "", time.Now().Add(30*time.Minute).Unix(), 0, 10)
 	if hasmore || len(entities) != 1 {
+		t.Logf("TestRocksDbStore_PageQueryEntity|FAIL|%d", len(entities))
 		t.FailNow()
 	}
 
