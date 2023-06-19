@@ -66,6 +66,9 @@ func (m *recoverHeapMap) Push(x interface{}) {
 		for len(m.uniq) >= m.capacity {
 			m.Pop()
 		}
+	}
+
+	if _, ok := m.uniq[msgKeyForBinlog(item.Topic, item.MessageId)]; !ok {
 		heap.Push(&m.h, x)
 		m.uniq[msgKeyForBinlog(item.Topic, item.MessageId)] = item
 	}
@@ -270,6 +273,9 @@ func (self *RocksDbStore) Start() {
 	iter.Close()
 	batch.Commit(pebble.Sync)
 	batch.Close()
+
+	log.Infof("RocksDbStore|Start|SUCC|%s ...", self.rocksDbDir)
+
 }
 
 func (self *RocksDbStore) heapProcess() {
@@ -302,7 +308,7 @@ func (self *RocksDbStore) heapProcess() {
 				hasMore = false
 			}
 			//分页查询结果
-			pageQuery.onResponse(hasMore, recoverItems...)
+			go pageQuery.onResponse(hasMore, recoverItems...)
 		}
 	}
 }
@@ -674,4 +680,5 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 	self.pageQueryChan <- pq
 	pq.Wait()
 	return hasMore, entities
+	return false, nil
 }

@@ -19,6 +19,7 @@ import (
 )
 
 type KiteQServer struct {
+	ctx            context.Context
 	reconnManager  *turbo.ReconnectManager
 	clientManager  *turbo.ClientManager
 	exchanger      *exchange.BindExchanger
@@ -44,8 +45,6 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	kiteqName, _ := os.Hostname()
 
 	kitedb := parser.ParseDB(ctx, kc.so.db, kiteqName)
-	//kc.flowstat.Kitestore = kitedb
-	kitedb.Start()
 
 	//重连管理器
 	reconnManager := turbo.NewReconnectManager(false, -1, -1, handshake)
@@ -57,7 +56,7 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	exchanger := exchange.NewBindExchanger(ctx, kc.so.registryUri, kc.so.bindHost)
 
 	//创建消息投递注册器
-	registry := handler.NewDeliveryRegistry(ctx, kc.rc.TW, 10*10000)
+	registry := handler.NewDeliveryRegistry(ctx, kc.rc.TW, 50*10000)
 
 	//重投策略
 	rw := make([]handler.RedeliveryWindow, 0, 10)
@@ -94,6 +93,7 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 	recoverManager := NewRecoverManager(kiteqName, kc.so.recoverPeriod, pipeline, kitedb)
 
 	return &KiteQServer{
+		ctx:            ctx,
 		reconnManager:  reconnManager,
 		clientManager:  clientManager,
 		exchanger:      exchanger,
@@ -110,6 +110,8 @@ func NewKiteQServer(ctx context.Context, kc KiteQConfig) *KiteQServer {
 }
 
 func (self *KiteQServer) Start() {
+
+	self.kitedb.Start()
 
 	codec := protocol.KiteQBytesCodec{MaxFrameLength: turbo.MAX_PACKET_BYTES}
 	self.remotingServer = turbo.NewTServerWithCodec(self.kc.so.bindHost, self.kc.rc,
@@ -167,22 +169,30 @@ func (self *KiteQServer) Start() {
 
 func (self *KiteQServer) startDLQ() {
 	go func() {
-		for {
-			now := time.Now()
-			next := now.Add(time.Hour * 24)
-			next = time.Date(next.Year(), next.Month(), next.Day(), self.kc.so.dlqExecHour, 0, 0, 0, next.Location())
-			t := time.NewTimer(next.Sub(now))
-			<-t.C
-			func() {
-				defer func() {
-					if err := recover(); nil != err {
-						log.Errorf("KiteQServer|startDLQ|FAIL|%s|%s", err, time.Now())
-					}
-				}()
-				//开始做迁移
-				self.kitedb.MoveExpired()
+		now := time.Now()
+		next := now.Add(time.Hour * 24)
+		next = time.Date(next.Year(), next.Month(), next.Day(), self.kc.so.dlqExecHour, 0, 0, 0, next.Location())
+		time.Sleep(next.Sub(now))
+		do := func() {
+			defer func() {
+				if err := recover(); nil != err {
+					log.Errorf("KiteQServer|startDLQ|FAIL|%s|%s", err, time.Now())
+				}
 			}()
+			//开始做迁移
+			self.kitedb.MoveExpired()
 			log.Infof("KiteQServer|startDLQ|SUCC|%s", time.Now())
+		}
+
+		t := time.NewTicker(24 * time.Hour)
+		for {
+			select {
+			case <-self.ctx.Done():
+				t.Stop()
+				return
+			case <-t.C:
+				do()
+			}
 		}
 	}()
 	log.Infof("KiteQServer|startDLQ|SUCC|%s", time.Now())

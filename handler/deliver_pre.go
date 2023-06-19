@@ -109,7 +109,7 @@ func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *
 		entity = self.kitestore.Query(pevent.header.GetTopic(), pevent.messageId)
 		if nil == entity {
 			self.kitestore.Expired(pevent.header.GetTopic(), pevent.messageId)
-			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s", pevent.messageId)
+			//log.Error("DeliverPreHandler|send0|Query|FAIL|%s", pevent.messageId)
 			return
 		}
 	}
