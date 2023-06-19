@@ -1,6 +1,7 @@
 package rocksdb
 
 import (
+	"bytes"
 	"container/heap"
 	"context"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"kiteq/store"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,8 +45,9 @@ type recoverItem struct {
 //恢复的map
 type recoverHeapMap struct {
 	sort.Interface
-	h    recoverHeap
-	uniq map[string]interface{}
+	capacity int
+	h        recoverHeap
+	uniq     map[string]*recoverItem
 }
 
 func (m *recoverHeapMap) Less(i, j int) bool {
@@ -58,9 +61,21 @@ func (m *recoverHeapMap) Swap(i, j int) {
 func (m *recoverHeapMap) Push(x interface{}) {
 	item := x.(*recoverItem)
 
-	if _, ok := m.uniq[msgKeyForBinlog(item.MessageId, item.Topic)]; !ok {
+	if _, ok := m.uniq[msgKeyForBinlog(item.Topic, item.MessageId)]; !ok {
+		//如果大于总容量，那么进行pop操作，老的数据先pop掉
+		for len(m.uniq) >= m.capacity {
+			m.Pop()
+		}
 		heap.Push(&m.h, x)
-		m.uniq[msgKeyForBinlog(item.MessageId, item.Topic)] = true
+		m.uniq[msgKeyForBinlog(item.Topic, item.MessageId)] = item
+	}
+}
+
+func (m *recoverHeapMap) Remove(item *recoverItem) {
+	key := msgKeyForBinlog(item.Topic, item.MessageId)
+	if v, ok := m.uniq[key]; ok {
+		heap.Remove(&m.h, v.index)
+		delete(m.uniq, key)
 	}
 }
 
@@ -68,7 +83,7 @@ func (m *recoverHeapMap) Pop() interface{} {
 	x := heap.Pop(&m.h)
 	if nil != x {
 		item := x.(*recoverItem)
-		delete(m.uniq, msgKeyForBinlog(item.MessageId, item.Topic))
+		delete(m.uniq, msgKeyForBinlog(item.Topic, item.MessageId))
 	}
 	return x
 }
@@ -144,9 +159,11 @@ func NewRocksDbStore(ctx context.Context, rocksDbDir string, options map[string]
 		options:    options,
 		rocksDbDir: rocksDbDir,
 		recoverHeap: &recoverHeapMap{
-			h:    make(recoverHeap, 0, 10*10000),
-			uniq: make(map[string]interface{}, 10*10000)},
-		addChan:       make(chan *recoverItem, 1000),
+			capacity: 50 * 10000,
+			h:        make(recoverHeap, 0, 50*10000),
+			uniq:     make(map[string]*recoverItem, 50*10000)},
+		addChan:       make(chan *recoverItem, 5000),
+		delChan:       make(chan *recoverItem, 5000),
 		pageQueryChan: make(chan *pageQuery, 1),
 	}
 }
@@ -157,21 +174,9 @@ const (
 	Prefix_Body   = "m:b:"
 )
 
-func msgKeyForHeader(topic, messageid string) string {
-	return Prefix_Header + messageid + ":" + topic
-}
-
-func msgKeyForBody(topic, messageid string) string {
-	return Prefix_Body + messageid + ":" + topic
-}
-
-func msgKeyForBinlog(topic, messageid string) string {
-	return topic + ":" + messageid
-}
-
-var prefixIterOptions = func(prefix []byte) *pebble.IterOptions {
+var prefixIterator = func(prefix string) *pebble.IterOptions {
 	return &pebble.IterOptions{
-		LowerBound: prefix,
+		LowerBound: []byte(prefix),
 		UpperBound: func(b []byte) []byte {
 			end := make([]byte, len(b))
 			copy(end, b)
@@ -182,8 +187,20 @@ var prefixIterOptions = func(prefix []byte) *pebble.IterOptions {
 				}
 			}
 			return nil // no upper-bound
-		}(prefix),
+		}([]byte(prefix)),
 	}
+}
+
+func msgKeyForHeader(topic, messageid string) string {
+	return Prefix_Header + topic + ":" + messageid
+}
+
+func msgKeyForBody(topic, messageid string) string {
+	return Prefix_Body + topic + ":" + messageid
+}
+
+func msgKeyForBinlog(topic, messageid string) string {
+	return topic + ":" + messageid
 }
 
 func (self *RocksDbStore) Start() {
@@ -207,7 +224,8 @@ func (self *RocksDbStore) Start() {
 	self.rockBinlog = rockBinlog
 
 	//恢复oplog
-	iter := rockBinlog.NewIter(prefixIterOptions([]byte("")))
+	batch := rockBinlog.NewBatch()
+	iter := rockBinlog.NewIter(nil)
 	for iter.First(); iter.Valid(); iter.Next() {
 		var tmp opBody
 		err := json.Unmarshal(iter.Value(), &tmp)
@@ -221,54 +239,58 @@ func (self *RocksDbStore) Start() {
 			}
 		} else {
 			//解析 错误那么删除这个投递日志
-			rockBinlog.Delete(iter.Key(), pebble.NoSync)
+			batch.Delete(iter.Key(), pebble.NoSync)
 		}
 	}
 	//关闭遍历
 	iter.Close()
+	batch.Commit(pebble.Sync)
+	batch.Close()
 
-	iter = rocksdb.NewIter(prefixIterOptions([]byte(Prefix_Header)))
+	iter = rocksdb.NewIter(prefixIterator(Prefix_Header))
+	batch = rocksdb.NewBatch()
 	for iter.First(); iter.Valid(); iter.Next() {
-
-		var header protocol.Header
-		err := protocol.UnmarshalPbMessage(iter.Value()[1:], &header)
-		if nil != err {
-			log.Errorf("KiteFileStore|Start.ReloadUnCommit|%v", err)
-			continue
-		}
-
+		topicAndMsgId := bytes.TrimPrefix(iter.Key(), []byte(Prefix_Header))
+		split := strings.Split(string(topicAndMsgId), ":")
 		//没有找到投递日志，则创建一个任务
-		_, _, err = rockBinlog.Get([]byte(msgKeyForBinlog(header.GetTopic(), header.GetMessageId())))
+		_, r, err := rockBinlog.Get(topicAndMsgId)
 		if err == pebble.ErrNotFound {
 			self.addChan <- &recoverItem{
 				index:           -1,
-				Topic:           header.GetTopic(),
-				MessageId:       header.GetMessageId(),
+				Topic:           split[0],
+				MessageId:       split[1],
 				NextDeliverTime: 0,
 				DeliverCount:    0,
 			}
-			continue
+		} else {
+			r.Close()
 		}
+
 	}
 	iter.Close()
+	batch.Commit(pebble.Sync)
+	batch.Close()
 }
 
 func (self *RocksDbStore) heapProcess() {
 	for {
 		select {
 		case <-self.ctx.Done():
+			self.rocksdb.Flush()
+			self.rockBinlog.Flush()
 			return
 		case item := <-self.addChan:
-			heap.Push(self.recoverHeap, item)
+			self.recoverHeap.Push(item)
+		case del := <-self.delChan:
+			self.recoverHeap.Remove(del)
 		case pq := <-self.pageQueryChan:
-
 			pageQuery := pq
 			//recover items
 			recoverItems := make([]*recoverItem, 0, 10)
 			for self.recoverHeap.Len() > 0 {
 				peak := self.recoverHeap.Peek()
 				if peak.(*recoverItem).NextDeliverTime <= pageQuery.nextDeliveryTime && len(recoverItems) < pageQuery.limit {
-					min := heap.Pop(self.recoverHeap)
+					min := self.recoverHeap.Pop()
 					recoverItems = append(recoverItems, min.(*recoverItem))
 				} else {
 					break
@@ -281,8 +303,6 @@ func (self *RocksDbStore) heapProcess() {
 			}
 			//分页查询结果
 			pageQuery.onResponse(hasMore, recoverItems...)
-		default:
-
 		}
 	}
 }
@@ -298,35 +318,24 @@ func (self *RocksDbStore) Monitor() string {
 
 func (self *RocksDbStore) Length() map[string]int {
 	topics := make(map[string]int, 0)
-	it := self.rocksdb.NewSnapshot().NewIter(prefixIterOptions([]byte(Prefix_Header)))
-
+	snapshot := self.rocksdb.NewSnapshot()
+	it := snapshot.NewIter(prefixIterator(Prefix_Header))
 	for it.First(); it.Valid(); it.Next() {
-		var header protocol.Header
-		err := protocol.UnmarshalPbMessage(it.Value()[1:], &header)
-		if nil != err {
-			log.Errorf("KiteFileStore|Length.Data|%v", err)
-			continue
-		}
-
-		topics[header.GetTopic()]++
-
+		topic := strings.Split(strings.TrimPrefix(string(it.Key()), Prefix_Header), ":")[0]
+		topics[string(topic)]++
 	}
 	it.Close()
+	snapshot.Close()
 
-	it = self.rockBinlog.NewSnapshot().NewIter(prefixIterOptions([]byte("")))
+	snapshot = self.rockBinlog.NewSnapshot()
+	it = snapshot.NewIter(nil)
 
 	for it.First(); it.Valid(); it.Next() {
-		var op opBody
-		err := json.Unmarshal(it.Value(), &op)
-		if nil != err {
-			log.Errorf("KiteFileStore|Length.Binlog|%v", err)
-			continue
-		}
-
-		topics["opLog:"+op.Topic]++
+		topic := strings.Split(string(it.Key()), ":")[0]
+		topics[topic+":binlog"]++
 	}
 	it.Close()
-
+	snapshot.Close()
 	topics["rocksDbHeap"] = self.recoverHeap.Len()
 	return topics
 }
@@ -335,19 +344,35 @@ func (self *RocksDbStore) MoveExpired() {
 	//通知堆开始操作dlq的消息,遍历下目前所有的处于recover状态的数据
 	//超过最大ttl和投递次数的消息都搬迁到DLQ的rocksdb中
 	now := time.Now().Unix() / int64(time.Millisecond)
-	iter := self.rockBinlog.NewSnapshot().NewIter(prefixIterOptions([]byte("")))
+	iter := self.rockBinlog.NewIter(nil)
 	for iter.First(); iter.Valid(); iter.Next() {
+		splits := strings.Split(string(iter.Key()), ":")
 		var tmp opBody
-		err := json.Unmarshal(iter.Value(), &tmp)
-		if nil != err {
-			_ = self.rocksdb.Delete(iter.Key(), pebble.NoSync)
-			continue
+		if err := json.Unmarshal(iter.Value(), &tmp); nil == err {
+			if tmp.DeliverCount >= 100 || tmp.TTL <= now {
+				self.Expired(tmp.Topic, tmp.MessageId)
+				continue
+			}
 		}
-		if tmp.DeliverCount >= 100 || tmp.TTL <= now {
-			self.Expired(tmp.Topic, tmp.MessageId)
+
+		//尝试写入recover
+		self.addChan <- &recoverItem{
+			Topic:     splits[0],
+			MessageId: splits[1],
 		}
 	}
 
+	//压缩整理
+	err := self.rockBinlog.Compact([]byte(""), []byte("z"))
+	if nil != err {
+		log.Warnf("RocksDbStore|MoveExpired.Compact.rockBinlog|FAIL|%v", err)
+	}
+
+	//整理
+	err = self.rocksdb.Compact([]byte(""), []byte("z"))
+	if nil != err {
+		log.Warnf("RocksDbStore|MoveExpired.Compact.rocksdb|FAIL|%v", err)
+	}
 }
 
 func (self *RocksDbStore) RecoverNum() int {
@@ -472,20 +497,16 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 }
 
 func (self *RocksDbStore) Save(entity *store.MessageEntity) bool {
-	return self.save0(self.rocksdb, entity)
-}
-
-var slicePool = &bytebufferpool.Pool{}
-
-//存储数据
-func (self *RocksDbStore) save0(rocksdb *pebble.DB, entity *store.MessageEntity) bool {
 	rawHeader, _ := protocol.MarshalPbMessage(entity.Header)
 
 	buff := slicePool.Get()
 	buff.WriteByte(entity.MsgType)
 	buff.Write(rawHeader)
+
+	batch := self.rocksdb.NewBatch()
+	defer batch.Close()
 	//header
-	err := rocksdb.Set([]byte(msgKeyForHeader(entity.Topic, entity.MessageId)), buff.Bytes(), pebble.NoSync)
+	err := batch.Set([]byte(msgKeyForHeader(entity.Topic, entity.MessageId)), buff.Bytes(), pebble.NoSync)
 	if nil != err {
 		slicePool.Put(buff)
 		return false
@@ -494,22 +515,33 @@ func (self *RocksDbStore) save0(rocksdb *pebble.DB, entity *store.MessageEntity)
 	switch entity.MsgType {
 	case protocol.CMD_BYTES_MESSAGE:
 		//body
-		err = rocksdb.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), entity.GetBody().([]byte), pebble.NoSync)
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), entity.GetBody().([]byte), pebble.NoSync)
 		if nil != err {
 			return false
 		}
 	case protocol.CMD_STRING_MESSAGE:
 		//body
-		err = rocksdb.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), []byte(entity.GetBody().(string)), pebble.NoSync)
+		err = batch.Set([]byte(msgKeyForBody(entity.Topic, entity.MessageId)), []byte(entity.GetBody().(string)), pebble.NoSync)
 		if nil != err {
 			return false
 		}
-
 	}
-	//batch.Commit(&pebble.WriteOptions{Sync: true})
+	batch.Commit(pebble.NoSync)
 	//提交
+
+	//增加一个投递
+	self.addChan <- &recoverItem{
+		index:           -1,
+		Topic:           entity.Header.GetTopic(),
+		MessageId:       entity.Header.GetMessageId(),
+		TTL:             entity.Header.GetExpiredTime(),
+		NextDeliverTime: time.Now().Unix(),
+		DeliverCount:    0,
+	}
 	return true
 }
+
+var slicePool = &bytebufferpool.Pool{}
 
 func (self *RocksDbStore) Commit(topic, messageId string) bool {
 	//存储消息已提交
@@ -567,6 +599,11 @@ func (self *RocksDbStore) Delete(topic, messageId string) bool {
 
 	//投递日志也删掉
 	self.rockBinlog.Delete([]byte(msgKeyForBinlog(topic, messageId)), pebble.NoSync)
+
+	self.delChan <- &recoverItem{
+		Topic:     topic,
+		MessageId: messageId,
+	}
 	return true
 }
 
@@ -595,14 +632,19 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 	}
 	pq.Add(1)
 	pq.onResponse = func(more bool, items ...*recoverItem) {
-		defer pq.Done()
 		hasMore = more
 		batch := self.rocksdb.NewIndexedBatch()
+		defer func() {
+			batch.Close()
+			pq.Done()
+		}()
 		for _, item := range items {
 
 			key := msgKeyForHeader(item.Topic, item.MessageId)
 			rawHeader, hr, err := batch.Get([]byte(key))
 			if nil != err {
+				log.Errorf("KiteFileStore|PageQueryEntity.BatchGet|FAIL|%v|%s", err, string(key))
+				self.Delete(item.Topic, item.MessageId)
 				continue
 			}
 			var header protocol.Header
@@ -610,6 +652,7 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 			if nil != err {
 				hr.Close()
 				log.Errorf("KiteFileStore|PageQueryEntity.UnmarshalPbMessage|FAIL|%v|%s", err, string(key))
+				self.Delete(item.Topic, item.MessageId)
 				continue
 			}
 			hr.Close()
@@ -624,7 +667,7 @@ func (self *RocksDbStore) PageQueryEntity(hashKey string, kiteServer string, nex
 			//merge data
 			entities = append(entities, entity)
 		}
-		batch.Close()
+
 	}
 
 	//recover items

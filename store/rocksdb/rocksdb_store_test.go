@@ -154,7 +154,13 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 
 }
 
-//func TestLoadLocal(t *testing.T) {
-//	_, entities := rocksstore.PageQueryEntity("0", "", time.Now().Add(-30*time.Minute).Unix(), 0, 1000)
-//	t.Logf("%d\n", len(entities))
-//}
+func TestLoadLocal(t *testing.T) {
+	_, entities := rocksstore.PageQueryEntity("0", "", time.Now().Add(-30*time.Minute).Unix(), 0, 1000)
+	t.Logf("%d\n", len(entities))
+	for _, entity := range entities {
+		entity := rocksstore.Query(entity.Header.GetTopic(), entity.Header.GetMessageId())
+		rawJson, _ := json.Marshal(entity)
+		t.Logf("%s", string(rawJson))
+	}
+
+}
