@@ -80,6 +80,9 @@ type IKiteStore interface {
 	//recover数量
 	RecoverNum() int
 
+	//recover批量数据
+	RecoverLimit() int
+
 	//批量提交头题结果
 	AsyncUpdateDeliverResult(entity *MessageEntity) bool
 

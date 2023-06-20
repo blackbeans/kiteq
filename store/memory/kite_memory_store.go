@@ -50,6 +50,11 @@ func (self *KiteMemoryStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
+//recover批量数据
+func (self *KiteMemoryStore) RecoverLimit() int {
+	return 200
+}
+
 func (self *KiteMemoryStore) Length() map[string] /*topic*/ int {
 	defer func() {
 		if err := recover(); nil != err {

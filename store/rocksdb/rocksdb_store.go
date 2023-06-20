@@ -390,6 +390,11 @@ func (self *RocksDbStore) RecoverNum() int {
 	return 1
 }
 
+//recover批量数据
+func (self *RocksDbStore) RecoverLimit() int {
+	return 1000
+}
+
 func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) bool {
 	opLog := &opBody{
 		Topic:           entity.Topic,

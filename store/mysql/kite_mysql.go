@@ -67,6 +67,11 @@ func (self *KiteMysqlStore) RecoverNum() int {
 	return self.dbshard.ShardNum() * self.dbshard.HashNum()
 }
 
+//recover批量数据
+func (self *KiteMysqlStore) RecoverLimit() int {
+	return 200
+}
+
 var filternothing = func(colname string) bool {
 	return false
 }
