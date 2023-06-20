@@ -43,8 +43,8 @@ func (self *ValidateHandler) Process(ctx *turbo.DefaultPipelineContext, event tu
 	if isAuth {
 		ctx.SendForward(event)
 	} else {
-		log.Warn("ValidateHandler|UnAuth CONNETION|%s", c.RemoteAddr())
-		cmd := protocol.MarshalConnAuthAck(false, "未授权的访问,连接关闭!")
+		log.Warnf("ValidateHandler|UnAuth CONNETION|%s", c.RemoteAddr())
+		cmd := protocol.MarshalConnAuthAck(false, "Unauthorized,Connection broken!")
 		//响应包
 		p := turbo.NewPacket(protocol.CMD_CONN_AUTH, cmd)
 

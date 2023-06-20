@@ -157,6 +157,11 @@ func (self *KiteFileStore) RecoverNum() int {
 	return CONCURRENT_LEVEL
 }
 
+//recover批量数据
+func (self *KiteFileStore) RecoverLimit() int {
+	return 200
+}
+
 //length
 func (self *KiteFileStore) Length() map[string]int {
 	defer func() {

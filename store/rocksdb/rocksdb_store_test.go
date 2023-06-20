@@ -145,10 +145,22 @@ func TestRocksDbStore_PageQueryEntity(t *testing.T) {
 
 	hasmore, entities := rocksstore.PageQueryEntity("", "", time.Now().Add(30*time.Minute).Unix(), 0, 10)
 	if hasmore || len(entities) != 1 {
+		t.Logf("TestRocksDbStore_PageQueryEntity|FAIL|%d", len(entities))
 		t.FailNow()
 	}
 
 	rawJson, _ := json.Marshal(entities)
 	t.Logf("TestRocksDbStore_PageQueryEntity:%s", string(rawJson))
+
+}
+
+func TestLoadLocal(t *testing.T) {
+	_, entities := rocksstore.PageQueryEntity("0", "", time.Now().Add(-30*time.Minute).Unix(), 0, 1000)
+	t.Logf("%d\n", len(entities))
+	for _, entity := range entities {
+		entity := rocksstore.Query(entity.Header.GetTopic(), entity.Header.GetMessageId())
+		rawJson, _ := json.Marshal(entity)
+		t.Logf("%s", string(rawJson))
+	}
 
 }

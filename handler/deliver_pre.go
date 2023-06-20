@@ -7,7 +7,6 @@ import (
 	"github.com/blackbeans/turbo"
 	"kiteq/exchange"
 	"kiteq/store"
-	"sync/atomic"
 	"time"
 )
 
@@ -16,8 +15,7 @@ type DeliverPreHandler struct {
 	turbo.BaseForwardHandler
 	kitestore        store.IKiteStore
 	exchanger        *exchange.BindExchanger
-	maxDeliverNum    int32
-	conditions       int32
+	maxDeliverNum    chan interface{}
 	deliverTimeout   time.Duration
 	flowstat         *stat.FlowStat
 	deliveryRegistry *DeliveryRegistry
@@ -31,8 +29,7 @@ func NewDeliverPreHandler(name string, kitestore store.IKiteStore,
 	phandler.BaseForwardHandler = turbo.NewBaseForwardHandler(name, phandler)
 	phandler.kitestore = kitestore
 	phandler.exchanger = exchanger
-	phandler.maxDeliverNum = (int32)(maxDeliverWorker)
-	phandler.conditions = 0
+	phandler.maxDeliverNum = make(chan interface{}, maxDeliverWorker)
 	phandler.flowstat = flowstat
 	phandler.deliveryRegistry = deliveryRegistry
 
@@ -59,35 +56,22 @@ func (self *DeliverPreHandler) Process(ctx *turbo.DefaultPipelineContext, event 
 	//尝试注册一下当前的投递事件的消息
 	//如果失败则放弃本次投递
 	//会在 deliverResult里取消该注册事件可以继续投递
-	succ := self.deliveryRegistry.Registe(pevent.messageId, ExpiredSecond)
+	succ := self.deliveryRegistry.Register(pevent.messageId, ExpiredSecond)
 	if !succ {
 		return nil
 	}
 
-	/**
-	 * 尝试三次进行spinlock
-	 **/
-	for i := 0; i < 3; i++ {
-		old := atomic.LoadInt32(&self.conditions)
-		if (old + 1) > self.maxDeliverNum {
-			continue
-		}
-		if atomic.CompareAndSwapInt32(&self.conditions, old, old+1) {
-			self.flowstat.DeliverGo.Incr(1)
-			go func() {
-				defer func() {
-					atomic.AddInt32(&self.conditions, -1)
-					self.flowstat.DeliverGo.Incr(-1)
-				}()
-				//启动投递
-				self.send0(ctx, pevent)
-				self.flowstat.DeliverFlow.Incr(1)
-			}()
-			break
-		} else {
-
-		}
-	}
+	self.maxDeliverNum <- nil
+	self.flowstat.DeliverGo.Incr(1)
+	go func() {
+		defer func() {
+			<-self.maxDeliverNum
+			self.flowstat.DeliverGo.Incr(-1)
+		}()
+		//启动投递
+		self.send0(ctx, pevent)
+		self.flowstat.DeliverFlow.Incr(1)
+	}()
 
 	return nil
 }
@@ -109,7 +93,7 @@ func (self *DeliverPreHandler) send0(ctx *turbo.DefaultPipelineContext, pevent *
 		entity = self.kitestore.Query(pevent.header.GetTopic(), pevent.messageId)
 		if nil == entity {
 			self.kitestore.Expired(pevent.header.GetTopic(), pevent.messageId)
-			// log.Error("DeliverPreHandler|send0|Query|FAIL|%s", pevent.messageId)
+			//log.Error("DeliverPreHandler|send0|Query|FAIL|%s", pevent.messageId)
 			return
 		}
 	}

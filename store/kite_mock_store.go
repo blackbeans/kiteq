@@ -21,6 +21,10 @@ func (self *MockKiteStore) RecoverNum() int {
 	return 0
 }
 
+func (self *MockKiteStore) RecoverLimit() int {
+	return 0
+}
+
 func (self *MockKiteStore) Length() map[string] /*topic*/ int {
 	//TODO mysql中的未过期的消息数量
 
