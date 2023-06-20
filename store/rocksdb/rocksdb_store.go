@@ -151,9 +151,11 @@ type RocksDbStore struct {
 
 	//添加和更新recoverItem
 	addChan       chan *recoverItem
-	upChan        chan *recoverItem
 	delChan       chan *recoverItem
 	pageQueryChan chan *pageQuery
+	//异步批量写入结果的
+	saveDeliveryChan  chan *opBody
+	finishDeliverChan chan *opBody
 }
 
 func NewRocksDbStore(ctx context.Context, rocksDbDir string, options map[string]string) *RocksDbStore {
@@ -165,9 +167,11 @@ func NewRocksDbStore(ctx context.Context, rocksDbDir string, options map[string]
 			capacity: 50 * 10000,
 			h:        make(recoverHeap, 0, 50*10000),
 			uniq:     make(map[string]*recoverItem, 50*10000)},
-		addChan:       make(chan *recoverItem, 5000),
-		delChan:       make(chan *recoverItem, 5000),
-		pageQueryChan: make(chan *pageQuery, 1),
+		addChan:           make(chan *recoverItem, 5000),
+		delChan:           make(chan *recoverItem, 5000),
+		pageQueryChan:     make(chan *pageQuery, 1),
+		saveDeliveryChan:  make(chan *opBody, 1000),
+		finishDeliverChan: make(chan *opBody, 1000),
 	}
 }
 
@@ -209,6 +213,7 @@ func msgKeyForBinlog(topic, messageid string) string {
 func (self *RocksDbStore) Start() {
 
 	go self.heapProcess()
+	go self.batchProcess()
 
 	rocksdb, err := pebble.Open(self.rocksDbDir+"/data/", &pebble.Options{
 		MaxConcurrentCompactions: 5,
@@ -386,7 +391,7 @@ func (self *RocksDbStore) RecoverNum() int {
 }
 
 func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) bool {
-	opLog := opBody{
+	opLog := &opBody{
 		Topic:           entity.Topic,
 		MessageId:       entity.MessageId,
 		TTL:             entity.Header.GetExpiredTime(),
@@ -395,31 +400,53 @@ func (self *RocksDbStore) AsyncUpdateDeliverResult(entity *store.MessageEntity) 
 		NextDeliverTime: entity.NextDeliverTime,
 		DeliverCount:    entity.DeliverCount,
 	}
-	rawOpLog, err := json.Marshal(opLog)
-	if nil != err {
-		log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|MarshalFAIL|%v", err)
-		return false
-	}
 
-	err = self.rockBinlog.Set([]byte(msgKeyForBinlog(entity.Topic, entity.MessageId)), rawOpLog, pebble.NoSync)
-	if nil != err {
-		log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|Set|FAIL|%v", err)
-		return false
-	}
-
-	self.addChan <- &recoverItem{
-		index:           -1,
-		Topic:           entity.Topic,
-		MessageId:       entity.MessageId,
-		NextDeliverTime: entity.NextDeliverTime,
-		TTL:             opLog.TTL,
-		DeliverCount:    entity.DeliverCount,
-	}
+	//写入到result中
+	self.saveDeliveryChan <- opLog
 	return true
 }
 
+//批量处理
+func (self *RocksDbStore) batchProcess() {
+	for {
+		select {
+		case <-self.ctx.Done():
+			return
+		case opoLog := <-self.finishDeliverChan:
+			self.Delete(opoLog.Topic, opoLog.MessageId)
+			//结束投递处理
+		case opLog := <-self.saveDeliveryChan:
+			rawOpLog, err := json.Marshal(opLog)
+			if nil != err {
+				log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|MarshalFAIL|%v", err)
+				return
+			}
+
+			err = self.rockBinlog.Set([]byte(msgKeyForBinlog(opLog.Topic, opLog.MessageId)), rawOpLog, pebble.NoSync)
+			if nil != err {
+				log.Errorf("KiteFileStore|AsyncUpdateDeliverResult|Set|FAIL|%v", err)
+				return
+			}
+
+			self.addChan <- &recoverItem{
+				index:           -1,
+				Topic:           opLog.Topic,
+				MessageId:       opLog.MessageId,
+				NextDeliverTime: opLog.NextDeliverTime,
+				TTL:             opLog.TTL,
+				DeliverCount:    opLog.DeliverCount,
+			}
+		}
+
+	}
+}
+
 func (self *RocksDbStore) AsyncDelete(topic, messageId string) bool {
-	return self.Delete(topic, messageId)
+	self.finishDeliverChan <- &opBody{
+		Topic:     topic,
+		MessageId: messageId,
+	}
+	return true
 }
 
 func (self *RocksDbStore) AsyncCommit(topic, messageId string) bool {
@@ -499,7 +526,6 @@ func (self *RocksDbStore) Query(topic, messageId string) *store.MessageEntity {
 		entity.DeliverCount = opLog.DeliverCount
 	}
 	return entity
-
 }
 
 func (self *RocksDbStore) Save(entity *store.MessageEntity) bool {
@@ -572,7 +598,7 @@ func (self *RocksDbStore) Commit(topic, messageId string) bool {
 		return false
 	}
 	rawHeader = append(append(rawHeader[:0], rawHeader[0]), newRawHeader...)
-	//body
+	//header
 	err = self.rocksdb.Set([]byte(msgKeyForHeader(topic, messageId)), rawHeader, pebble.NoSync)
 	if nil != err {
 		return false
@@ -592,7 +618,11 @@ func (self *RocksDbStore) Commit(topic, messageId string) bool {
 }
 
 func (self *RocksDbStore) Rollback(topic, messageId string) bool {
-	return self.Delete(topic, messageId)
+	self.finishDeliverChan <- &opBody{
+		Topic:     topic,
+		MessageId: messageId,
+	}
+	return true
 }
 
 func (self *RocksDbStore) Delete(topic, messageId string) bool {
@@ -615,7 +645,10 @@ func (self *RocksDbStore) Delete(topic, messageId string) bool {
 
 //过期消息进行清理
 func (self *RocksDbStore) Expired(topic, messageId string) bool {
-	self.Delete(topic, messageId)
+	self.finishDeliverChan <- &opBody{
+		Topic:     topic,
+		MessageId: messageId,
+	}
 	return true
 }
 

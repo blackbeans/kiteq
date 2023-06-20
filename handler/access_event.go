@@ -43,7 +43,7 @@ func (self *AccessHandler) Process(ctx *turbo.DefaultPipelineContext, event turb
 	//填写warmingup的时间
 	auth.WarmingupSec = int(aevent.connMeta.GetWarmingupSec())
 	self.clientManager.Auth(auth, aevent.remoteClient)
-	cmd := protocol.MarshalConnAuthAck(true, "授权成功")
+	cmd := protocol.MarshalConnAuthAck(true, "Auth Succ")
 	//响应包
 	packet := turbo.NewRespPacket(aevent.opaque, protocol.CMD_CONN_AUTH, cmd)
 

@@ -1,7 +1,6 @@
 package server
 
 import (
-	// "encoding/json"
 	"fmt"
 	"kiteq/handler"
 	"kiteq/store"
@@ -41,7 +40,6 @@ func (self *RecoverManager) Start() {
 	for i := 0; i < self.kitestore.RecoverNum(); i++ {
 		go self.startRecoverTask(fmt.Sprintf("%x", i))
 	}
-
 	log.Infof("RecoverManager|Start|SUCC....")
 }
 
@@ -66,26 +64,25 @@ func (self *RecoverManager) redeliverMsg(hashKey string, now time.Time) int {
 	//开始分页查询未过期的消息实体
 	for !self.isClose {
 		_, entities := self.kitestore.PageQueryEntity(hashKey, self.serverName,
-			preTimestamp, startIdx, 500)
+			preTimestamp, startIdx, 200)
 
 		if len(entities) <= 0 {
 			break
 		}
 		// d, _ := json.Marshal(entities[0].Header)
 		// log.Infof( "RecoverManager|redeliverMsg|%d|%s", now.Unix(), string(d))
-		succ := self.recoveLimiter.AcquireCount(len(entities))
-		if succ {
-			//开始发起重投
-			for _, entity := range entities {
-				//如果为未提交的消息则需要发送一个事务检查的消息
-				if !entity.Commit {
-					self.txAck(entity)
-				} else {
-					//发起投递事件
-					self.delivery(entity)
-				}
+
+		//开始发起重投
+		for _, entity := range entities {
+			//如果为未提交的消息则需要发送一个事务检查的消息
+			if !entity.Commit {
+				self.txAck(entity)
+			} else {
+				//发起投递事件
+				self.delivery(entity)
 			}
 		}
+
 		startIdx += len(entities)
 		// hasMore = more
 		preTimestamp = entities[len(entities)-1].NextDeliverTime

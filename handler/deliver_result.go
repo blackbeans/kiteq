@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"github.com/blackbeans/logx"
 	"kiteq/store"
 	"sort"
 	"time"
@@ -110,22 +109,30 @@ func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, eve
 		close(fevent.attemptDeliver)
 	}
 
-	logx.GetLogger("deliver_result").Infof("%s|Process|SEND RESULT:"+
-		"MessageId:%s\nTopic:%s\nMessageType:%s\nPublishGroupId:%s\nDeliverCount:%d\n"+
-		"CreateTime:%d\nproperties:%v\n"+
-		"AttemptDeliver:%v\nFly:%v\n"+
-		"NextDeliverTime:%d\n"+
-		"DeliverGroups:%v\nSUCCGROUPS:%v\nDeliverSUCCGROUPS:%v\nDeliverFAILGROUPS:%v",
-		self.GetName(),
-		fevent.header.GetMessageId(), fevent.header.GetTopic(),
-		fevent.header.GetMessageType(), fevent.header.GetGroupId(),
-		fevent.deliverCount,
-		fevent.header.GetCreateTime(),
-		fevent.header.GetProperties(),
-		attemptDeliver, fevent.header.GetFly(),
-		self.nextDeliveryTime(fevent.deliverCount),
-		fevent.deliverGroups,
-		fevent.succGroups, fevent.succGroupFuture, fevent.failGroupFuture)
+	//sb := strings.Builder{}
+	//sb.WriteString(self.GetName())
+	//sb.WriteString("|Process|SEND RESULT:")
+	//sb.WriteString("\nHeader:")
+	//sb.WriteString(fevent.header.String())
+	//sb.WriteString("\nDeliverCount:")
+	//sb.WriteString(strconv.FormatInt(int64(fevent.deliverCount), 10))
+	//sb.WriteString("\nNextDeliverTime:")
+	//sb.WriteString(strconv.FormatInt(int64(self.nextDeliveryTime(fevent.deliverCount)), 10))
+	//sb.WriteString("\nDeliverGroups:")
+	//raw, _ := json.Marshal(fevent.deliverGroups)
+	//sb.Write(raw)
+	//sb.WriteString("\nSUCCGROUPS:")
+	//raw, _ = json.Marshal(fevent.succGroups)
+	//sb.Write(raw)
+	//sb.WriteString("\nDeliverSUCCGROUPS:")
+	//raw, _ = json.Marshal(fevent.succGroupFuture)
+	//sb.Write(raw)
+	//sb.WriteString("\nDeliverFAILGROUPS:")
+	//raw, _ = json.Marshal(fevent.failGroupFuture)
+	//sb.Write(raw)
+	//logx.GetLogger("deliver_result").Info(sb.String())
+	//sb.Reset()
+
 	//都投递成功
 	if len(fevent.deliverFailGroups) <= 0 {
 		if !fevent.header.GetFly() && !attemptDeliver {
@@ -137,7 +144,7 @@ func (self *DeliverResultHandler) Process(ctx *turbo.DefaultPipelineContext, eve
 		//不是尝试投递也就是第一次投递并且也是满足重投条件
 		if !attemptDeliver && self.checkRedelivery(fevent) {
 			//去掉当前消息的投递事件
-			self.deliveryRegistry.UnRegiste(fevent.header.GetMessageId())
+			self.deliveryRegistry.UnRegister(fevent.header.GetMessageId())
 			//再次发起重投策略
 			ctx.SendBackward(fevent.deliverEvent)
 		}

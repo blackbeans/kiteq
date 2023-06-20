@@ -20,7 +20,7 @@ func NewDeliveryRegistry(ctx context.Context, tw *turbo.TimerWheel, capacity int
 /*
 *注册投递事件
 **/
-func (self DeliveryRegistry) Registe(messageId string, exp time.Duration) bool {
+func (self DeliveryRegistry) Register(messageId string, exp time.Duration) bool {
 	now := time.Now()
 	//过期或者不存在在直接覆盖设置
 	expiredTime := now.Add(exp)
@@ -34,6 +34,6 @@ func (self DeliveryRegistry) Registe(messageId string, exp time.Duration) bool {
 }
 
 //取消注册
-func (self DeliveryRegistry) UnRegiste(messageId string) {
+func (self DeliveryRegistry) UnRegister(messageId string) {
 	self.registry.Remove(messageId)
 }

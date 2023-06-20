@@ -16,7 +16,7 @@
 		logxml="./conf/log.xml"
 		db="rocksdb://./db/"
 		deliverySeconds=5
-		maxDeliverWorkers=8000
+		maxDeliverWorkers=10000
 		recoverSeconds=10
 		recievePermitsPerSecond=20000
 	[clusters.rocksdb_dev_2]
